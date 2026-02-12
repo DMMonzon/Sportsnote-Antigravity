@@ -49,7 +49,6 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
       const data = dbService.getGame(id);
       if (data) {
         setGame(data);
-        // Podríamos recuperar los segundos si los guardáramos, pero para MVP reiniciamos timer
       }
     }
   }, [id]);
@@ -224,7 +223,6 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
   };
 
   const handleFinishGame = () => {
-    // Al finalizar, removemos el ID activo para que la próxima vez inicie en el Dashboard
     const state = dbService.loadState();
     dbService.saveState({ ...state, activeGameId: null });
     navigate(`/summary/${game.id}`);
@@ -293,7 +291,7 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
         </div>
       )}
 
-      {/* HEADER CLARO */}
+      {/* HEADER CLARO CON NOMBRES DE EQUIPOS */}
       <header className="h-16 md:h-20 flex items-center justify-between px-4 md:px-6 bg-white shrink-0 border-b border-surfaceVariant shadow-sm z-[200]">
         <button onClick={() => setIsMenuOpen(true)} className="w-8 h-8 flex flex-col items-center justify-center gap-1.5 group">
           <div className="w-6 h-0.5 bg-dark" />
@@ -301,14 +299,26 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
           <div className="w-4 h-0.5 bg-dark self-start ml-1" />
         </button>
         
-        <div className="flex-1 flex justify-center items-center gap-3">
-          <div className="px-3 md:px-5 py-1.5 rounded-xl flex flex-col items-center min-w-[60px] md:min-w-[80px] border border-surfaceVariant shadow-inner" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc', color: game.teamHome.secondaryColor || '#ffffff' }}>
+        <div className="flex-1 flex justify-center items-center gap-2 md:gap-4 overflow-hidden">
+          {/* Nombre Equipo Local */}
+          <span className="hidden sm:block text-[10px] md:text-xs font-black text-onSurfaceVariant uppercase truncate max-w-[80px] md:max-w-[120px] text-right">
+            {game.teamHome.name}
+          </span>
+
+          <div className="px-3 md:px-5 py-1.5 rounded-xl flex flex-col items-center min-w-[50px] md:min-w-[80px] border border-surfaceVariant shadow-inner" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc', color: game.teamHome.secondaryColor || '#ffffff' }}>
             <span className="text-xl md:text-3xl font-black">{game.scoreHome}</span>
           </div>
+          
           <NSeparator />
-          <div className="px-3 md:px-5 py-1.5 rounded-xl flex flex-col items-center min-w-[60px] md:min-w-[80px] border border-surfaceVariant shadow-inner" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444', color: game.teamAway.secondaryColor || '#ffffff' }}>
+          
+          <div className="px-3 md:px-5 py-1.5 rounded-xl flex flex-col items-center min-w-[50px] md:min-w-[80px] border border-surfaceVariant shadow-inner" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444', color: game.teamAway.secondaryColor || '#ffffff' }}>
             <span className="text-xl md:text-3xl font-black">{game.scoreAway}</span>
           </div>
+
+          {/* Nombre Equipo Visitante */}
+          <span className="hidden sm:block text-[10px] md:text-xs font-black text-onSurfaceVariant uppercase truncate max-w-[80px] md:max-w-[120px]">
+            {game.teamAway.name}
+          </span>
         </div>
 
         <div className="flex flex-col items-center shrink-0">
@@ -334,7 +344,6 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
 
       {/* MAIN */}
       <main className="flex-1 flex overflow-hidden bg-surface">
-        {/* SIDEBAR IZQUIERDO (Lista de Eventos) */}
         <aside className={`hidden lg:flex w-[320px] flex-col p-5 bg-white border-r border-surfaceVariant ${activeView !== 'field' ? 'lg:flex' : ''}`}>
           <div className="flex flex-col h-full">
             <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest mb-4 border-b border-surfaceVariant pb-2 italic">Live Feed</h3>
@@ -356,23 +365,23 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
         </aside>
 
         <div className="flex-1 relative p-2 flex gap-2 overflow-hidden">
-          {/* INDICADORES LATERALES (Solo móviles) */}
-          <div className={`lg:hidden w-12 flex flex-col gap-1.5 py-1 shrink-0 ${activeView !== 'field' ? 'hidden' : 'flex'}`}>
+          {/* BARRA LATERAL IZQUIERDA (Estadísticas con íconos) */}
+          <div className={`lg:hidden w-14 flex flex-col gap-1.5 py-1 shrink-0 ${activeView !== 'field' ? 'hidden' : 'flex'}`}>
                {[
-                 { label: 'REM', val: getStat(['DISPARO']), col: 'text-dark' },
-                 { label: 'PER', val: getStat(['PÉRDIDA']), col: 'text-orange-600' },
-                 { label: 'REC', val: getStat(['RECUPERO']), col: 'text-green-600' },
-                 { label: 'PEN', val: getStat(['PENAL']), col: 'text-purple-600' },
+                 { label: 'REM', icon: '🥅', val: getStat(['DISPARO']), col: 'text-dark' },
+                 { label: 'PER', icon: '📉', val: getStat(['PÉRDIDA']), col: 'text-orange-600' },
+                 { label: 'REC', icon: '📈', val: getStat(['RECUPERO']), col: 'text-green-600' },
+                 { label: 'FAL', icon: '⚠️', val: getStat(['FALTA']), col: 'text-red-600' },
                ].map((st, i) => (
-                 <div key={i} className="flex-1 bg-white border border-surfaceVariant rounded-xl flex flex-col items-center justify-center shadow-sm">
-                   <span className="text-[6px] font-black text-onSurfaceVariant mb-0.5">{st.label}</span>
-                   <span className={`text-[11px] font-black ${st.col}`}>{st.val}</span>
+                 <div key={i} className="flex-1 bg-white border border-surfaceVariant rounded-xl flex flex-col items-center justify-center shadow-sm p-1">
+                   <span className="text-[10px] mb-0.5">{st.icon}</span>
+                   <span className="text-[6px] font-black text-onSurfaceVariant uppercase leading-none mb-0.5">{st.label}</span>
+                   <span className={`text-[11px] font-black ${st.col} leading-none`}>{st.val}</span>
                  </div>
                ))}
           </div>
 
           <div className="flex-1 relative overflow-hidden">
-            {/* AREA CENTRAL DINÁMICA */}
             {activeView === 'heatmap' ? (
               <div className="w-full h-full bg-white rounded-[32px] border-2 border-surfaceVariant flex flex-col p-6 animate-in slide-in-from-bottom duration-300 overflow-hidden shadow-xl">
                 <div className="flex justify-between items-center mb-6">
@@ -434,7 +443,7 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
                         </div>
                         <div className="bg-surface/50 p-6 rounded-[24px] border border-surfaceVariant text-center">
                           <p className="text-[9px] font-black text-onSurfaceVariant uppercase mb-1">{row.l2}</p>
-                          <p className={`text-4xl font-black ${row.c2} leading-none`}>{row.v1}</p>
+                          <p className={`text-4xl font-black ${row.c2} leading-none`}>{row.v2}</p>
                         </div>
                       </div>
                     ))}
@@ -443,7 +452,6 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
               </div>
             ) : (
               <div className="w-full h-full bg-emerald-700 border-2 border-white/40 rounded-[32px] relative cursor-crosshair overflow-hidden shadow-lg" onClick={handleFieldClick}>
-                {/* LINEAS DE CAMPO */}
                 <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-white/30 -translate-y-1/2" />
                 <div className="absolute top-[23%] left-0 right-0 h-px border-t border-dashed border-white/20" />
                 <div className="absolute bottom-[23%] left-0 right-0 h-px border-t border-dashed border-white/20" />
@@ -490,14 +498,12 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
             )}
           </div>
 
-          {/* NOTAS LATERALES (Solo móviles) */}
           <div className={`lg:hidden w-12 flex flex-col gap-1.5 py-1 shrink-0 ${activeView !== 'field' ? 'hidden' : 'flex'}`}>
-               <button onClick={handleVoiceNote} className={`flex-1 rounded-xl flex items-center justify-center transition-all shadow-sm border ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'bg-white border-surfaceVariant text-onSurfaceVariant/40'}`}>{isRecording ? '⏺' : '🎙'}</button>
-               <button onClick={() => setShowNoteModal(true)} className="flex-1 bg-white border border-surfaceVariant rounded-xl flex items-center justify-center text-onSurfaceVariant/40 active:scale-95 transition-all text-xl shadow-sm">✏</button>
+               <button onClick={handleVoiceNote} className={`flex-1 rounded-xl flex items-center justify-center transition-all shadow-sm border ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'bg-white border-surfaceVariant text-onSurfaceVariant/40'}`}>{isRecording ? '⏺' : '🎤'}</button>
+               <button onClick={() => setShowNoteModal(true)} className="flex-1 bg-white border border-surfaceVariant rounded-xl flex items-center justify-center text-onSurfaceVariant/40 active:scale-95 transition-all text-xl shadow-sm">📝</button>
           </div>
         </div>
 
-        {/* SIDEBAR DERECHO (Resumen en Escritorio) */}
         <aside className="hidden lg:flex w-[320px] flex-col p-5 bg-white border-l border-surfaceVariant">
           <div className="flex flex-col h-full overflow-y-auto no-scrollbar">
             <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest mb-4 border-b border-surfaceVariant pb-2 italic">Estadísticas Rápidas</h3>
@@ -524,7 +530,6 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
         </aside>
       </main>
 
-      {/* FOOTER CLARO */}
       <footer className="h-20 md:h-24 bg-white flex items-center justify-between px-6 md:px-10 shrink-0 border-t border-surfaceVariant shadow-lg relative z-[200]">
         <div className="relative">
           <button className="w-11 h-11 md:w-14 md:h-14 rounded-full bg-red-50 text-red-600 text-xl flex items-center justify-center border border-red-100 active:scale-90 shadow-sm" onClick={() => setUndoModal(true)}>↩</button>
@@ -544,8 +549,8 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
           <button className={`text-3xl md:text-4xl transition-all ${activeView === 'heatmap' ? 'text-primary scale-125 drop-shadow-md' : 'text-onSurfaceVariant/30'}`} onClick={() => setActiveView(activeView === 'heatmap' ? 'field' : 'heatmap')}>🔥</button>
 
           <div className="hidden lg:flex items-center gap-4">
-             <button onClick={handleVoiceNote} className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${isRecording ? 'bg-red-600 text-white' : 'bg-surface text-onSurfaceVariant/40 border border-surfaceVariant active:scale-90 shadow-sm'}`}>🎙</button>
-             <button onClick={() => setShowNoteModal(true)} className="w-11 h-11 rounded-full flex items-center justify-center bg-surface text-onSurfaceVariant/40 border border-surfaceVariant active:scale-90 shadow-sm">✏</button>
+             <button onClick={handleVoiceNote} className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${isRecording ? 'bg-red-600 text-white' : 'bg-surface text-onSurfaceVariant/40 border border-surfaceVariant active:scale-90 shadow-sm'}`}>🎤</button>
+             <button onClick={() => setShowNoteModal(true)} className="w-11 h-11 rounded-full flex items-center justify-center bg-surface text-onSurfaceVariant/40 border border-surfaceVariant active:scale-90 shadow-sm">📝</button>
           </div>
 
           <button className={`lg:hidden text-2xl transition-all ${activeView === 'stats' ? 'text-primary scale-110 drop-shadow-md' : 'text-onSurfaceVariant/30'}`} onClick={() => setActiveView(activeView === 'stats' ? 'field' : 'stats')}>📊</button>
