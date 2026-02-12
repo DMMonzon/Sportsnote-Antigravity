@@ -1,0 +1,123 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#6d5dfc">
+    <title>SportsNote</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="https://api.dicebear.com/7.x/shapes/svg?seed=sportsnote&backgroundColor=6d5dfc">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Contrail+One&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6d5dfc',
+                        onPrimary: '#ffffff',
+                        secondary: '#00fe00',
+                        onSecondary: '#131041',
+                        surface: '#f4f4f7',
+                        brandDark: '#131041',
+                        brandGlass: 'rgba(255, 255, 255, 0.12)',
+                        textLow: 'rgba(255, 255, 255, 0.7)',
+                        textMuted: '#6b7280',
+                    },
+                    fontFamily: {
+                        contrail: ['"Contrail One"', 'cursive'],
+                        roboto: ['Roboto', 'sans-serif'],
+                    },
+                    borderRadius: {
+                        'md3': '28px',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #e5e7eb;
+            color: #1c1b1f;
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+        }
+        #root {
+            width: 100%;
+            min-height: 100vh;
+            background-color: #f4f4f7;
+            position: relative;
+        }
+        @media (min-width: 1024px) {
+            #root {
+                max-width: 1200px;
+                box-shadow: 0 20px 50px rgba(19, 16, 65, 0.2);
+            }
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .contrail-font { font-family: 'Contrail One', cursive; }
+        
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #6d5dfc; border-radius: 10px; }
+        
+        @keyframes ripple-effect {
+          to { transform: scale(4); opacity: 0; }
+        }
+        .ripple {
+          position: absolute;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.4);
+          transform: scale(0);
+          animation: ripple-effect 0.6s linear;
+          pointer-events: none;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "recharts": "https://esm.sh/recharts@^3.7.0",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.13.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/"
+  }
+}
+</script>
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(registration => {
+                        console.log('SW: Registered', registration.scope);
+                    })
+                    .catch(err => {
+                        console.log('SW: Registration failed', err);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>

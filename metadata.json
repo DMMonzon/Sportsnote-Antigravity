@@ -1,0 +1,8 @@
+{
+  "name": "SportsNote",
+  "description": "Real-time sports action logging for coaches, journalists, and organizers with heatmap tracking, offline support, and advanced statistics.",
+  "requestFramePermissions": [
+    "geolocation",
+    "microphone"
+  ]
+}

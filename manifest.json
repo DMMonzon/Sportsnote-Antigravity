@@ -1,0 +1,25 @@
+
+{
+  "short_name": "SportsNote",
+  "name": "SportsNote: Real-time Sports Action Logger",
+  "icons": [
+    {
+      "src": "https://api.dicebear.com/7.x/shapes/svg?seed=sportsnote&backgroundColor=6d5dfc",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://api.dicebear.com/7.x/shapes/svg?seed=sportsnote&backgroundColor=6d5dfc",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#6d5dfc",
+  "background_color": "#f4f4f7",
+  "orientation": "portrait-primary",
+  "description": "Herramienta profesional para registro de acciones deportivas en tiempo real."
+}
