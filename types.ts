@@ -1,5 +1,4 @@
 
-
 export enum UserRole {
   COACH = 'ENTRENADOR',
   JOURNALIST = 'PERIODISTA',
@@ -28,9 +27,7 @@ export interface Team {
   id: string;
   name: string;
   players: Player[];
-  // Added color property used in NewGameView
   color?: string;
-  // Fix: Added primaryColor and secondaryColor used in LiveGameView score display
   primaryColor?: string;
   secondaryColor?: string;
 }
@@ -46,6 +43,7 @@ export interface GameEvent {
   details?: string;
   comment?: string;
   passChainCount?: number;
+  audioData?: string; // Base64 del audio grabado
 }
 
 export interface Game {
@@ -60,7 +58,6 @@ export interface Game {
   duration: number;
   createdAt: number;
   passChains: number[];
-  // Added role property used in SummaryView and NewGameView
   role?: UserRole;
 }
 
@@ -72,6 +69,5 @@ export interface AppState {
     avatar?: string;
   } | null;
   games: Game[];
-  // Added activeGameId property used in dbService and App state management
   activeGameId?: string | null;
 }
