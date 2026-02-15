@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { UserRole, SportType, Game } from '../types';
 import { Button } from '../components/Button';
@@ -161,6 +162,10 @@ const NewGameView: React.FC<NewGameViewProps> = ({ role, onCreate }) => {
                <p className="text-[8px] font-black text-onSurfaceVariant uppercase mb-0.5">Minutos</p>
                <p className="text-sm font-black text-primary leading-none">15'</p>
              </div>
+             <div className="bg-white px-4 py-2 rounded-2xl border border-primary/10 text-center min-w-[100px]">
+               <p className="text-[8px] font-black text-onSurfaceVariant uppercase mb-0.5">Igualdad</p>
+               <p className="text-[10px] font-black text-primary leading-none uppercase">Sin desempate</p>
+             </div>
           </div>
         </section>
 
@@ -224,7 +229,7 @@ const NewGameView: React.FC<NewGameViewProps> = ({ role, onCreate }) => {
             className="w-full lg:max-w-md h-16 text-lg rounded-[28px] shadow-2xl shadow-primary/20 group relative overflow-hidden" 
             onClick={handleStart}
           >
-            <span className="relative z-10">🚀 COMENZAR REGISTRO VIVO</span>
+            <span className="relative z-10">🚀 COMENZAR JUEGO</span>
             <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
           </Button>
         </div>
