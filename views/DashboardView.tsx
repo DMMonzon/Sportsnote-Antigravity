@@ -1,9 +1,7 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { UserRole, Game } from '../types';
-import { Button } from '../components/Button';
 import { useNavigate } from 'react-router-dom';
-import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line } from 'recharts';
 
 interface DashboardViewProps {
   user: { id: string; role: UserRole; name: string };
@@ -11,216 +9,281 @@ interface DashboardViewProps {
   onLogout: () => void;
 }
 
+interface ActionCardProps {
+  title: string;
+  subtitle: string;
+  description: string;
+  ctaText: string;
+  icon: React.ReactNode;
+  bgIcon: React.ReactNode;
+  colorClass: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}
+
+const ActionCard: React.FC<ActionCardProps> = ({ title, subtitle, description, ctaText, icon, bgIcon, colorClass, onClick, children }) => (
+  <div className={`relative overflow-hidden w-full rounded-[32px] p-4 md:p-6 lg:p-8 flex flex-col gap-4 lg:gap-6 transition-all shadow-2xl group ${colorClass}`}>
+    {/* Decoración de fondo */}
+    <div className="absolute -right-8 -bottom-8 w-64 h-64 text-white/5 group-hover:scale-110 group-hover:-rotate-12 transition-all duration-700 pointer-events-none">
+      {bgIcon}
+    </div>
+    
+    {/* FILA PRINCIPAL: Ajustado para horizontal total */}
+    <div className="flex flex-row items-center justify-between gap-4 relative z-10 w-full border-b border-white/10 pb-4 lg:pb-6">
+      
+      {/* Bloque 1: Identidad (Icono + Textos) */}
+      <div className="flex items-center gap-4 shrink-0">
+        <div className="w-12 h-12 bg-white/20 backdrop-blur-lg rounded-2xl flex items-center justify-center text-white shadow-inner border border-white/20 shrink-0">
+          {icon}
+        </div>
+        {/* Mantengo vertical este bloque pequeño, pero todo el contenedor es horizontal */}
+        <div className="flex flex-col gap-0.5">
+          <p className="text-white/60 text-[9px] font-black uppercase tracking-[2px] leading-none">{subtitle}</p>
+          <h3 className="text-white text-lg font-black leading-none tracking-tighter uppercase">{title}</h3>
+        </div>
+      </div>
+
+      {/* Separador vertical */}
+      <div className="w-px h-12 bg-white/20"></div>
+
+      {/* Bloque 2: Descripción Expandida */}
+      <div className="flex-1 px-4">
+        <p className="text-white/80 text-[11px] font-medium leading-relaxed text-left max-w-2xl">
+          {description}
+        </p>
+      </div>
+
+      {/* Separador vertical */}
+      <div className="w-px h-12 bg-white/20"></div>
+
+      {/* Bloque 3: Botón de Acción Principal */}
+      <button 
+        onClick={onClick}
+        className="shrink-0 bg-white text-dark px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brandDark hover:text-white transition-all duration-300 shadow-xl active:scale-95 flex items-center gap-2"
+      >
+        <span>{ctaText}</span>
+        <span className="text-lg">→</span>
+      </button>
+    </div>
+
+    {/* BLOQUE INFERIOR: Grid de Sub-Cards */}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10 w-full">
+      {children}
+    </div>
+  </div>
+);
+
 const DashboardView: React.FC<DashboardViewProps> = ({ user, games, onLogout }) => {
   const navigate = useNavigate();
 
-  const STATS_DATA = [
-    { name: 'Wins', value: 70 },
-    { name: 'Loss', value: 30 },
-  ];
-  const COLORS = ['#6d5dfc', '#e5e1ec'];
+  const statsData = useMemo(() => {
+    const allChains = games.flatMap(g => g.passChains);
+    const avgChains = allChains.length > 0 
+      ? (allChains.reduce((a, b) => a + b, 0) / allChains.length).toFixed(1) 
+      : "0.0";
 
-  // Mock for upcoming games
-  const upcomingGames = [
-    { id: 'u1', opponent: 'Lions HC', date: 'Hoy 18:30', field: 'C1' },
-    { id: 'u2', opponent: 'Tigres Club', date: 'Mañ 16:00', field: 'C2' },
-    { id: 'u3', opponent: 'Estudiantes', date: 'Vie 20:00', field: 'C1' },
-    { id: 'u4', opponent: 'Univ. Hockey', date: 'Sab 11:30', field: 'C3' },
-    { id: 'u5', opponent: 'C. Náutico', date: 'Dom 15:00', field: 'C1' },
-  ];
+    const goals = games.flatMap(g => g.events).filter(e => e.type.includes('GOL'));
+    const topScorer = goals.length > 0 ? `Jugador #${Math.floor(Math.random() * 20) + 1}` : "N/A";
+    const totalGoals = goals.length > 0 ? goals.length : 0;
+
+    return { avgChains, topScorer, totalGoals };
+  }, [games]);
 
   return (
-    <div className="min-h-screen w-full flex flex-col bg-surface overflow-y-auto">
-      {/* Header MD3 */}
-      <header className="sticky top-0 z-50 flex justify-between items-center px-6 py-3 bg-surface shadow-sm shrink-0 border-b border-surfaceVariant">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-dark rounded-lg flex items-center justify-center text-neon font-black rotate-12">S</div>
-          <h1 className="contrail-font text-xl text-dark uppercase tracking-tight">SportsNote</h1>
-        </div>
-        <div className="text-center flex-1">
-          <p className="text-sm font-medium text-onSurfaceVariant italic">¡Buen día, Coach!</p>
-        </div>
+    <div className="min-h-screen w-full flex flex-col bg-surface overflow-y-auto no-scrollbar pb-16">
+      <header className="sticky top-0 z-50 flex justify-between items-center px-6 py-3 bg-white/80 backdrop-blur-xl border-b border-surfaceVariant shrink-0">
         <div className="flex items-center gap-3">
-          <div className="text-right hidden xs:block">
-            <p className="text-xs font-bold text-onSurface leading-none">{user.name}</p>
-            <button className="text-[10px] text-primary font-bold uppercase hover:underline">Perfil</button>
+          <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/20 rotate-12 group hover:rotate-0 transition-transform cursor-pointer">
+            <span className="text-lg font-black">S</span>
           </div>
-          <div className="w-10 h-10 rounded-full border border-outline/20 overflow-hidden cursor-pointer">
+          <div>
+            <h1 className="contrail-font text-lg text-dark uppercase tracking-tight leading-none">SportsNote</h1>
+            <p className="text-[9px] font-black text-primary uppercase mt-0.5 tracking-[1px]">Elite Pro Engine</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:block text-right">
+            <p className="text-[10px] font-black text-dark leading-none">{user.name}</p>
+            <p className="text-[8px] text-onSurfaceVariant uppercase font-bold mt-0.5 tracking-tighter">{user.role}</p>
+          </div>
+          <div className="w-10 h-10 rounded-xl border-2 border-primary/10 overflow-hidden shadow-sm">
             <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`} alt="avatar" />
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col p-4 gap-4">
+      <main className="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full flex flex-col gap-8">
         
-        {/* 1. MIS JUEGOS */}
-        <section className="bg-surfaceVariant/30 rounded-[28px] p-5 border border-surfaceVariant flex flex-col min-h-[300px]">
-          <div className="flex justify-between items-center mb-3">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">🏟️</span>
-              <div>
-                <h2 className="font-bold text-base text-onSurface">Mis Juegos</h2>
-                <p className="text-[10px] text-onSurfaceVariant font-bold uppercase">{games.length} REGISTRADOS</p>
-              </div>
-            </div>
-            <Button variant="primary" className="h-9 px-4" onClick={() => navigate('/new-game')}>INICIAR NUEVO</Button>
+        <section className="flex justify-between items-end border-b border-surfaceVariant pb-4">
+          <div>
+            <h2 className="text-3xl font-black text-dark tracking-tighter italic uppercase">Panel de Control</h2>
+            <p className="text-onSurfaceVariant font-bold text-[9px] uppercase tracking-[3px] opacity-60 mt-1">Status: Operacional • {new Date().toLocaleDateString()}</p>
           </div>
-          
-          <div className="flex-1 grid grid-cols-2 gap-4">
-            <div className="bg-surface rounded-2xl p-3 flex flex-col shadow-sm max-h-[180px]">
-              <div className="flex justify-between items-center mb-1">
-                <p className="text-[9px] font-black text-onSurfaceVariant uppercase">Historial</p>
-                <button className="text-[9px] text-primary font-black uppercase">VER TODO</button>
-              </div>
-              <div className="flex-1 overflow-y-auto no-scrollbar">
-                <table className="w-full text-[10px]">
-                  <tbody className="divide-y divide-surfaceVariant">
-                    {games.slice(0, 5).length > 0 ? games.slice(0, 5).map(g => (
-                      <tr key={g.id}>
-                        <td className="py-2 font-bold truncate pr-1">{g.teamAway.name}</td>
-                        <td className="py-2 text-center font-black text-primary">{g.scoreHome}-{g.scoreAway}</td>
-                        <td className="py-2 text-right text-xs">📊</td>
-                      </tr>
-                    )) : (
-                      <tr><td className="py-4 text-center text-onSurfaceVariant italic">Sin registros</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+        </section>
 
-            <div className="bg-surface rounded-2xl p-3 flex flex-col shadow-sm max-h-[180px]">
-              <div className="flex justify-between items-center mb-1">
-                <p className="text-[9px] font-black text-onSurfaceVariant uppercase">Próximos</p>
-                <button className="text-[9px] text-primary font-black uppercase">AGENDAR</button>
-              </div>
-              <div className="flex-1 overflow-y-auto no-scrollbar">
-                <div className="space-y-2">
-                  {upcomingGames.map(ug => (
-                    <div key={ug.id} className="flex justify-between items-center text-[10px] border-b border-surfaceVariant/50 pb-1.5 last:border-0">
-                      <div>
-                        <p className="font-bold text-onSurface truncate">{ug.opponent}</p>
-                        <p className="text-[8px] text-onSurfaceVariant">{ug.date} • {ug.field}</p>
+        <section className="flex flex-col gap-6">
+          
+          {/* TARJETA 1: PANEL DE JUEGOS */}
+          <ActionCard 
+            title="Panel de Juegos" 
+            subtitle={`${games.length} registrados`}
+            description="Control total sobre el registro de eventos tácticos, goles y faltas en tiempo real para análisis inmediato de rendimiento."
+            ctaText="iniciar juego nuevo"
+            colorClass="bg-primary shadow-primary/30"
+            onClick={() => navigate('/new-game')}
+            icon={<span className="text-2xl">🏟️</span>}
+            bgIcon={<svg fill="currentColor" viewBox="0 0 24 24" className="w-full h-full"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-12h2v6h-2zm0 8h2v2h-2z"/></svg>}
+          >
+            {/* Sub-card 1: Historial */}
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-5 flex flex-col justify-between">
+              <div>
+                <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-3 italic">Últimos 5 Juegos</p>
+                <div className="space-y-2 mb-4">
+                  {games.slice(-3).reverse().map((g, i) => (
+                    <div key={i} className="flex items-center justify-between bg-white/5 p-2 rounded-xl text-[10px] text-white font-bold">
+                      <span className="truncate w-24">vs {g.teamAway.name}</span>
+                      <div className="flex gap-2">
+                        <button title="Stats">📊</button>
+                        <button title="Share">📤</button>
+                        <button title="Recycle">♻️</button>
                       </div>
-                      <div className="flex gap-1">
-                        <span className="cursor-pointer">✏️</span>
-                        <span className="cursor-pointer">🗑️</span>
+                    </div>
+                  ))}
+                  {games.length === 0 && <p className="text-[10px] text-white/40 italic">Sin registros disponibles.</p>}
+                </div>
+              </div>
+              <button className="text-[9px] font-black text-white uppercase tracking-tighter hover:underline text-left opacity-80">ver historial completo</button>
+            </div>
+            {/* Sub-card 2: Agenda */}
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-5 flex flex-col justify-between">
+              <div>
+                <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-3 italic">Agenda Próxima</p>
+                <div className="space-y-2 mb-4">
+                  {[ { r: 'Lions Club', d: '24/05' }, { r: 'Tigres HC', d: '28/05' } ].map((g, i) => (
+                    <div key={i} className="flex items-center justify-between bg-white/5 p-2 rounded-xl text-[10px] text-white font-bold">
+                      <span className="truncate w-24">vs {g.r}</span>
+                      <span className="opacity-60">{g.d}</span>
+                      <div className="flex gap-2">
+                        <button className="hover:scale-110">✏️</button>
+                        <button className="hover:scale-110 text-red-300 font-black">✕</button>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
+              <button className="text-[9px] font-black text-white uppercase tracking-tighter hover:underline text-left opacity-80">gestionar agenda</button>
             </div>
-          </div>
-        </section>
+          </ActionCard>
 
-        {/* 2. MI EQUIPO */}
-        <section className="bg-surfaceVariant/30 rounded-[28px] p-5 border border-surfaceVariant flex flex-col">
-          <div className="flex justify-between items-center mb-3">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">👥</span>
+          {/* TARJETA 2: GESTIÓN DE EQUIPO */}
+          <ActionCard 
+            title="Gestión de Equipo" 
+            subtitle="18 jugadores"
+            description="Administra los perfiles de tus jugadores, gestiona dorsales y revisa la disponibilidad de tu plantilla en tiempo real."
+            ctaText="gestionar mi plantel"
+            colorClass="bg-emerald-800 shadow-emerald-900/40"
+            onClick={() => {}}
+            icon={<span className="text-2xl">👥</span>}
+            bgIcon={<svg fill="currentColor" viewBox="0 0 24 24" className="w-full h-full"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>}
+          >
+            {/* Sub-card 1: Jugadores */}
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 flex flex-col justify-between">
               <div>
-                <h2 className="font-bold text-base text-onSurface">Mi Equipo</h2>
-                <p className="text-[10px] text-onSurfaceVariant font-bold uppercase">18 JUGADORES</p>
+                <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-2">Jugadores Registrados</p>
+                <div className="flex items-baseline gap-2">
+                  <h4 className="text-4xl font-black text-white leading-none">18</h4>
+                  <span className="text-[10px] font-bold text-white/40 uppercase">Activos</span>
+                </div>
+                <p className="text-[10px] font-bold text-white/70 uppercase mt-3 italic">Último ingreso: M. Gómez</p>
               </div>
+              <button className="text-[9px] font-black text-white uppercase tracking-tighter hover:underline mt-4 text-left opacity-80">ingresar nuevo jugador</button>
             </div>
-            <Button variant="primary" className="h-9 px-4">ACCEDER PLANTEL</Button>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-surface rounded-2xl p-3 flex flex-col justify-between shadow-sm min-h-[100px]">
+            {/* Sub-card 2: Dorsales */}
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 flex flex-col justify-between">
               <div>
-                <h4 className="text-[9px] font-black text-onSurfaceVariant uppercase">Dorsales</h4>
-                <p className="text-xs font-medium text-onSurface mt-1">Último: #14 - Lopez</p>
+                <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-2">Dorsales Utilizados</p>
+                <div className="flex items-baseline gap-2">
+                  <h4 className="text-4xl font-black text-white leading-none">15</h4>
+                  <span className="text-[10px] font-bold text-white/40 uppercase">Grabados</span>
+                </div>
+                <p className="text-[10px] font-bold text-white/70 uppercase mt-3 italic">Último grabado: #10 (Capitán)</p>
               </div>
-              <button className="text-[9px] font-black text-primary uppercase text-left">EDITAR DORSALES</button>
+              <button className="text-[9px] font-black text-white uppercase tracking-tighter hover:underline mt-4 text-left opacity-80">gestionar dorsales</button>
             </div>
-            <div className="bg-surface rounded-2xl p-3 flex flex-col justify-between shadow-sm min-h-[100px]">
-              <div>
-                <h4 className="text-[9px] font-black text-onSurfaceVariant uppercase">Jugadores</h4>
-                <p className="text-xs font-medium text-onSurface mt-1">García, Manuel</p>
-              </div>
-              <button className="text-[9px] font-black text-primary uppercase text-left">REGISTRAR NUEVO</button>
-            </div>
-          </div>
-        </section>
+          </ActionCard>
 
-        {/* 3. MIS ESTADÍSTICAS */}
-        <section className="bg-surfaceVariant/30 rounded-[28px] p-5 border border-surfaceVariant flex flex-col">
-          <div className="flex justify-between items-center mb-3">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">📊</span>
-              <div>
-                <h2 className="font-bold text-base text-onSurface">Estadísticas</h2>
-                <p className="text-[10px] text-onSurfaceVariant font-bold uppercase">RENDIMIENTO PRO</p>
-              </div>
+          {/* TARJETA 3: ESTADÍSTICAS PRO */}
+          <ActionCard 
+            title="Estadísticas Pro" 
+            subtitle="Data Intelligence"
+            description="Análisis avanzado sobre el volumen de pases y eficiencia ofensiva de tus jugadores basada en datos reales del campo."
+            ctaText="Ver estadísticas"
+            colorClass="bg-brandDark shadow-dark/30"
+            onClick={() => {}}
+            icon={<span className="text-2xl">📈</span>}
+            bgIcon={<svg fill="currentColor" viewBox="0 0 24 24" className="w-full h-full"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>}
+          >
+            {/* Sub-card 1: Pases */}
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 flex flex-col justify-center text-center">
+              <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-1">Promedio de pases por cadena</p>
+              <h4 className="text-4xl font-black text-white mb-1 leading-none">{statsData.avgChains}</h4>
+              <p className="text-[9px] font-bold text-white/30 uppercase tracking-[2px]">pases por cadena</p>
             </div>
-            <Button variant="primary" className="h-9 px-4">VER TOTALES</Button>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-surface rounded-2xl p-2 flex flex-col items-center justify-between shadow-sm min-h-[120px]">
-              <p className="text-[8px] font-black text-onSurfaceVariant uppercase self-start">Por Jugador</p>
-              <div className="w-14 h-14">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={STATS_DATA} innerRadius={14} outerRadius={24} dataKey="value" paddingAngle={5}>
-                      {STATS_DATA.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <button className="text-[9px] font-black text-primary uppercase">Stats Jugadores</button>
+            {/* Sub-card 2: Goleador */}
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 flex flex-col justify-center text-center">
+              <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-1">Jugador con más goles (Local)</p>
+              <h4 className="text-lg font-black text-white uppercase mb-1 leading-none truncate">{statsData.topScorer}</h4>
+              <p className="text-sm font-black text-secondary uppercase leading-none">{statsData.totalGoals} goles jugador #23</p>
             </div>
-            <div className="bg-surface rounded-2xl p-2 flex flex-col items-center justify-between shadow-sm min-h-[120px]">
-              <p className="text-[8px] font-black text-onSurfaceVariant uppercase self-start">Por Acción</p>
-              <div className="w-full h-12 px-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={[{v:10},{v:25},{v:15},{v:30}]}>
-                    <Line type="monotone" dataKey="v" stroke="#6d5dfc" strokeWidth={3} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-              <button className="text-[9px] font-black text-primary uppercase">Stats Acciones</button>
-            </div>
-          </div>
-        </section>
+          </ActionCard>
 
-        {/* 4. MIS AJUSTES */}
-        <section className="bg-surfaceVariant/30 rounded-[28px] p-5 border border-surfaceVariant flex flex-col mb-4">
-          <div className="flex justify-between items-center mb-3">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">⚙️</span>
+          {/* TARJETA 4: CONFIGURACIÓN */}
+          <ActionCard 
+            title="Configuración" 
+            subtitle="sistema operativo"
+            description="Modifica los parámetros reglamentarios del deporte y administra tus listas de contactos para envíos automáticos."
+            ctaText="configurar deporte"
+            colorClass="bg-slate-600 shadow-slate-300/30"
+            onClick={() => {}}
+            icon={<span className="text-2xl">⚙️</span>}
+            bgIcon={<svg fill="currentColor" viewBox="0 0 24 24" className="w-full h-full"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>}
+          >
+            {/* Sub-card 1: Deporte */}
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 flex flex-col justify-between">
               <div>
-                <h2 className="font-bold text-base text-onSurface">Ajustes</h2>
-                <p className="text-[10px] text-onSurfaceVariant font-bold uppercase">HOCKEY • STANDARD</p>
+                <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-3">Configuración Deporte</p>
+                <div className="text-[10px] text-white font-bold leading-relaxed opacity-90 uppercase bg-white/5 p-2 rounded-xl">
+                  4 cuartos, 15 minutos, sin desempate
+                </div>
               </div>
+              <button className="text-[9px] font-black text-white uppercase tracking-tighter hover:underline mt-4 text-left opacity-80">editar deporte</button>
             </div>
-            <Button variant="primary" className="h-9 px-4">CONFIGURAR</Button>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-surface rounded-2xl p-3 flex flex-col justify-between shadow-sm min-h-[100px]">
+            {/* Sub-card 2: Contactos */}
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 flex flex-col justify-between">
               <div>
-                <h4 className="text-[9px] font-black text-onSurfaceVariant uppercase">Distribución</h4>
-                <p className="text-xs font-medium text-onSurface mt-1">4 Listas activas</p>
+                <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-3">Configuración Contactos</p>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-3xl font-black text-white leading-none">4</h4>
+                  <span className="text-[9px] font-bold text-white/50 uppercase leading-tight">Listas de distribución</span>
+                </div>
               </div>
-              <button className="text-[9px] font-black text-primary uppercase text-left">EDITAR LISTAS</button>
+              <button className="text-[9px] font-black text-white uppercase tracking-tighter hover:underline mt-4 text-left opacity-80">gestionar listas de distribución</button>
             </div>
-            <div className="bg-surface rounded-2xl p-3 flex flex-col justify-between shadow-sm min-h-[100px]">
-              <div>
-                <h4 className="text-[9px] font-black text-onSurfaceVariant uppercase">Acciones</h4>
-                <p className="text-xs font-medium text-onSurface mt-1">12 Tipos de acción</p>
-              </div>
-              <button className="text-[9px] font-black text-primary uppercase text-left">EDITAR ACCIONES</button>
-            </div>
-          </div>
+          </ActionCard>
+
         </section>
 
       </main>
 
-      <footer className="px-6 py-4 flex flex-col items-center shrink-0 border-t border-surfaceVariant bg-surface">
-          <button onClick={onLogout} className="text-[10px] font-black text-red-600 uppercase tracking-widest hover:bg-red-50 px-4 py-2 rounded-full">
-            Cerrar Sesión
+      <footer className="px-8 py-8 flex flex-col items-center shrink-0 bg-white border-t border-surfaceVariant mt-6">
+          <button 
+            onClick={onLogout} 
+            className="group flex items-center gap-2 text-[10px] font-black text-red-600 uppercase tracking-[3px] bg-red-50 px-10 py-4 rounded-full hover:bg-red-600 hover:text-white transition-all duration-300 shadow-md active:scale-95 border border-red-100"
+          >
+            <span>🚪</span> FINALIZAR SESIÓN SEGURA
           </button>
+          <p className="mt-8 text-[8px] text-onSurfaceVariant/40 font-black tracking-[4px] uppercase italic">SportsNote Professional Dashboard • 2024</p>
       </footer>
     </div>
   );
