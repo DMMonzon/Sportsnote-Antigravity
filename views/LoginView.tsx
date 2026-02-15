@@ -14,8 +14,8 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
       <div className="w-20 h-20 bg-primary rounded-[28px] mb-8 flex items-center justify-center shadow-lg shadow-primary/20 rotate-12">
         <span className="text-onPrimary text-4xl">🏑</span>
       </div>
-      <h1 className="contrail-font text-5xl text-onSurface mb-2">SportsNote</h1>
-      <p className="font-medium text-onSurfaceVariant mb-12 text-center text-lg leading-tight tracking-wide">Registra cada acción,<br/>mejora cada jugada.</p>
+      <h1 className="contrail-font text-5xl text-onSurface mb-2">SPORTNOTE</h1>
+      <p className="contrail-font text-onSurfaceVariant mb-12 text-center text-lg leading-tight tracking-wide">Registra, Analiza, Comparte.</p>
       
       <div className="w-full max-w-xs flex flex-col gap-4">
         {ROLES.map((role) => (
@@ -27,8 +27,8 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
           >
             <span className="text-3xl grayscale-0">{role.icon}</span>
             <div className="text-left">
-              <div className="text-onSecondaryContainer font-bold text-base leading-none">{role.title}</div>
-              <div className="text-onSurfaceVariant text-[10px] normal-case font-medium mt-1">Acceso Profesional</div>
+              <div className="contrail-font text-onSecondaryContainer font-bold text-base leading-none">{role.title}</div>
+              <div className="lato-font text-onSurfaceVariant text-[10px] normal-case font-medium mt-1">Acceso Profesional</div>
             </div>
           </Button>
         ))}

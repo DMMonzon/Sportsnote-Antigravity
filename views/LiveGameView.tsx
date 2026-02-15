@@ -34,7 +34,6 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
   const [eventFilter, setEventFilter] = useState<ActionFilter>('ALL');
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('ALL');
   const [ripples, setRipples] = useState<{ id: number, x: number, y: number }[]>([]);
-  const [undoModal, setUndoModal] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [period, setPeriod] = useState(1);
   const [showPeriodMenu, setShowPeriodMenu] = useState(false);
@@ -42,6 +41,7 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [noteText, setNoteText] = useState('');
   const [showNoteModal, setShowNoteModal] = useState(false);
+  const [undoModal, setUndoModal] = useState(false);
 
   const timerRef = useRef<number | null>(null);
   const lastClickTime = useRef<number>(0);
@@ -74,7 +74,7 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
   const showPassSnackbar = (count: number, isRecord: boolean) => {
-    if (!isRecord) return; // Elimina el aviso de "cadena interrumpida"
+    if (!isRecord) return;
     const message = `🏆 ¡Nuevo récord: ${count} pases!`;
     setSnackbar({ message, visible: true });
     setTimeout(() => setSnackbar(prev => ({ ...prev, visible: false })), 2500);
@@ -105,8 +105,16 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
     const isInTopGoal = y <= 8 && x >= 42 && x <= 58;
     const isInBottomGoal = y >= 92 && x >= 42 && x <= 58;
 
-    if (isInTopGoal || isInBottomGoal) { 
-      setShowPopup({ x, y, type: 'SHOT', targetGoal: isInTopGoal ? 'TOP' : 'BOTTOM' }); 
+    if (isInTopGoal) { 
+      // Si se toca el arco de arriba, es tiro para HOME (atacando hacia arriba)
+      registerEvent('DISPARO', Possession.NONE, x, y, "Remate", game.teamHome.id);
+      setShowPopup({ x, y, type: 'SHOT', targetGoal: 'TOP' }); 
+      return; 
+    }
+    if (isInBottomGoal) { 
+      // Si se toca el arco de abajo, es tiro para AWAY (atacando hacia abajo)
+      registerEvent('DISPARO', Possession.NONE, x, y, "Remate", game.teamAway.id);
+      setShowPopup({ x, y, type: 'SHOT', targetGoal: 'BOTTOM' }); 
       return; 
     }
 
@@ -122,7 +130,7 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
     let finalNewPoss = nextPoss;
     const currentMax = game.passChains.length > 0 ? Math.max(...game.passChains) : 0;
 
-    const isChainBreaker = type.includes('FALTA') || type.includes('PÉRDIDA') || type.includes('GOL') || type.includes('DESVIADO') || type === 'RECUPERO';
+    const isChainBreaker = type.includes('FALTA') || type.includes('PÉRDIDA') || type.includes('GOL') || type.includes('DESVIADO') || type === 'RECUPERO' || type === 'DISPARO';
     
     if (isChainBreaker && passCount > 0) {
       updatedPassChains.push(passCount);
@@ -142,7 +150,8 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
     }
 
     const attackingTeamId = possession === Possession.HOME ? game.teamHome.id : game.teamAway.id;
-    const eventTeamId = (type.includes('DISPARO') || type.includes('GOL')) ? attackingTeamId : (forcedTeamId || (finalNewPoss === Possession.HOME ? game.teamHome.id : game.teamAway.id));
+    // Priorizamos forcedTeamId si se proporciona explícitamente (ej. al tocar un arco específico)
+    const eventTeamId = forcedTeamId || ((type.includes('DISPARO') || type.includes('GOL')) ? attackingTeamId : (finalNewPoss === Possession.HOME ? game.teamHome.id : game.teamAway.id));
 
     const event: GameEvent = {
       id: Math.random().toString(36).substr(2, 5),
@@ -177,21 +186,33 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
     setShowPopup(null);
   };
 
-  const updateLastEvent = (newType: string, newDetails: string) => {
+  const updateLastEvent = (newType: string, newDetails: string, scoreUpdate?: { home: number, away: number }, nextPoss?: Possession) => {
     setGame(prev => {
       if (!prev || prev.events.length === 0) return prev;
-      const lastEvent = prev.events[prev.events.length - 1];
-      if (lastEvent.type.includes('FALTA')) {
-        const updatedEvents = [...prev.events];
-        updatedEvents[updatedEvents.length - 1] = {
+      const updatedEvents = [...prev.events];
+      const lastIdx = updatedEvents.length - 1;
+      const lastEvent = updatedEvents[lastIdx];
+      
+      if (lastEvent.type.includes('FALTA') || lastEvent.type.includes('DISPARO')) {
+        updatedEvents[lastIdx] = {
           ...lastEvent,
           type: newType,
           details: newDetails
         };
-        return { ...prev, events: updatedEvents };
+        
+        let newScoreHome = prev.scoreHome + (scoreUpdate?.home || 0);
+        let newScoreAway = prev.scoreAway + (scoreUpdate?.away || 0);
+
+        return { 
+          ...prev, 
+          events: updatedEvents,
+          scoreHome: Math.max(0, newScoreHome),
+          scoreAway: Math.max(0, newScoreAway)
+        };
       }
       return prev;
     });
+    if (nextPoss) setPossession(nextPoss);
     setShowPopup(null);
   };
 
@@ -219,9 +240,9 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
 
   const getStat = (types: string[]) => {
      return game.events.filter(e => {
-        const isTeam = e.teamId === game.teamHome.id;
-        const isTarget = types.some(t => e.type.toUpperCase().includes(t.toUpperCase()));
-        return isTeam && isTarget;
+       const isTeam = e.teamId === game.teamHome.id;
+       const isTarget = types.some(t => e.type.toUpperCase().includes(t.toUpperCase()));
+       return isTeam && isTarget;
      }).length;
   };
 
@@ -267,6 +288,7 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
   };
 
   const handleFinishGame = () => {
+    if (!game) return;
     const state = dbService.loadState();
     dbService.saveState({ ...state, activeGameId: null });
     navigate(`/summary/${game.id}`);
@@ -364,12 +386,12 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
             </div>
             <nav className="flex-1 space-y-2 overflow-y-auto no-scrollbar">
               <button onClick={handleFinishGame} className="w-full text-left p-4 rounded-xl bg-primary/10 text-primary font-bold text-[11px] uppercase tracking-widest transition-all active:scale-95 mb-4">Finalizar Match</button>
-              {["1: Configurar juego", "2: Configurar plantel", "3: Configurar acciones", "4: Reiniciar juego", "5: Suspender juego"].map((opt, i) => (
+              {["1: Configurar juego", "2: Configurar plantel", "3: Configurar acciones"].map((opt, i) => (
                 <button key={i} className="w-full text-left p-4 rounded-xl hover:bg-surface text-onSurface font-bold text-[11px] uppercase tracking-widest transition-all active:scale-95" onClick={() => setIsMenuOpen(false)}>{opt}</button>
               ))}
             </nav>
             <div className="pt-6 mt-6 border-t border-surfaceVariant">
-              <button onClick={() => navigate('/dashboard')} className="w-full text-left p-4 bg-red-50 text-red-600 rounded-xl font-black text-[11px] uppercase tracking-widest flex items-center gap-3 transition-all hover:bg-red-100 active:scale-95"><span>🏠</span> 6: Regresar al dashboard</button>
+              <button onClick={() => navigate('/dashboard')} className="w-full text-left p-4 bg-red-50 text-red-600 rounded-xl font-black text-[11px] uppercase tracking-widest flex items-center gap-3 transition-all hover:bg-red-100 active:scale-95"><span>🏠</span> Regresar al dashboard</button>
             </div>
           </aside>
         </div>
@@ -377,9 +399,9 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
 
       <header className="h-16 md:h-20 flex items-center justify-between px-4 md:px-6 bg-white shrink-0 border-b border-surfaceVariant shadow-sm z-[200]">
         <button onClick={() => setIsMenuOpen(true)} className="w-8 h-8 flex flex-col items-center justify-center gap-1.5 group">
-          <div className="w-6 h-0.5 bg-dark" />
-          <div className="w-6 h-0.5 bg-dark" />
-          <div className="w-4 h-0.5 bg-dark self-start ml-1" />
+          <div className="w-6 h-0.5 bg-black" />
+          <div className="w-6 h-0.5 bg-black" />
+          <div className="w-4 h-0.5 bg-black self-start ml-1" />
         </button>
         <div className="flex-1 flex justify-center items-center gap-2 md:gap-4 overflow-hidden">
           <span className="hidden sm:block text-[10px] md:text-xs font-black text-onSurfaceVariant uppercase truncate max-w-[80px] md:max-w-[120px] text-right">{game.teamHome.name}</span>
@@ -393,12 +415,11 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
           <span className="hidden sm:block text-[10px] md:text-xs font-black text-onSurfaceVariant uppercase truncate max-w-[80px] md:max-w-[120px]">{game.teamAway.name}</span>
         </div>
         
-        {/* Indicador de Periodo a la izquierda del cronómetro */}
         <div className="flex items-center gap-3 shrink-0">
           <div className="relative">
             <button 
               onClick={() => setShowPeriodMenu(!showPeriodMenu)}
-              className="bg-primary/10 text-primary font-black px-3 py-2 rounded-xl text-xs md:text-sm active:scale-95 transition-all shadow-sm border border-primary/5"
+              className="bg-primary/10 text-primary font-black px-3 py-2 rounded-xl text-xs md:text-sm active:scale-95 transition-all shadow-sm border border-primary/5 hover:bg-primary/20"
             >
               {period}Q
             </button>
@@ -479,12 +500,21 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
                   <button onClick={() => setActiveView('field')} className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/5 px-4 py-2 rounded-full">Cerrar</button>
                 </div>
                 <div className="flex-1 relative overflow-hidden rounded-[24px]">
-                  <div className="absolute inset-0 bg-emerald-800 opacity-20">
+                  <div className="absolute inset-0 bg-emerald-900">
                     <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-white/40 -translate-y-1/2" />
                   </div>
                   <div className="absolute inset-0">
                     {game.events.filter(e => eventFilter === 'ALL' || e.type.includes(eventFilter)).map((e, i) => (
-                      <div key={i} className={`absolute w-12 h-12 rounded-full blur-2xl opacity-60 mix-blend-multiply ${e.type.includes('PÉRDIDA') ? 'bg-orange-400' : e.type.includes('FALTA') ? 'bg-red-400' : 'bg-primary'}`} style={{ left: `${e.x}%`, top: `${e.y}%`, transform: 'translate(-50%, -50%)' }} />
+                      <div 
+                        key={i} 
+                        className={`absolute w-16 h-16 rounded-full blur-2xl opacity-90 mix-blend-screen transition-all ${
+                          e.type.includes('GOL') ? 'bg-secondary' : 
+                          e.type.includes('DISPARO') ? 'bg-white' : 
+                          e.type.includes('PÉRDIDA') ? 'bg-orange-400' : 
+                          e.type.includes('FALTA') ? 'bg-red-500' : 'bg-primary'
+                        }`} 
+                        style={{ left: `${e.x}%`, top: `${e.y}%`, transform: 'translate(-50%, -50%)' }} 
+                      />
                     ))}
                   </div>
                 </div>
@@ -585,9 +615,9 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
                       </div>
                     ) : (
                       <>
-                        <button className="text-xs font-black text-primary text-left py-4 px-5 rounded-xl bg-primary/5 border border-primary/10 flex items-center gap-4 uppercase" onClick={() => registerEvent('DISPARO (GOL)', showPopup.targetGoal === 'TOP' ? Possession.AWAY : Possession.HOME, showPopup.x, showPopup.y, "GOL", undefined, showPopup.targetGoal === 'TOP' ? Possession.HOME : Possession.AWAY)}>⚽ GOL</button>
-                        <button className="text-xs font-black text-dark text-left py-4 px-5 rounded-xl bg-surface border border-surfaceVariant flex items-center gap-4 uppercase" onClick={() => registerEvent('DISPARO (ATAJADO)', Possession.NONE, showPopup.x, showPopup.y, "ATAJADO")}>🛡️ ATAJADO</button>
-                        <button className="text-xs font-black text-onSurfaceVariant text-left py-4 px-5 rounded-xl bg-surface border border-surfaceVariant flex items-center gap-4 uppercase" onClick={() => registerEvent('DISPARO (DESVIADO)', Possession.AWAY, showPopup.x, showPopup.y, "DESVIADO")}>💨 DESVIADO</button>
+                        <button className="text-xs font-black text-primary text-left py-4 px-5 rounded-xl bg-primary/5 border border-primary/10 flex items-center gap-4 uppercase" onClick={() => updateLastEvent('DISPARO (GOL)', "GOL", showPopup.targetGoal === 'TOP' ? { home: 1, away: 0 } : { home: 0, away: 1 }, showPopup.targetGoal === 'TOP' ? Possession.AWAY : Possession.HOME)}>⚽ GOL</button>
+                        <button className="text-xs font-black text-dark text-left py-4 px-5 rounded-xl bg-surface border border-surfaceVariant flex items-center gap-4 uppercase" onClick={() => updateLastEvent('DISPARO (ATAJADO)', "ATAJADO", undefined, Possession.NONE)}>🛡️ ATAJADO</button>
+                        <button className="text-xs font-black text-onSurfaceVariant text-left py-4 px-5 rounded-xl bg-surface border border-surfaceVariant flex items-center gap-4 uppercase" onClick={() => updateLastEvent('DISPARO (DESVIADO)', "DESVIADO", undefined, Possession.AWAY)}>💨 DESVIADO</button>
                       </>
                     )}
                     <button className="text-[8px] font-black text-onSurfaceVariant uppercase mt-1 text-center py-1 hover:text-primary transition-colors" onClick={() => setShowPopup(null)}>Cerrar</button>
@@ -618,7 +648,7 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
                   </div>
                   <div className="bg-surface/40 p-3 rounded-2xl border border-surfaceVariant text-center shadow-inner">
                     <p className="text-[8px] font-black text-onSurfaceVariant uppercase mb-1">{row.l2}</p>
-                    <p className={`text-2xl font-black ${row.c2} leading-none`}>{row.v2}</p>
+                    <p className={`text-2xl font-black ${row.c2} leading-none`}>{row.v1}</p>
                   </div>
                 </div>
               ))}
@@ -629,14 +659,14 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
                 <span className="text-[9px] font-black text-primary uppercase">Promedio</span>
                 <span className="text-2xl font-black text-primary">{pAvg}</span>
               </div>
-              <div className="flex gap-2">
-                <div className="flex-1 bg-surface/50 p-3 rounded-2xl border border-surfaceVariant text-center shadow-inner">
-                  <p className="text-[8px] font-black text-onSurfaceVariant uppercase">Mínimo</p>
-                  <p className="text-lg font-black text-dark leading-tight">{pMin}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-surface/50 p-3 rounded-2xl border border-surfaceVariant text-center">
+                  <p className="text-[8px] font-black text-onSurfaceVariant uppercase leading-none mb-1">Mínimo</p>
+                  <p className="text-lg font-black text-dark">{pMin}</p>
                 </div>
-                <div className="flex-1 bg-surface/50 p-3 rounded-2xl border border-surfaceVariant text-center shadow-inner">
-                  <p className="text-[8px] font-black text-onSurfaceVariant uppercase">Máximo</p>
-                  <p className="text-lg font-black text-dark leading-tight">{pMax}</p>
+                <div className="bg-surface/50 p-3 rounded-2xl border border-surfaceVariant text-center">
+                  <p className="text-[8px] font-black text-onSurfaceVariant uppercase leading-none mb-1">Máximo</p>
+                  <p className="text-lg font-black text-dark">{pMax}</p>
                 </div>
               </div>
             </div>
