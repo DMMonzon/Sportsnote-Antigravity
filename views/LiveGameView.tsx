@@ -37,11 +37,14 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [period, setPeriod] = useState(1);
   const [showPeriodMenu, setShowPeriodMenu] = useState(false);
+  const [periodToConfirm, setPeriodToConfirm] = useState<number | null>(null);
   const [snackbar, setSnackbar] = useState<{ message: string, visible: boolean }>({ message: '', visible: false });
   const [isRecording, setIsRecording] = useState(false);
   const [noteText, setNoteText] = useState('');
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [undoModal, setUndoModal] = useState(false);
+  const [localPossessionTime, setLocalPossessionTime] = useState(0);
+  const [awayPossessionTime, setAwayPossessionTime] = useState(0);
 
   const timerRef = useRef<number | null>(null);
   const lastClickTime = useRef<number>(0);
@@ -69,9 +72,42 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [isRunning]);
 
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      if (isRunning) {
+        if (possession === Possession.HOME) {
+          setLocalPossessionTime(prev => prev + 1);
+        } else if (possession === Possession.AWAY) {
+          setAwayPossessionTime(prev => prev + 1);
+        }
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isRunning, possession]);
+
   if (!game) return <div className="p-8 text-center text-onSurfaceVariant font-bold">Cargando datos...</div>;
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
+
+  const handlePeriodRequest = (newPeriod: number) => {
+    if (newPeriod === period) {
+      setShowPeriodMenu(false);
+      return;
+    }
+    setPeriodToConfirm(newPeriod);
+    setShowPeriodMenu(false);
+  };
+
+  const confirmPeriodChange = () => {
+    if (periodToConfirm !== null) {
+      setPeriod(periodToConfirm);
+      setSeconds(0);
+      setIsRunning(false);
+      setSnackbar({ message: `Iniciado ${periodToConfirm}Q. Cronómetro a 0:00.`, visible: true });
+      setTimeout(() => setSnackbar(prev => ({ ...prev, visible: false })), 2000);
+      setPeriodToConfirm(null);
+    }
+  };
 
   const showPassSnackbar = (count: number, isRecord: boolean) => {
     if (!isRecord) return;
@@ -106,13 +142,11 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
     const isInBottomGoal = y >= 92 && x >= 42 && x <= 58;
 
     if (isInTopGoal) { 
-      // Si se toca el arco de arriba, es tiro para HOME (atacando hacia arriba)
       registerEvent('DISPARO', Possession.NONE, x, y, "Remate", game.teamHome.id);
       setShowPopup({ x, y, type: 'SHOT', targetGoal: 'TOP' }); 
       return; 
     }
     if (isInBottomGoal) { 
-      // Si se toca el arco de abajo, es tiro para AWAY (atacando hacia abajo)
       registerEvent('DISPARO', Possession.NONE, x, y, "Remate", game.teamAway.id);
       setShowPopup({ x, y, type: 'SHOT', targetGoal: 'BOTTOM' }); 
       return; 
@@ -150,7 +184,6 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
     }
 
     const attackingTeamId = possession === Possession.HOME ? game.teamHome.id : game.teamAway.id;
-    // Priorizamos forcedTeamId si se proporciona explícitamente (ej. al tocar un arco específico)
     const eventTeamId = forcedTeamId || ((type.includes('DISPARO') || type.includes('GOL')) ? attackingTeamId : (finalNewPoss === Possession.HOME ? game.teamHome.id : game.teamAway.id));
 
     const event: GameEvent = {
@@ -242,7 +275,8 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
      return game.events.filter(e => {
        const isTeam = e.teamId === game.teamHome.id;
        const isTarget = types.some(t => e.type.toUpperCase().includes(t.toUpperCase()));
-       return isTeam && isTarget;
+       const periodMatch = periodFilter === 'ALL' || e.gameTime.startsWith(`${periodFilter}Q`);
+       return isTeam && isTarget && periodMatch;
      }).length;
   };
 
@@ -304,6 +338,10 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
   const pMax = hasPasses ? Math.max(...game.passChains) : 0;
   const pMin = hasPasses ? Math.min(...game.passChains) : 0;
 
+  const totalPossessionTime = localPossessionTime + awayPossessionTime;
+  const localPct = totalPossessionTime > 0 ? Math.round((localPossessionTime / totalPossessionTime) * 100) : 50;
+  const awayPct = 100 - localPct;
+
   const filteredEvents = game.events.filter(e => {
     const actionMatch = eventFilter === 'ALL' || e.type.includes(eventFilter);
     const periodMatch = periodFilter === 'ALL' || e.gameTime.startsWith(`${periodFilter}Q`);
@@ -341,7 +379,7 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
             onClick={() => setPeriodFilter(p.id as PeriodFilter)}
             className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all border ${
               periodFilter === p.id 
-                ? 'bg-primary text-white border-primary shadow-sm' 
+                ? 'bg-primary text-white border-primary shadow-md' 
                 : 'bg-surface text-onSurfaceVariant/60 border-surfaceVariant hover:border-primary/40'
             }`}
           >
@@ -360,6 +398,36 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
       {snackbar.visible && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[1000] bg-brandDark text-white px-6 py-3 rounded-full shadow-2xl animate-in slide-in-from-bottom duration-300 border border-primary/20 flex items-center gap-3">
           <span className="text-xs font-black uppercase tracking-widest">{snackbar.message}</span>
+        </div>
+      )}
+
+      {/* Modal de Confirmación de Período */}
+      {periodToConfirm !== null && (
+        <div className="fixed inset-0 z-[600] flex items-center justify-center p-6 bg-brandDark/40 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-sm bg-white border border-surfaceVariant p-8 rounded-[40px] shadow-2xl flex flex-col items-center text-center animate-in zoom-in duration-200">
+            <div className="w-16 h-16 bg-primary/10 rounded-3xl flex items-center justify-center text-primary text-3xl mb-6">⏱️</div>
+            <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-[4px] mb-2">Finalizar Tiempo Actual</h3>
+            <h2 className="contrail-font text-2xl text-dark uppercase tracking-tighter leading-tight mb-6">
+              ¿Deseas finalizar el período actual y comenzar el {periodToConfirm}Q?
+            </h2>
+            <p className="text-[11px] text-onSurfaceVariant/60 font-bold mb-8 leading-relaxed">
+              El cronómetro se reiniciará a 0:00 y se pausará automáticamente para que inicies el nuevo tiempo cuando estés listo.
+            </p>
+            <div className="flex flex-col w-full gap-3">
+              <button 
+                onClick={confirmPeriodChange} 
+                className="w-full bg-primary text-white font-black py-5 rounded-2xl active:scale-95 text-xs uppercase tracking-widest shadow-xl shadow-primary/20"
+              >
+                CONFIRMAR INICIO {periodToConfirm}Q
+              </button>
+              <button 
+                onClick={() => setPeriodToConfirm(null)} 
+                className="w-full bg-surface text-onSurfaceVariant font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest"
+              >
+                Mantener período actual
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -428,7 +496,7 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
                 {[1, 2, 3, 4].map(q => (
                   <button 
                     key={q} 
-                    onClick={() => { setPeriod(q); setShowPeriodMenu(false); }} 
+                    onClick={() => handlePeriodRequest(q)} 
                     className={`px-4 py-2.5 text-[10px] font-black rounded-xl transition-colors ${period === q ? 'bg-primary text-white shadow-md' : 'text-onSurfaceVariant hover:bg-surface'}`}
                   >
                     {q}Q
@@ -445,7 +513,7 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
       </header>
 
       <main className="flex-1 flex overflow-hidden bg-surface">
-        <aside className={`hidden lg:flex w-[320px] flex-col p-5 bg-white border-r border-surfaceVariant ${activeView !== 'field' ? 'lg:flex' : ''}`}>
+        <aside className="hidden lg:flex w-[320px] flex-col p-5 bg-white border-r border-surfaceVariant">
           <div className="flex flex-col h-full overflow-hidden">
             <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest mb-4 border-b border-surfaceVariant pb-2 italic">Listado de Acciones</h3>
             <FilterChips />
@@ -477,34 +545,26 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
         </aside>
 
         <div className="flex-1 relative p-2 flex gap-2 overflow-hidden">
-          <div className={`lg:hidden w-14 flex flex-col gap-1.5 py-1 shrink-0 ${activeView !== 'field' ? 'hidden' : 'flex'}`}>
-               {[
-                 { label: 'REM', icon: '🥅', val: getStat(['DISPARO']), col: 'text-dark' },
-                 { label: 'PER', icon: '📉', val: getStat(['PÉRDIDA']), col: 'text-orange-600' },
-                 { label: 'REC', icon: '📈', val: getStat(['RECUPERO']), col: 'text-green-600' },
-                 { label: 'FAL', icon: '⚠️', val: getStat(['FALTA']), col: 'text-red-600' },
-               ].map((st, i) => (
-                 <div key={i} className="flex-1 bg-white border border-surfaceVariant rounded-xl flex flex-col items-center justify-center shadow-sm p-1">
-                   <span className="text-[10px] mb-0.5">{st.icon}</span>
-                   <span className="text-[6px] font-black text-onSurfaceVariant uppercase leading-none mb-0.5">{st.label}</span>
-                   <span className={`text-[11px] font-black ${st.col} leading-none`}>{st.val}</span>
-                 </div>
-               ))}
-          </div>
-
           <div className="flex-1 relative overflow-hidden">
             {activeView === 'heatmap' ? (
               <div className="w-full h-full bg-white rounded-[32px] border-2 border-surfaceVariant flex flex-col p-6 animate-in slide-in-from-bottom duration-300 overflow-hidden shadow-xl">
-                <div className="flex justify-between items-center mb-6">
+                <div className="flex justify-between items-center mb-4">
                   <h3 className="text-sm font-black text-dark uppercase tracking-widest">Mapa de Calor</h3>
                   <button onClick={() => setActiveView('field')} className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/5 px-4 py-2 rounded-full">Cerrar</button>
                 </div>
+                
+                <FilterChips />
+
                 <div className="flex-1 relative overflow-hidden rounded-[24px]">
                   <div className="absolute inset-0 bg-emerald-900">
                     <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-white/40 -translate-y-1/2" />
                   </div>
                   <div className="absolute inset-0">
-                    {game.events.filter(e => eventFilter === 'ALL' || e.type.includes(eventFilter)).map((e, i) => (
+                    {game.events.filter(e => {
+                      const actionMatch = eventFilter === 'ALL' || e.type.includes(eventFilter);
+                      const periodMatch = periodFilter === 'ALL' || e.gameTime.startsWith(`${periodFilter}Q`);
+                      return actionMatch && periodMatch;
+                    }).map((e, i) => (
                       <div 
                         key={i} 
                         className={`absolute w-16 h-16 rounded-full blur-2xl opacity-90 mix-blend-screen transition-all ${
@@ -547,12 +607,55 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
                   <h3 className="text-sm font-black text-dark uppercase tracking-widest">Estadísticas Live</h3>
                   <button onClick={() => setActiveView('field')} className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/5 px-4 py-2 rounded-full">Cerrar</button>
                 </div>
+                
                 <div className="flex-1 overflow-y-auto no-scrollbar">
+                  <div className="flex flex-wrap gap-1.5 mb-6 justify-center">
+                    {[ { id: 'ALL', label: 'Todo' }, { id: 1, label: '1Q' }, { id: 2, label: '2Q' }, { id: 3, label: '3Q' }, { id: 4, label: '4Q' } ].map(p => (
+                      <button
+                        key={p.id}
+                        onClick={() => setPeriodFilter(p.id as PeriodFilter)}
+                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border ${
+                          periodFilter === p.id 
+                            ? 'bg-primary text-white border-primary shadow-md' 
+                            : 'bg-surface text-onSurfaceVariant/60 border-surfaceVariant hover:border-primary/40'
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="bg-surface/50 p-6 rounded-[24px] border border-surfaceVariant mb-6 shadow-inner">
+                    <div className="flex justify-between items-center mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
+                        <span className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">Posesión Local</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">Posesión Visita</span>
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
+                      </div>
+                    </div>
+                    <div className="w-full h-10 bg-surfaceVariant/20 rounded-2xl overflow-hidden flex shadow-inner border border-surfaceVariant/50">
+                      <div 
+                        className="h-full transition-all duration-700 ease-out flex items-center justify-center text-[11px] font-black text-white drop-shadow-sm" 
+                        style={{ width: `${localPct}%`, backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}
+                      >
+                        {localPct > 15 && `${localPct}%`}
+                      </div>
+                      <div 
+                        className="h-full transition-all duration-700 ease-out flex items-center justify-center text-[11px] font-black text-white drop-shadow-sm" 
+                        style={{ width: `${awayPct}%`, backgroundColor: game.teamAway.primaryColor || '#ef4444' }}
+                      >
+                        {awayPct > 15 && `${awayPct}%`}
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="space-y-4">
                     {[
-                      { l1: 'Goles', v1: game.scoreHome, c1: 'text-primary', l2: 'Remates', v2: getStat(['DISPARO']), c2: 'text-dark' },
+                      { l1: 'Disparos al arco', v1: getStat(['DISPARO']), c1: 'text-dark', l2: 'Faltas', v2: getStat(['FALTA']), c2: 'text-red-600' },
                       { l1: 'Pérdidas', v1: getStat(['PÉRDIDA']), c1: 'text-orange-600', l2: 'Recuperos', v2: getStat(['RECUPERO']), c2: 'text-green-600' },
-                      { l1: 'Faltas', v1: getStat(['FALTA']), c1: 'text-red-600', l2: 'C. Cortos', v2: getStat(['CORNER CORTO']), c2: 'text-indigo-600' },
                     ].map((row, idx) => (
                       <div key={idx} className="grid grid-cols-2 gap-4">
                         <div className="bg-surface/50 p-6 rounded-[24px] border border-surfaceVariant text-center">
@@ -561,10 +664,31 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
                         </div>
                         <div className="bg-surface/50 p-6 rounded-[24px] border border-surfaceVariant text-center">
                           <p className="text-[9px] font-black text-onSurfaceVariant uppercase mb-1">{row.l2}</p>
-                          <p className={`text-4xl font-black ${row.c2} leading-none`}>{row.v2}</p>
+                          <p className={`text-4xl font-black ${row.c2} text-red-600 leading-none`}>{row.v2}</p>
                         </div>
                       </div>
                     ))}
+                  </div>
+
+                  {/* Sección de Análisis de Pases */}
+                  <div className="mt-8 mb-6">
+                    <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest mb-4 border-b border-surfaceVariant pb-2 italic">Análisis de Pases</h3>
+                    
+                    <div className="bg-primary/5 p-6 rounded-[32px] border border-primary/10 text-center mb-4 shadow-sm">
+                      <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Promedio de pases</p>
+                      <p className="text-5xl font-black text-primary leading-none">{pAvg}</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-surface/50 p-6 rounded-[24px] border border-surfaceVariant text-center shadow-inner">
+                        <p className="text-[9px] font-black text-onSurfaceVariant uppercase mb-1">Máximo</p>
+                        <p className="text-3xl font-black text-dark leading-none">{pMax}</p>
+                      </div>
+                      <div className="bg-surface/50 p-6 rounded-[24px] border border-surfaceVariant text-center shadow-inner">
+                        <p className="text-[9px] font-black text-onSurfaceVariant uppercase mb-1">Mínimo</p>
+                        <p className="text-3xl font-black text-dark leading-none">{pMin}</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -626,11 +750,6 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
               </div>
             )}
           </div>
-
-          <div className={`lg:hidden w-12 flex flex-col gap-1.5 py-1 shrink-0 ${activeView !== 'field' ? 'hidden' : 'flex'}`}>
-               <button onClick={handleVoiceNote} className={`flex-1 rounded-xl flex items-center justify-center transition-all shadow-sm border ${isRecording ? 'bg-red-600 text-white animate-pulse' : 'bg-white border-surfaceVariant text-onSurfaceVariant/40'}`}>{isRecording ? '⏺' : '🎤'}</button>
-               <button onClick={() => setShowNoteModal(true)} className="flex-1 bg-white border border-surfaceVariant rounded-xl flex items-center justify-center text-onSurfaceVariant/40 active:scale-95 transition-all text-xl shadow-sm">📝</button>
-          </div>
         </div>
 
         <aside className="hidden lg:flex w-[320px] flex-col p-5 bg-white border-l border-surfaceVariant">
@@ -648,7 +767,7 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
                   </div>
                   <div className="bg-surface/40 p-3 rounded-2xl border border-surfaceVariant text-center shadow-inner">
                     <p className="text-[8px] font-black text-onSurfaceVariant uppercase mb-1">{row.l2}</p>
-                    <p className={`text-2xl font-black ${row.c2} leading-none`}>{row.v1}</p>
+                    <p className={`text-2xl font-black ${row.c2} leading-none`}>{row.v2}</p>
                   </div>
                 </div>
               ))}
@@ -674,7 +793,8 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
         </aside>
       </main>
 
-      <footer className="h-20 md:h-24 bg-white flex items-center justify-between px-6 md:px-10 shrink-0 border-t border-surfaceVariant shadow-lg relative z-[200]">
+      <footer className="h-20 md:h-24 bg-white flex flex-wrap items-center justify-between px-4 md:px-10 shrink-0 border-t border-surfaceVariant shadow-lg relative z-[200] gap-2">
+        {/* Grupo 1: Undo */}
         <div className="relative">
           <button className="w-11 h-11 md:w-14 md:h-14 rounded-full bg-red-50 text-red-600 text-xl flex items-center justify-center border border-red-100 active:scale-90 shadow-sm" onClick={() => setUndoModal(true)}>↩</button>
           {undoModal && (
@@ -688,16 +808,25 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
           )}
         </div>
         
-        <div className="flex items-center gap-6 md:gap-10">
-          <button className={`lg:hidden text-2xl transition-all ${activeView === 'list' ? 'text-primary scale-110 drop-shadow-md' : 'text-onSurfaceVariant/30'}`} onClick={() => setActiveView(activeView === 'list' ? 'field' : 'list')}>📋</button>
-          <button className={`text-3xl md:text-4xl transition-all ${activeView === 'heatmap' ? 'text-primary scale-125 drop-shadow-md' : 'text-onSurfaceVariant/30'}`} onClick={() => setActiveView(activeView === 'heatmap' ? 'field' : 'heatmap')}>🔥</button>
-          <div className="hidden lg:flex items-center gap-4">
-             <button onClick={handleVoiceNote} className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${isRecording ? 'bg-red-600 text-white animate-pulse' : 'bg-surface text-onSurfaceVariant/40 border border-surfaceVariant active:scale-90 shadow-sm'}`}>🎤</button>
-             <button onClick={() => setShowNoteModal(true)} className="w-11 h-11 rounded-full flex items-center justify-center bg-surface text-onSurfaceVariant/40 border border-surfaceVariant active:scale-90 shadow-sm">📝</button>
+        {/* Grupos 2 y 3: Vistas y Notas */}
+        <div className="flex flex-1 items-center justify-around md:justify-center md:gap-16">
+          {/* Grupo 2: Vistas */}
+          <div className="flex items-center gap-4 md:gap-8">
+            <button className={`lg:hidden text-2xl transition-all ${activeView === 'list' ? 'text-primary scale-110 drop-shadow-md' : 'text-onSurfaceVariant/30'}`} onClick={() => setActiveView(activeView === 'list' ? 'field' : 'list')}>📋</button>
+            <button className={`text-3xl transition-all ${activeView === 'heatmap' ? 'text-primary scale-125 drop-shadow-md' : 'text-onSurfaceVariant/30'}`} onClick={() => setActiveView(activeView === 'heatmap' ? 'field' : 'heatmap')}>🔥</button>
+            <button className={`lg:hidden text-2xl transition-all ${activeView === 'stats' ? 'text-primary scale-110 drop-shadow-md' : 'text-onSurfaceVariant/30'}`} onClick={() => setActiveView(activeView === 'stats' ? 'field' : 'stats')}>📊</button>
           </div>
-          <button className={`lg:hidden text-2xl transition-all ${activeView === 'stats' ? 'text-primary scale-110 drop-shadow-md' : 'text-onSurfaceVariant/30'}`} onClick={() => setActiveView(activeView === 'stats' ? 'field' : 'stats')}>📊</button>
+
+          {/* Grupo 3: Acciones (Notas) */}
+          <div className="flex items-center gap-4 md:gap-8">
+            <button onClick={handleVoiceNote} className={`w-11 h-11 rounded-full flex items-center justify-center transition-all shadow-sm border ${isRecording ? 'bg-red-600 text-white animate-pulse' : 'bg-surface border-surfaceVariant text-onSurfaceVariant/40'}`}>
+              {isRecording ? '⏺' : '🎤'}
+            </button>
+            <button onClick={() => setShowNoteModal(true)} className="w-11 h-11 rounded-full flex items-center justify-center bg-surface text-onSurfaceVariant/40 border border-surfaceVariant active:scale-90 shadow-sm text-xl">📝</button>
+          </div>
         </div>
 
+        {/* Grupo 4: Contador de Pases */}
         <button 
           className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center text-3xl font-black shadow-xl relative transition-all active:scale-95 border-2 ${possession === Possession.HOME ? 'bg-primary text-white border-primary translate-y-[-4px]' : 'bg-surface text-onSurfaceVariant/20 border-surfaceVariant'}`}
           onClick={() => setPassCount(c => c + 1)}

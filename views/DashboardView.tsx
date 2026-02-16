@@ -3,12 +3,6 @@ import React, { useMemo } from 'react';
 import { UserRole, Game } from '../types';
 import { useNavigate } from 'react-router-dom';
 
-interface DashboardViewProps {
-  user: { id: string; role: UserRole; name: string };
-  games: Game[];
-  onLogout: () => void;
-}
-
 interface ActionCardProps {
   title: string;
   subtitle: string;
@@ -22,44 +16,43 @@ interface ActionCardProps {
 }
 
 const ActionCard: React.FC<ActionCardProps> = ({ title, subtitle, description, ctaText, icon, bgIcon, colorClass, onClick, children }) => (
-  <div className={`relative overflow-hidden w-full rounded-[32px] p-4 md:p-6 lg:p-8 flex flex-col gap-4 lg:gap-6 transition-all shadow-2xl group ${colorClass}`}>
+  <div className={`relative overflow-hidden w-full rounded-[32px] p-5 md:p-6 lg:p-8 flex flex-col gap-4 lg:gap-6 transition-all shadow-2xl group ${colorClass}`}>
     {/* Decoración de fondo */}
     <div className="absolute -right-8 -bottom-8 w-64 h-64 text-white/5 group-hover:scale-110 group-hover:-rotate-12 transition-all duration-700 pointer-events-none">
       {bgIcon}
     </div>
     
-    {/* FILA PRINCIPAL: Ajustado para horizontal total */}
-    <div className="flex flex-row items-center justify-between gap-4 relative z-10 w-full border-b border-white/10 pb-4 lg:pb-6">
+    {/* FILA PRINCIPAL: Responsiva (Columna en móvil, Fila en tablet/desktop) */}
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 relative z-10 w-full border-b border-white/10 pb-5 lg:pb-6">
       
-      {/* Bloque 1: Identidad (Icono + Textos) */}
-      <div className="flex items-center gap-4 shrink-0">
+      {/* Bloque 1: Identidad (Icono + Textos) - SIEMPRE flex-row e items-center según última petición */}
+      <div className="flex flex-row items-center gap-4 shrink-0">
         <div className="w-12 h-12 bg-white/20 backdrop-blur-lg rounded-2xl flex items-center justify-center text-white shadow-inner border border-white/20 shrink-0">
           {icon}
         </div>
-        {/* Mantengo vertical este bloque pequeño, pero todo el contenedor es horizontal */}
-        <div className="flex flex-col gap-0.5">
-          <p className="text-white/60 text-[9px] font-black uppercase tracking-[2px] leading-none">{subtitle}</p>
+        <div className="flex flex-col text-left">
+          <p className="text-white/60 text-[9px] font-black uppercase tracking-[2px] leading-none mb-1">{subtitle}</p>
           <h3 className="text-white text-lg font-black leading-none tracking-tighter uppercase">{title}</h3>
         </div>
       </div>
 
-      {/* Separador vertical */}
-      <div className="w-px h-12 bg-white/20"></div>
+      {/* Separador vertical (solo visible en desktop/tablet) */}
+      <div className="hidden md:block w-px h-12 bg-white/20"></div>
 
-      {/* Bloque 2: Descripción Expandida */}
-      <div className="flex-1 px-4">
+      {/* Bloque 2: Descripción - Ubicada debajo en móvil con margen superior */}
+      <div className="flex-1 md:px-4 mt-1 md:mt-0">
         <p className="text-white/80 text-[11px] font-medium leading-relaxed text-left max-w-2xl">
           {description}
         </p>
       </div>
 
-      {/* Separador vertical */}
-      <div className="w-px h-12 bg-white/20"></div>
+      {/* Separador vertical (solo visible en desktop/tablet) */}
+      <div className="hidden md:block w-px h-12 bg-white/20"></div>
 
-      {/* Bloque 3: Botón de Acción Principal */}
+      {/* Bloque 3: Botón de Acción Principal - Ubicado debajo de todo en móvil para maximizar espacio */}
       <button 
         onClick={onClick}
-        className="shrink-0 bg-white text-dark px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brandDark hover:text-white transition-all duration-300 shadow-xl active:scale-95 flex items-center gap-2"
+        className="w-full md:w-auto mt-2 md:mt-0 shrink-0 bg-white text-dark px-6 py-4 md:py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brandDark hover:text-white transition-all duration-300 shadow-xl active:scale-95 flex items-center justify-center gap-2"
       >
         <span>{ctaText}</span>
         <span className="text-lg">→</span>
@@ -72,6 +65,18 @@ const ActionCard: React.FC<ActionCardProps> = ({ title, subtitle, description, c
     </div>
   </div>
 );
+
+// Define the interface for the DashboardView component's props
+interface DashboardViewProps {
+  user: {
+    id: string;
+    role: UserRole;
+    name: string;
+    avatar?: string;
+  };
+  games: Game[];
+  onLogout: () => void;
+}
 
 const DashboardView: React.FC<DashboardViewProps> = ({ user, games, onLogout }) => {
   const navigate = useNavigate();
@@ -117,7 +122,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, games, onLogout }) 
         
         <section className="flex justify-between items-end border-b border-surfaceVariant pb-4">
           <div>
-            <h2 className="text-3xl font-black text-dark tracking-tighter italic uppercase">Panel de Control</h2>
+            <h2 className="contrail-font text-3xl text-dark uppercase tracking-tighter">Panel de Control</h2>
             <p className="text-onSurfaceVariant font-bold text-[9px] uppercase tracking-[3px] opacity-60 mt-1">Status: Operacional • {new Date().toLocaleDateString()}</p>
           </div>
         </section>
