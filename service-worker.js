@@ -1,7 +1,7 @@
 const CACHE_NAME = 'sportsnote-v1';
 const STATIC_ASSETS = [
   '/',
-  '/index.html', // Asegúrate de tener la barra diagonal inicial
+  '/index.html',
   '/manifest.json',
   'https://cdn.tailwindcss.com',
   'https://fonts.googleapis.com/css2?family=Contrail+One&family=Roboto:wght@300;400;500;700&display=swap'
@@ -30,31 +30,37 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Estrategia: Network First, Fallback to Cache
+// Estrategia: Cache First con Network Fallback
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   event.respondWith(
-    fetch(event.request)
-      .then((networkResponse) => {
-        // Si la red funciona, cachear dinámicamente y devolver respuesta
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
+    caches.match(event.request).then((cachedResponse) => {
+      // 1. SI ESTÁ EN CACHÉ, DEVOLVERLO INMEDIATAMENTE
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+
+      // 2. SI NO ESTÁ, IR A LA RED
+      return fetch(event.request).then((networkResponse) => {
+        // Cachear dinámicamente recursos necesarios
+        if (
+          networkResponse && 
+          networkResponse.status === 200 && 
+          (event.request.url.includes('esm.sh') || event.request.url.includes('dicebear') || event.request.url.includes('fonts.'))
+        ) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
         return networkResponse;
-      })
-      .catch(() => {
-        // SI LA RED FALLA (Offline), buscar en caché
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          // Si no está en caché y es navegación, devolver index.html
-          if (event.request.mode === 'navigate') {
-            return caches.match('/index.html');
-          }
-        });
-      })
+      }).catch(() => {
+        // 3. SI FALLA LA RED, INTENTAR DEVOLVER EL INDEX.HTML
+        if (event.request.mode === 'navigate') {
+          return caches.match('/index.html');
+        }
+      });
+    })
   );
 });
