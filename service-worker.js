@@ -1,4 +1,3 @@
-
 const CACHE_NAME = 'sportsnote-v1';
 const STATIC_ASSETS = [
   '/',
@@ -12,6 +11,7 @@ const STATIC_ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
+      console.log('Cacheando activos estáticos');
       return cache.addAll(STATIC_ASSETS);
     })
   );
@@ -30,19 +30,21 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Estrategia Cache-First con actualización dinámica (Network Fallback)
+// --- ESTRATEGIA CORREGIDA: Cache-First para Offline ---
 self.addEventListener('fetch', (event) => {
   // Ignorar peticiones que no sean GET
   if (event.request.method !== 'GET') return;
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
+      // 1. Si está en caché, devolverlo inmediatamente
       if (cachedResponse) {
         return cachedResponse;
       }
 
+      // 2. Si no está en caché, intentar ir a la red
       return fetch(event.request).then((networkResponse) => {
-        // Cachear dinámicamente recursos de esm.sh y otros CDNs
+        // Cachear dinámicamente recursos necesarios
         if (
           networkResponse && 
           networkResponse.status === 200 && 
@@ -55,7 +57,7 @@ self.addEventListener('fetch', (event) => {
         }
         return networkResponse;
       }).catch(() => {
-        // Si no hay red ni caché, y es una navegación, devolver el index.html
+        // 3. SI NO HAY RED, devolver index.html para navegación
         if (event.request.mode === 'navigate') {
           return caches.match('index.html');
         }
