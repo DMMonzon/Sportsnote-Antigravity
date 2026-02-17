@@ -89,6 +89,14 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
+  const getSectorInfo = (x: number, y: number): { half: 'own' | 'rival', lane: 'left' | 'center' | 'right' } => {
+    const half = y > 50 ? 'own' : 'rival';
+    let lane: 'left' | 'center' | 'right' = 'center';
+    if (x < 33) lane = 'left';
+    else if (x > 66) lane = 'right';
+    return { half, lane };
+  };
+
   const handlePeriodRequest = (newPeriod: number) => {
     if (newPeriod === period) {
       setShowPeriodMenu(false);
@@ -186,6 +194,8 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
     const attackingTeamId = possession === Possession.HOME ? game.teamHome.id : game.teamAway.id;
     const eventTeamId = forcedTeamId || ((type.includes('DISPARO') || type.includes('GOL')) ? attackingTeamId : (finalNewPoss === Possession.HOME ? game.teamHome.id : game.teamAway.id));
 
+    const sector = getSectorInfo(x, y);
+
     const event: GameEvent = {
       id: Math.random().toString(36).substr(2, 5),
       timestamp: Date.now(),
@@ -194,6 +204,8 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
       teamId: eventTeamId,
       x: Math.round(x),
       y: Math.round(y),
+      half: sector.half,
+      lane: sector.lane,
       details: finalDetails,
       audioData: audioData
     };
@@ -280,6 +292,24 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
      }).length;
   };
 
+  const getDetailedStat = (types: string[]) => {
+    const events = game.events.filter(e => {
+      const isTeam = e.teamId === game.teamHome.id;
+      const isTarget = types.some(t => e.type.toUpperCase().includes(t.toUpperCase()));
+      const periodMatch = periodFilter === 'ALL' || e.gameTime.startsWith(`${periodFilter}Q`);
+      return isTeam && isTarget && periodMatch;
+    });
+
+    return {
+      total: events.length,
+      own: events.filter(e => e.half === 'own').length,
+      rival: events.filter(e => e.half === 'rival').length,
+      left: events.filter(e => e.lane === 'left').length,
+      center: events.filter(e => e.lane === 'center').length,
+      right: events.filter(e => e.lane === 'right').length
+    };
+  };
+
   const handleVoiceNote = async () => {
     if (!isRecording) {
       try {
@@ -338,6 +368,13 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
   const pMax = hasPasses ? Math.max(...game.passChains) : 0;
   const pMin = hasPasses ? Math.min(...game.passChains) : 0;
 
+  const getEventForPassCount = (count: number) => {
+    return game.events.find(e => e.details?.includes(`(${count} pases)`));
+  };
+
+  const minPassEvent = pMin > 0 ? getEventForPassCount(pMin) : null;
+  const maxPassEvent = pMax > 0 ? getEventForPassCount(pMax) : null;
+
   const totalPossessionTime = localPossessionTime + awayPossessionTime;
   const localPct = totalPossessionTime > 0 ? Math.round((localPossessionTime / totalPossessionTime) * 100) : 50;
   const awayPct = 100 - localPct;
@@ -389,6 +426,54 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
       </div>
     </div>
   );
+
+  const StatDetailCard = ({ title, types, colorClass, showDetails = true, compact = false }: { title: string, types: string[], colorClass: string, showDetails?: boolean, compact?: boolean }) => {
+    const data = getDetailedStat(types);
+    return (
+      <div className={`bg-surface/50 ${compact ? 'p-3 rounded-2xl' : 'p-5 rounded-[28px]'} border border-surfaceVariant shadow-sm flex flex-col ${compact ? 'gap-2' : 'gap-3'}`}>
+        <div className={`flex justify-between items-center ${showDetails ? 'border-b border-surfaceVariant pb-2' : ''}`}>
+          <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">{title}</p>
+          <span className={`${compact ? 'text-xl' : 'text-2xl'} font-black ${colorClass}`}>{data.total}</span>
+        </div>
+        
+        {showDetails && (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex items-center gap-2 bg-white/40 p-2 rounded-xl border border-surfaceVariant/30">
+                <span className="text-blue-500 text-[10px]">↓</span>
+                <div className="flex flex-col">
+                  <span className="text-[8px] text-onSurfaceVariant font-bold uppercase opacity-60 leading-none">Propio</span>
+                  <span className="text-[11px] font-black text-dark leading-none">{data.own}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 bg-white/40 p-2 rounded-xl border border-surfaceVariant/30">
+                <span className="text-orange-500 text-[10px]">↑</span>
+                <div className="flex flex-col">
+                  <span className="text-[8px] text-onSurfaceVariant font-bold uppercase opacity-60 leading-none">Rival</span>
+                  <span className="text-[11px] font-black text-dark leading-none">{data.rival}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-1.5">
+              <div className="flex flex-col items-center bg-white/40 p-2 rounded-xl border border-surfaceVariant/30">
+                <span className="text-[7px] text-onSurfaceVariant font-black uppercase mb-0.5">Izq</span>
+                <span className="text-[10px] font-black text-dark">{data.left}</span>
+              </div>
+              <div className="flex flex-col items-center bg-white/40 p-2 rounded-xl border border-surfaceVariant/30">
+                <span className="text-[7px] text-onSurfaceVariant font-black uppercase mb-0.5">Centro</span>
+                <span className="text-[10px] font-black text-dark">{data.center}</span>
+              </div>
+              <div className="flex flex-col items-center bg-white/40 p-2 rounded-xl border border-surfaceVariant/30">
+                <span className="text-[7px] text-onSurfaceVariant font-black uppercase mb-0.5">Der</span>
+                <span className="text-[10px] font-black text-dark">{data.right}</span>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
 
   const isIn23Zone = (y: number) => y < 23 || y > 77;
 
@@ -604,7 +689,7 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
             ) : activeView === 'stats' ? (
               <div className="w-full h-full bg-white rounded-[32px] border-2 border-surfaceVariant flex flex-col p-6 animate-in slide-in-from-bottom duration-300 overflow-hidden shadow-xl">
                  <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-sm font-black text-dark uppercase tracking-widest">Estadísticas Live</h3>
+                  <h3 className="text-sm font-black text-dark uppercase tracking-widest">Estadísticas Detalladas</h3>
                   <button onClick={() => setActiveView('field')} className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/5 px-4 py-2 rounded-full">Cerrar</button>
                 </div>
                 
@@ -652,41 +737,68 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    {[
-                      { l1: 'Disparos al arco', v1: getStat(['DISPARO']), c1: 'text-dark', l2: 'Faltas', v2: getStat(['FALTA']), c2: 'text-red-600' },
-                      { l1: 'Pérdidas', v1: getStat(['PÉRDIDA']), c1: 'text-orange-600', l2: 'Recuperos', v2: getStat(['RECUPERO']), c2: 'text-green-600' },
-                    ].map((row, idx) => (
-                      <div key={idx} className="grid grid-cols-2 gap-4">
-                        <div className="bg-surface/50 p-6 rounded-[24px] border border-surfaceVariant text-center">
-                          <p className="text-[9px] font-black text-onSurfaceVariant uppercase mb-1">{row.l1}</p>
-                          <p className={`text-4xl font-black ${row.c1} leading-none`}>{row.v1}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Tarjeta de Remates con desglose por resultado */}
+                    <div className="bg-surface/50 p-5 rounded-[28px] border border-surfaceVariant shadow-sm flex flex-col gap-4">
+                      <div className="flex justify-between items-center">
+                        <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">Remates Totales</p>
+                        <span className="text-2xl font-black text-dark">{getStat(['DISPARO'])}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 border-t border-surfaceVariant pt-3">
+                        <div className="flex flex-col items-center">
+                          <span className="text-[7px] font-black text-primary uppercase mb-1">Goles</span>
+                          <span className="text-[11px] font-black text-dark">{getStat(['GOL'])}</span>
                         </div>
-                        <div className="bg-surface/50 p-6 rounded-[24px] border border-surfaceVariant text-center">
-                          <p className="text-[9px] font-black text-onSurfaceVariant uppercase mb-1">{row.l2}</p>
-                          <p className={`text-4xl font-black ${row.c2} text-red-600 leading-none`}>{row.v2}</p>
+                        <div className="flex flex-col items-center">
+                          <span className="text-[7px] font-black text-onSurfaceVariant uppercase mb-1">Atajados</span>
+                          <span className="text-[11px] font-black text-dark">{getStat(['ATAJADO'])}</span>
+                        </div>
+                        <div className="flex flex-col items-center">
+                          <span className="text-[7px] font-black text-onSurfaceVariant uppercase mb-1">Desviados</span>
+                          <span className="text-[11px] font-black text-dark">{getStat(['DESVIADO'])}</span>
                         </div>
                       </div>
-                    ))}
+                    </div>
+                    
+                    <StatDetailCard title="Pérdidas" types={['PÉRDIDA']} colorClass="text-orange-600" />
+                    <StatDetailCard title="Recuperos" types={['RECUPERO']} colorClass="text-green-600" />
+                    <div className="md:col-span-2">
+                      <StatDetailCard title="Faltas Cometidas" types={['FALTA']} colorClass="text-red-600" />
+                    </div>
                   </div>
 
                   {/* Sección de Análisis de Pases */}
                   <div className="mt-8 mb-6">
                     <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest mb-4 border-b border-surfaceVariant pb-2 italic">Análisis de Pases</h3>
                     
-                    <div className="bg-primary/5 p-6 rounded-[32px] border border-primary/10 text-center mb-4 shadow-sm">
-                      <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Promedio de pases</p>
-                      <p className="text-5xl font-black text-primary leading-none">{pAvg}</p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-surface/50 p-6 rounded-[24px] border border-surfaceVariant text-center shadow-inner">
-                        <p className="text-[9px] font-black text-onSurfaceVariant uppercase mb-1">Máximo</p>
-                        <p className="text-3xl font-black text-dark leading-none">{pMax}</p>
+                    <div className="flex flex-row items-stretch gap-3">
+                      {/* Card 1: Mínimo */}
+                      <div className="flex-1 bg-surface/50 p-4 rounded-[24px] border border-surfaceVariant text-center shadow-inner flex flex-col justify-center min-h-[100px]">
+                        <p className="text-[8px] font-black text-onSurfaceVariant uppercase mb-1">Mínimo</p>
+                        <p className="text-2xl font-black text-dark leading-none">{pMin}</p>
+                        {minPassEvent && (
+                          <p className="text-[7px] font-bold text-onSurfaceVariant/50 uppercase mt-1 leading-tight">
+                            {minPassEvent.gameTime}
+                          </p>
+                        )}
                       </div>
-                      <div className="bg-surface/50 p-6 rounded-[24px] border border-surfaceVariant text-center shadow-inner">
-                        <p className="text-[9px] font-black text-onSurfaceVariant uppercase mb-1">Mínimo</p>
-                        <p className="text-3xl font-black text-dark leading-none">{pMin}</p>
+
+                      {/* Card 2: Promedio (Destacado) */}
+                      <div className="flex-[1.2] bg-primary p-4 rounded-[28px] shadow-xl shadow-primary/20 text-center flex flex-col justify-center border-2 border-white/20 min-h-[110px]">
+                        <p className="text-[9px] font-black text-white/70 uppercase mb-1">Promedio</p>
+                        <p className="text-4xl font-black text-white leading-none">{pAvg}</p>
+                        <p className="text-[7px] font-bold text-white/40 uppercase mt-1 tracking-widest">Pases / Cadena</p>
+                      </div>
+
+                      {/* Card 3: Máximo */}
+                      <div className="flex-1 bg-surface/50 p-4 rounded-[24px] border border-surfaceVariant text-center shadow-inner flex flex-col justify-center min-h-[100px]">
+                        <p className="text-[8px] font-black text-onSurfaceVariant uppercase mb-1">Máximo</p>
+                        <p className="text-2xl font-black text-dark leading-none">{pMax}</p>
+                        {maxPassEvent && (
+                          <p className="text-[7px] font-bold text-onSurfaceVariant/50 uppercase mt-1 leading-tight">
+                            {maxPassEvent.gameTime}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -752,40 +864,72 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
           </div>
         </div>
 
-        <aside className="hidden lg:flex w-[320px] flex-col p-5 bg-white border-l border-surfaceVariant">
-          <div className="flex flex-col h-full overflow-y-auto no-scrollbar">
-            <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest mb-4 border-b border-surfaceVariant pb-2 italic">Estadísticas Rápidas</h3>
-            <div className="space-y-4 pb-4 border-b border-surfaceVariant mb-4">
-              {[
-                { l1: 'Remates', v1: getStat(['DISPARO']), c1: 'text-dark', l2: 'Pérdidas', v2: getStat(['PÉRDIDA']), c2: 'text-orange-600' },
-                { l1: 'Recuperos', v1: getStat(['RECUPERO']), c1: 'text-green-600', l2: 'Faltas', v2: getStat(['FALTA']), c2: 'text-red-600' },
-              ].map((row, idx) => (
-                <div key={idx} className="grid grid-cols-2 gap-3">
-                  <div className="bg-surface/40 p-3 rounded-2xl border border-surfaceVariant text-center shadow-inner">
-                    <p className="text-[8px] font-black text-onSurfaceVariant uppercase mb-1">{row.l1}</p>
-                    <p className={`text-2xl font-black ${row.c1} leading-none`}>{row.v1}</p>
-                  </div>
-                  <div className="bg-surface/40 p-3 rounded-2xl border border-surfaceVariant text-center shadow-inner">
-                    <p className="text-[8px] font-black text-onSurfaceVariant uppercase mb-1">{row.l2}</p>
-                    <p className={`text-2xl font-black ${row.c2} leading-none`}>{row.v2}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest mb-4 italic">Detalle de Pases</h3>
-            <div className="grid grid-cols-1 gap-3 pb-10">
-              <div className="bg-primary/5 p-4 rounded-3xl border border-primary/10 flex items-center justify-between shadow-sm">
-                <span className="text-[9px] font-black text-primary uppercase">Promedio</span>
-                <span className="text-2xl font-black text-primary">{pAvg}</span>
+        <aside className="hidden lg:flex w-[320px] flex-col p-4 bg-white border-l border-surfaceVariant overflow-y-auto no-scrollbar">
+          <div className="flex flex-col gap-4 pb-10">
+            <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest border-b border-surfaceVariant pb-2 italic">Data Report Real-Time</h3>
+            
+            {/* Posesión Sidebar */}
+            <div className="bg-surface/50 p-4 rounded-[24px] border border-surfaceVariant shadow-inner">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-[8px] font-black text-onSurfaceVariant uppercase tracking-widest flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
+                  {localPct}%
+                </span>
+                <span className="text-[8px] font-black text-onSurfaceVariant uppercase tracking-widest flex items-center gap-1.5">
+                  {awayPct}%
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
+                </span>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="bg-surface/50 p-3 rounded-2xl border border-surfaceVariant text-center">
-                  <p className="text-[8px] font-black text-onSurfaceVariant uppercase leading-none mb-1">Mínimo</p>
-                  <p className="text-lg font-black text-dark">{pMin}</p>
+              <div className="w-full h-4 bg-surfaceVariant/20 rounded-full overflow-hidden flex border border-surfaceVariant/50">
+                <div className="h-full transition-all duration-700" style={{ width: `${localPct}%`, backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
+                <div className="h-full transition-all duration-700" style={{ width: `${awayPct}%`, backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
+              </div>
+            </div>
+
+            {/* Remates Sidebar */}
+            <div className="bg-surface/50 p-4 rounded-[24px] border border-surfaceVariant shadow-sm flex flex-col gap-3">
+              <div className="flex justify-between items-center">
+                <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest leading-none">Remates Totales</p>
+                <span className="text-xl font-black text-dark leading-none">{getStat(['DISPARO'])}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5 border-t border-surfaceVariant pt-2">
+                <div className="flex flex-col items-center">
+                  <span className="text-[7px] font-black text-primary uppercase mb-0.5">Goles</span>
+                  <span className="text-[10px] font-black text-dark leading-none">{getStat(['GOL'])}</span>
                 </div>
-                <div className="bg-surface/50 p-3 rounded-2xl border border-surfaceVariant text-center">
-                  <p className="text-[8px] font-black text-onSurfaceVariant uppercase leading-none mb-1">Máximo</p>
-                  <p className="text-lg font-black text-dark">{pMax}</p>
+                <div className="flex flex-col items-center">
+                  <span className="text-[7px] font-black text-onSurfaceVariant uppercase mb-0.5">Ata.</span>
+                  <span className="text-[10px] font-black text-dark leading-none">{getStat(['ATAJADO'])}</span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <span className="text-[7px] font-black text-onSurfaceVariant uppercase mb-0.5">Desv.</span>
+                  <span className="text-[10px] font-black text-dark leading-none">{getStat(['DESVIADO'])}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Desgloses Detallados Sidebar */}
+            <StatDetailCard title="Pérdidas" types={['PÉRDIDA']} colorClass="text-orange-600" compact={true} />
+            <StatDetailCard title="Recuperos" types={['RECUPERO']} colorClass="text-green-600" compact={true} />
+            <StatDetailCard title="Faltas Cometidas" types={['FALTA']} colorClass="text-red-600" compact={true} />
+
+            {/* Análisis de Pases Sidebar Horizontal */}
+            <div className="mt-2">
+              <h3 className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest mb-3 italic">Análisis de Pases</h3>
+              <div className="flex flex-row items-stretch gap-2 h-24">
+                <div className="flex-1 bg-surface/50 p-2 rounded-2xl border border-surfaceVariant text-center shadow-inner flex flex-col justify-center">
+                  <p className="text-[7px] font-black text-onSurfaceVariant uppercase mb-0.5">Mín</p>
+                  <p className="text-lg font-black text-dark leading-none">{pMin}</p>
+                  {minPassEvent && <p className="text-[6px] font-bold text-onSurfaceVariant/40 mt-0.5 leading-none">{minPassEvent.gameTime}</p>}
+                </div>
+                <div className="flex-[1.2] bg-primary p-2 rounded-[20px] shadow-lg shadow-primary/10 text-center flex flex-col justify-center border border-white/10">
+                  <p className="text-[8px] font-black text-white/60 uppercase mb-0.5">Prom</p>
+                  <p className="text-2xl font-black text-white leading-none">{pAvg}</p>
+                </div>
+                <div className="flex-1 bg-surface/50 p-2 rounded-2xl border border-surfaceVariant text-center shadow-inner flex flex-col justify-center">
+                  <p className="text-[7px] font-black text-onSurfaceVariant uppercase mb-0.5">Máx</p>
+                  <p className="text-lg font-black text-dark leading-none">{pMax}</p>
+                  {maxPassEvent && <p className="text-[6px] font-bold text-onSurfaceVariant/40 mt-0.5 leading-none">{maxPassEvent.gameTime}</p>}
                 </div>
               </div>
             </div>
@@ -794,7 +938,6 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
       </main>
 
       <footer className="h-20 md:h-24 bg-white flex flex-wrap items-center justify-between px-4 md:px-10 shrink-0 border-t border-surfaceVariant shadow-lg relative z-[200] gap-2">
-        {/* Grupo 1: Undo */}
         <div className="relative">
           <button className="w-11 h-11 md:w-14 md:h-14 rounded-full bg-red-50 text-red-600 text-xl flex items-center justify-center border border-red-100 active:scale-90 shadow-sm" onClick={() => setUndoModal(true)}>↩</button>
           {undoModal && (
@@ -808,16 +951,13 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
           )}
         </div>
         
-        {/* Grupos 2 y 3: Vistas y Notas */}
         <div className="flex flex-1 items-center justify-around md:justify-center md:gap-16">
-          {/* Grupo 2: Vistas */}
           <div className="flex items-center gap-4 md:gap-8">
             <button className={`lg:hidden text-2xl transition-all ${activeView === 'list' ? 'text-primary scale-110 drop-shadow-md' : 'text-onSurfaceVariant/30'}`} onClick={() => setActiveView(activeView === 'list' ? 'field' : 'list')}>📋</button>
             <button className={`text-3xl transition-all ${activeView === 'heatmap' ? 'text-primary scale-125 drop-shadow-md' : 'text-onSurfaceVariant/30'}`} onClick={() => setActiveView(activeView === 'heatmap' ? 'field' : 'heatmap')}>🔥</button>
             <button className={`lg:hidden text-2xl transition-all ${activeView === 'stats' ? 'text-primary scale-110 drop-shadow-md' : 'text-onSurfaceVariant/30'}`} onClick={() => setActiveView(activeView === 'stats' ? 'field' : 'stats')}>📊</button>
           </div>
 
-          {/* Grupo 3: Acciones (Notas) */}
           <div className="flex items-center gap-4 md:gap-8">
             <button onClick={handleVoiceNote} className={`w-11 h-11 rounded-full flex items-center justify-center transition-all shadow-sm border ${isRecording ? 'bg-red-600 text-white animate-pulse' : 'bg-surface border-surfaceVariant text-onSurfaceVariant/40'}`}>
               {isRecording ? '⏺' : '🎤'}
@@ -826,7 +966,6 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
           </div>
         </div>
 
-        {/* Grupo 4: Contador de Pases */}
         <button 
           className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center text-3xl font-black shadow-xl relative transition-all active:scale-95 border-2 ${possession === Possession.HOME ? 'bg-primary text-white border-primary translate-y-[-4px]' : 'bg-surface text-onSurfaceVariant/20 border-surfaceVariant'}`}
           onClick={() => setPassCount(c => c + 1)}

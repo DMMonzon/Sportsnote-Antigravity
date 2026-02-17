@@ -40,6 +40,8 @@ export interface GameEvent {
   teamId: string;
   x: number;
   y: number;
+  half?: 'own' | 'rival';
+  lane?: 'left' | 'center' | 'right';
   details?: string;
   comment?: string;
   passChainCount?: number;
