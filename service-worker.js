@@ -32,31 +32,16 @@ self.addEventListener('activate', (event) => {
 
 // Estrategia: Cache First con Network Fallback
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
-
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      // 1. SI ESTÁ EN CACHÉ, DEVOLVERLO INMEDIATAMENTE
+      // Devuelve la respuesta cacheada si existe
       if (cachedResponse) {
         return cachedResponse;
       }
 
-      // 2. SI NO ESTÁ, IR A LA RED
-      return fetch(event.request).then((networkResponse) => {
-        // Cachear dinámicamente recursos necesarios
-        if (
-          networkResponse && 
-          networkResponse.status === 200 && 
-          (event.request.url.includes('esm.sh') || event.request.url.includes('dicebear') || event.request.url.includes('fonts.'))
-        ) {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-        }
-        return networkResponse;
-      }).catch(() => {
-        // 3. SI FALLA LA RED, INTENTAR DEVOLVER EL INDEX.HTML
+      // Si no está en caché, intenta obtenerlo de la red
+      return fetch(event.request).catch(() => {
+        // Si la red falla y es una solicitud de navegación, devuelve index.html
         if (event.request.mode === 'navigate') {
           return caches.match('/index.html');
         }
