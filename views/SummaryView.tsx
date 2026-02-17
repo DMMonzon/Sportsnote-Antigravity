@@ -84,6 +84,8 @@ const SummaryView: React.FC = () => {
       e.teamId === teamId && types.some(t => e.type.toUpperCase().includes(t.toUpperCase()))
     );
 
+    const getPeriodCount = (p: string) => events.filter(e => e.gameTime.startsWith(p)).length;
+
     return {
       total: events.length,
       own: events.filter(e => e.half === 'own').length,
@@ -93,9 +95,36 @@ const SummaryView: React.FC = () => {
       right: events.filter(e => e.lane === 'right').length,
       goals: events.filter(e => e.type.includes('GOL')).length,
       saved: events.filter(e => e.type.includes('ATAJADO')).length,
-      missed: events.filter(e => e.type.includes('DESVIADO')).length
+      missed: events.filter(e => e.type.includes('DESVIADO')).length,
+      periods: {
+        q1: getPeriodCount('1Q'),
+        q2: getPeriodCount('2Q'),
+        q3: getPeriodCount('3Q'),
+        q4: getPeriodCount('4Q')
+      }
     };
   };
+
+  const PeriodRow = ({ periods }: { periods: { q1: number, q2: number, q3: number, q4: number } }) => (
+    <div className="flex justify-between items-center mt-3 pt-2 border-t border-surfaceVariant/30 text-[7px] font-black text-onSurfaceVariant/50 uppercase tracking-widest">
+      <div className="flex flex-col items-center">
+        <span>Q1</span>
+        <span className="text-[9px] text-dark">{periods.q1}</span>
+      </div>
+      <div className="flex flex-col items-center">
+        <span>Q2</span>
+        <span className="text-[9px] text-dark">{periods.q2}</span>
+      </div>
+      <div className="flex flex-col items-center">
+        <span>Q3</span>
+        <span className="text-[9px] text-dark">{periods.q3}</span>
+      </div>
+      <div className="flex flex-col items-center">
+        <span>Q4</span>
+        <span className="text-[9px] text-dark">{periods.q4}</span>
+      </div>
+    </div>
+  );
 
   // --- Exportar PDF Profesional ---
   const handleDownloadPDF = async () => {
@@ -216,7 +245,7 @@ const SummaryView: React.FC = () => {
             Remates al Arco
             <div className="h-px flex-1 bg-surfaceVariant/50"></div>
           </h3>
-          <div className="flex gap-4">
+          <div className="flex flex-col md:flex-row gap-4">
             {/* Equipo Local */}
             <div className="flex-1 bg-primary/5 rounded-[24px] p-5 border border-primary/10">
               <div className="flex justify-between items-center mb-4">
@@ -237,9 +266,10 @@ const SummaryView: React.FC = () => {
                   <p className="text-sm font-black text-primary">{homeShots.missed}</p>
                 </div>
               </div>
+              <PeriodRow periods={homeShots.periods} />
             </div>
 
-            <div className="flex items-center text-onSurfaceVariant/20 font-black text-xs">VS</div>
+            <div className="flex items-center justify-center text-onSurfaceVariant/20 font-black text-[10px] uppercase tracking-widest">Balance</div>
 
             {/* Equipo Visitante */}
             <div className="flex-1 bg-surface rounded-[24px] p-5 border border-surfaceVariant/50">
@@ -261,6 +291,7 @@ const SummaryView: React.FC = () => {
                   <p className="text-sm font-black text-dark">{awayShots.missed}</p>
                 </div>
               </div>
+              <PeriodRow periods={awayShots.periods} />
             </div>
           </div>
         </section>
@@ -276,13 +307,13 @@ const SummaryView: React.FC = () => {
             ].map(stat => {
               const data = getDetailedStat(stat.types, game.teamHome.id);
               return (
-                <div key={stat.label} className="bg-surface/30 p-5 rounded-[28px] border border-surfaceVariant flex flex-col gap-4">
+                <div key={stat.label} className="bg-surface/30 p-5 rounded-[28px] border border-surfaceVariant flex flex-col gap-2">
                   <div className="flex justify-between items-center border-b border-surfaceVariant pb-2">
                     <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">{stat.label}</p>
                     <span className={`text-2xl font-black ${stat.color}`}>{data.total}</span>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 mt-1">
                     <div className="bg-white p-2 rounded-xl border border-surfaceVariant/50 text-center">
                       <p className="text-[7px] font-black opacity-40 uppercase">Propio</p>
                       <p className="text-xs font-black">{data.own}</p>
@@ -307,6 +338,8 @@ const SummaryView: React.FC = () => {
                       <p className="text-[10px] font-black">{data.right}</p>
                     </div>
                   </div>
+                  
+                  <PeriodRow periods={data.periods} />
                 </div>
               );
             })}

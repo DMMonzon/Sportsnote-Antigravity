@@ -89,6 +89,24 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
+  const toggleTimer = () => {
+    if (!isRunning && possession === Possession.NONE) {
+      setSnackbar({ 
+        message: "Por favor, selecciona qué equipo inicia con la posesión para comenzar el partido", 
+        visible: true 
+      });
+      setTimeout(() => setSnackbar(prev => ({ ...prev, visible: false })), 3500);
+      return;
+    }
+    setIsRunning(!isRunning);
+  };
+
+  const selectPossession = (p: Possession) => {
+    if (isRunning) return; // Solo permitir cambio manual antes de iniciar o en pausa
+    setPossession(p);
+    if (navigator.vibrate) navigator.vibrate(50);
+  };
+
   const getSectorInfo = (x: number, y: number): { half: 'own' | 'rival', lane: 'left' | 'center' | 'right' } => {
     const half = y > 50 ? 'own' : 'rival';
     let lane: 'left' | 'center' | 'right' = 'center';
@@ -111,8 +129,9 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
       setPeriod(periodToConfirm);
       setSeconds(0);
       setIsRunning(false);
-      setSnackbar({ message: `Iniciado ${periodToConfirm}Q. Cronómetro a 0:00.`, visible: true });
-      setTimeout(() => setSnackbar(prev => ({ ...prev, visible: false })), 2000);
+      setPossession(Possession.NONE); // Resetear posesión al cambiar de cuarto
+      setSnackbar({ message: `Iniciado ${periodToConfirm}Q. Cronómetro a 0:00. Selecciona posesión inicial.`, visible: true });
+      setTimeout(() => setSnackbar(prev => ({ ...prev, visible: false })), 3000);
       setPeriodToConfirm(null);
     }
   };
@@ -125,6 +144,15 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
   };
 
   const handleFieldClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Si el cronómetro no está corriendo, no permitimos registrar acciones de campo
+    if (!isRunning) {
+        if (possession === Possession.NONE) {
+            setSnackbar({ message: "Inicia el cronómetro para registrar acciones", visible: true });
+            setTimeout(() => setSnackbar(prev => ({ ...prev, visible: false })), 2000);
+        }
+        return;
+    }
+
     const rect = e.currentTarget.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
@@ -557,15 +585,39 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
           <div className="w-4 h-0.5 bg-black self-start ml-1" />
         </button>
         <div className="flex-1 flex justify-center items-center gap-2 md:gap-4 overflow-hidden">
-          <span className="hidden sm:block text-[10px] md:text-xs font-black text-onSurfaceVariant uppercase truncate max-w-[80px] md:max-w-[120px] text-right">{game.teamHome.name}</span>
-          <div className="px-3 md:px-5 py-1.5 rounded-xl flex flex-col items-center min-w-[50px] md:min-w-[80px] border border-surfaceVariant shadow-inner" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc', color: game.teamHome.secondaryColor || '#ffffff' }}>
+          <button 
+            onClick={() => selectPossession(Possession.HOME)}
+            className={`hidden sm:block text-[10px] md:text-xs font-black uppercase truncate max-w-[80px] md:max-w-[120px] text-right transition-opacity ${possession === Possession.HOME ? 'text-primary opacity-100' : 'text-onSurfaceVariant opacity-30'}`}
+          >
+            {game.teamHome.name}
+          </button>
+          
+          <button 
+            onClick={() => selectPossession(Possession.HOME)}
+            className={`px-3 md:px-5 py-1.5 rounded-xl flex flex-col items-center min-w-[50px] md:min-w-[80px] border transition-all duration-300 ${possession === Possession.HOME ? 'ring-4 ring-secondary border-transparent scale-105 shadow-xl' : 'border-surfaceVariant shadow-inner opacity-40'} ${!isRunning && possession === Possession.NONE && seconds === 0 ? 'animate-pulse' : ''}`} 
+            style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc', color: game.teamHome.secondaryColor || '#ffffff' }}
+          >
             <span className="text-xl md:text-3xl font-black">{game.scoreHome}</span>
-          </div>
+            {possession === Possession.HOME && <span className="text-[6px] font-black uppercase mt-0.5 tracking-tighter">POSESIÓN</span>}
+          </button>
+
           <NSeparator />
-          <div className="px-3 md:px-5 py-1.5 rounded-xl flex flex-col items-center min-w-[50px] md:min-w-[80px] border border-surfaceVariant shadow-inner" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444', color: game.teamAway.secondaryColor || '#ffffff' }}>
+
+          <button 
+            onClick={() => selectPossession(Possession.AWAY)}
+            className={`px-3 md:px-5 py-1.5 rounded-xl flex flex-col items-center min-w-[50px] md:min-w-[80px] border transition-all duration-300 ${possession === Possession.AWAY ? 'ring-4 ring-secondary border-transparent scale-105 shadow-xl' : 'border-surfaceVariant shadow-inner opacity-40'} ${!isRunning && possession === Possession.NONE && seconds === 0 ? 'animate-pulse' : ''}`} 
+            style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444', color: game.teamAway.secondaryColor || '#ffffff' }}
+          >
             <span className="text-xl md:text-3xl font-black">{game.scoreAway}</span>
-          </div>
-          <span className="hidden sm:block text-[10px] md:text-xs font-black text-onSurfaceVariant uppercase truncate max-w-[80px] md:max-w-[120px]">{game.teamAway.name}</span>
+            {possession === Possession.AWAY && <span className="text-[6px] font-black uppercase mt-0.5 tracking-tighter">POSESIÓN</span>}
+          </button>
+
+          <button 
+            onClick={() => selectPossession(Possession.AWAY)}
+            className={`hidden sm:block text-[10px] md:text-xs font-black uppercase truncate max-w-[80px] md:max-w-[120px] transition-opacity ${possession === Possession.AWAY ? 'text-primary opacity-100' : 'text-onSurfaceVariant opacity-30'}`}
+          >
+            {game.teamAway.name}
+          </button>
         </div>
         
         <div className="flex items-center gap-3 shrink-0">
@@ -592,7 +644,12 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
           </div>
           <div className="bg-surface px-3 py-1.5 rounded-xl border border-surfaceVariant flex items-center gap-3">
             <p className="text-lg md:text-xl font-black text-primary tabular-nums leading-none">{formatTime(seconds)}</p>
-            <button onClick={() => setIsRunning(!isRunning)} className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center active:scale-90 transition-all text-[10px]">{isRunning ? '||' : '▶'}</button>
+            <button 
+              onClick={toggleTimer} 
+              className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-all text-sm font-black shadow-md ${isRunning ? 'bg-red-500 text-white' : 'bg-primary text-white animate-bounce-short'}`}
+            >
+              {isRunning ? '||' : '▶'}
+            </button>
           </div>
         </div>
       </header>
@@ -859,6 +916,17 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
                     <button className="text-[8px] font-black text-onSurfaceVariant uppercase mt-1 text-center py-1 hover:text-primary transition-colors" onClick={() => setShowPopup(null)}>Cerrar</button>
                   </div>
                 )}
+
+                {/* Overlay de Ayuda Posesión */}
+                {!isRunning && possession === Possession.NONE && seconds === 0 && (
+                  <div className="absolute inset-0 bg-brandDark/40 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500 z-50">
+                    <div className="bg-white p-8 rounded-[40px] shadow-2xl border border-surfaceVariant max-w-xs transform animate-bounce-short">
+                      <div className="text-4xl mb-4">🏑</div>
+                      <h3 className="contrail-font text-2xl text-dark uppercase mb-2">¡Casi Listos!</h3>
+                      <p className="text-[11px] font-bold text-onSurfaceVariant uppercase leading-relaxed">Selecciona qué equipo inicia con la posesión haciendo click en su marcador arriba.</p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -968,8 +1036,8 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
 
         <button 
           className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center text-3xl font-black shadow-xl relative transition-all active:scale-95 border-2 ${possession === Possession.HOME ? 'bg-primary text-white border-primary translate-y-[-4px]' : 'bg-surface text-onSurfaceVariant/20 border-surfaceVariant'}`}
-          onClick={() => setPassCount(c => c + 1)}
-          disabled={possession !== Possession.HOME}
+          onClick={() => isRunning && setPassCount(c => c + 1)}
+          disabled={possession !== Possession.HOME || !isRunning}
         >
           <span>+</span>
           {passCount > 0 && (
