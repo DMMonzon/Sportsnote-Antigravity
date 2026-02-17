@@ -30,6 +30,13 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
   const [possession, setPossession] = useState<Possession>(Possession.NONE);
   const [passCount, setPassCount] = useState(0);
   const [showPopup, setShowPopup] = useState<{ x: number, y: number, type: 'FOUL' | 'SHOT', targetGoal?: 'TOP' | 'BOTTOM' } | null>(null);
+  
+  // Modal de detalles de gol
+  const [showGoalModal, setShowGoalModal] = useState(false);
+  const [goalAuthor, setGoalAuthor] = useState('');
+  const [goalType, setGoalType] = useState<'Individual' | 'Colectiva' | 'Penal' | 'Corto' | null>(null);
+  const [pendingGoalAction, setPendingGoalAction] = useState<{ scoreUpdate: { home: number, away: number }, nextPoss: Possession } | null>(null);
+
   const [activeView, setActiveView] = useState<'field' | 'list' | 'heatmap' | 'stats'>('field');
   const [eventFilter, setEventFilter] = useState<ActionFilter>('ALL');
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('ALL');
@@ -102,7 +109,7 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
   };
 
   const selectPossession = (p: Possession) => {
-    if (isRunning) return; // Solo permitir cambio manual antes de iniciar o en pausa
+    if (isRunning) return; 
     setPossession(p);
     if (navigator.vibrate) navigator.vibrate(50);
   };
@@ -129,7 +136,7 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
       setPeriod(periodToConfirm);
       setSeconds(0);
       setIsRunning(false);
-      setPossession(Possession.NONE); // Resetear posesión al cambiar de cuarto
+      setPossession(Possession.NONE); 
       setSnackbar({ message: `Iniciado ${periodToConfirm}Q. Cronómetro a 0:00. Selecciona posesión inicial.`, visible: true });
       setTimeout(() => setSnackbar(prev => ({ ...prev, visible: false })), 3000);
       setPeriodToConfirm(null);
@@ -144,7 +151,6 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
   };
 
   const handleFieldClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Si el cronómetro no está corriendo, no permitimos registrar acciones de campo
     if (!isRunning) {
         if (possession === Possession.NONE) {
             setSnackbar({ message: "Inicia el cronómetro para registrar acciones", visible: true });
@@ -287,6 +293,41 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
     });
     if (nextPoss) setPossession(nextPoss);
     setShowPopup(null);
+  };
+
+  const handleGoalClick = (scoreUpdate: { home: number, away: number }, nextPoss: Possession) => {
+    setPendingGoalAction({ scoreUpdate, nextPoss });
+    setShowGoalModal(true);
+  };
+
+  const confirmGoalDetails = () => {
+    if (!pendingGoalAction) return;
+    
+    const authorStr = goalAuthor ? `#${goalAuthor}` : 'Jugador: N/A';
+    const typeMap = {
+      'Individual': 'J. Individual',
+      'Colectiva': 'J. Colectiva',
+      'Penal': 'Penal',
+      'Corto': 'C. Corto'
+    };
+    const typeStr = goalType ? typeMap[goalType] : 'Tipo: No especificado';
+    const finalDetails = `GOL | ${authorStr} | ${typeStr}`;
+
+    updateLastEvent('DISPARO (GOL)', finalDetails, pendingGoalAction.scoreUpdate, pendingGoalAction.nextPoss);
+    resetGoalModal();
+  };
+
+  const skipGoalDetails = () => {
+    if (!pendingGoalAction) return;
+    updateLastEvent('DISPARO (GOL)', 'GOL | Jugador: N/A | Tipo: No especificado', pendingGoalAction.scoreUpdate, pendingGoalAction.nextPoss);
+    resetGoalModal();
+  };
+
+  const resetGoalModal = () => {
+    setShowGoalModal(false);
+    setGoalAuthor('');
+    setGoalType(null);
+    setPendingGoalAction(null);
   };
 
   const deleteEvent = (eventId: string) => {
@@ -511,6 +552,71 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
       {snackbar.visible && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[1000] bg-brandDark text-white px-6 py-3 rounded-full shadow-2xl animate-in slide-in-from-bottom duration-300 border border-primary/20 flex items-center gap-3">
           <span className="text-xs font-black uppercase tracking-widest">{snackbar.message}</span>
+        </div>
+      )}
+
+      {/* Modal Detalles de Gol */}
+      {showGoalModal && (
+        <div className="fixed inset-0 z-[700] flex items-center justify-center p-6 bg-brandDark/50 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="relative w-full max-w-md bg-white border border-surfaceVariant p-8 rounded-[40px] shadow-2xl flex flex-col animate-in zoom-in duration-300">
+            <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-[4px] mb-6 text-center">Detalles del Gol ⚽</h3>
+            
+            {/* Sección Autor */}
+            <div className="mb-8">
+              <label className="text-[9px] font-black text-dark uppercase tracking-widest mb-3 block">Autor del Gol (Dorsal)</label>
+              <input 
+                type="number" 
+                maxLength={2} 
+                autoFocus
+                value={goalAuthor}
+                onChange={(e) => setGoalAuthor(e.target.value.slice(0, 2))}
+                className="w-full h-16 bg-surface border border-surfaceVariant rounded-2xl text-center text-3xl font-black outline-none focus:border-primary transition-colors tabular-nums"
+                placeholder="00"
+              />
+            </div>
+
+            {/* Sección Tipo de Jugada */}
+            <div className="mb-10">
+              <label className="text-[9px] font-black text-dark uppercase tracking-widest mb-4 block">Tipo de Jugada</label>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { id: 'Individual', label: 'Individual', icon: '👤' },
+                  { id: 'Colectiva', label: 'Colectiva', icon: '🤝' },
+                  { id: 'Penal', label: 'Penal', icon: '🎯' },
+                  { id: 'Corto', label: 'C. Corto', icon: '🏑' },
+                ].map((type) => (
+                  <button 
+                    key={type.id}
+                    onClick={() => setGoalType(type.id as any)}
+                    className={`h-16 rounded-2xl border flex items-center justify-center gap-3 text-xs font-black transition-all ${
+                      goalType === type.id 
+                        ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' 
+                        : 'bg-surface border-surfaceVariant text-onSurfaceVariant'
+                    }`}
+                  >
+                    <span>{type.icon}</span>
+                    <span className="uppercase">{type.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Botones de Acción */}
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={confirmGoalDetails}
+                className="w-full bg-primary text-white font-black py-5 rounded-2xl active:scale-95 text-xs uppercase tracking-widest shadow-xl shadow-primary/20"
+              >
+                Confirmar Registro
+              </button>
+              <button 
+                onClick={skipGoalDetails}
+                className="w-full bg-surface text-red-600 font-black py-4 rounded-2xl active:scale-95 text-[10px] uppercase tracking-widest border border-red-100"
+              >
+                Omitir info
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -795,7 +901,6 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Tarjeta de Remates con desglose por resultado */}
                     <div className="bg-surface/50 p-5 rounded-[28px] border border-surfaceVariant shadow-sm flex flex-col gap-4">
                       <div className="flex justify-between items-center">
                         <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">Remates Totales</p>
@@ -824,12 +929,10 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
                     </div>
                   </div>
 
-                  {/* Sección de Análisis de Pases */}
                   <div className="mt-8 mb-6">
                     <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest mb-4 border-b border-surfaceVariant pb-2 italic">Análisis de Pases</h3>
                     
                     <div className="flex flex-row items-stretch gap-3">
-                      {/* Card 1: Mínimo */}
                       <div className="flex-1 bg-surface/50 p-4 rounded-[24px] border border-surfaceVariant text-center shadow-inner flex flex-col justify-center min-h-[100px]">
                         <p className="text-[8px] font-black text-onSurfaceVariant uppercase mb-1">Mínimo</p>
                         <p className="text-2xl font-black text-dark leading-none">{pMin}</p>
@@ -840,14 +943,12 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
                         )}
                       </div>
 
-                      {/* Card 2: Promedio (Destacado) */}
                       <div className="flex-[1.2] bg-primary p-4 rounded-[28px] shadow-xl shadow-primary/20 text-center flex flex-col justify-center border-2 border-white/20 min-h-[110px]">
                         <p className="text-[9px] font-black text-white/70 uppercase mb-1">Promedio</p>
                         <p className="text-4xl font-black text-white leading-none">{pAvg}</p>
                         <p className="text-[7px] font-bold text-white/40 uppercase mt-1 tracking-widest">Pases / Cadena</p>
                       </div>
 
-                      {/* Card 3: Máximo */}
                       <div className="flex-1 bg-surface/50 p-4 rounded-[24px] border border-surfaceVariant text-center shadow-inner flex flex-col justify-center min-h-[100px]">
                         <p className="text-[8px] font-black text-onSurfaceVariant uppercase mb-1">Máximo</p>
                         <p className="text-2xl font-black text-dark leading-none">{pMax}</p>
@@ -908,7 +1009,7 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
                       </div>
                     ) : (
                       <>
-                        <button className="text-xs font-black text-primary text-left py-4 px-5 rounded-xl bg-primary/5 border border-primary/10 flex items-center gap-4 uppercase" onClick={() => updateLastEvent('DISPARO (GOL)', "GOL", showPopup.targetGoal === 'TOP' ? { home: 1, away: 0 } : { home: 0, away: 1 }, showPopup.targetGoal === 'TOP' ? Possession.AWAY : Possession.HOME)}>⚽ GOL</button>
+                        <button className="text-xs font-black text-primary text-left py-4 px-5 rounded-xl bg-primary/5 border border-primary/10 flex items-center gap-4 uppercase" onClick={() => handleGoalClick(showPopup.targetGoal === 'TOP' ? { home: 1, away: 0 } : { home: 0, away: 1 }, showPopup.targetGoal === 'TOP' ? Possession.AWAY : Possession.HOME)}>⚽ GOL</button>
                         <button className="text-xs font-black text-dark text-left py-4 px-5 rounded-xl bg-surface border border-surfaceVariant flex items-center gap-4 uppercase" onClick={() => updateLastEvent('DISPARO (ATAJADO)', "ATAJADO", undefined, Possession.NONE)}>🛡️ ATAJADO</button>
                         <button className="text-xs font-black text-onSurfaceVariant text-left py-4 px-5 rounded-xl bg-surface border border-surfaceVariant flex items-center gap-4 uppercase" onClick={() => updateLastEvent('DISPARO (DESVIADO)', "DESVIADO", undefined, Possession.AWAY)}>💨 DESVIADO</button>
                       </>
