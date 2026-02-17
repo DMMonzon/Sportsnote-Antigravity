@@ -1,15 +1,18 @@
-const CACHE_NAME = 'sportsnote-v2'; // Cambiamos el nombre para forzar la actualización
-const CACHE_FILES = [
+const CACHE_NAME = 'sportsnote-v1';
+const STATIC_ASSETS = [
   '/',
-  '/index.html',
-  '/manifest.json'
+  '/index.html', // Asegúrate de tener la barra diagonal inicial
+  '/manifest.json',
+  'https://cdn.tailwindcss.com',
+  'https://fonts.googleapis.com/css2?family=Contrail+One&family=Roboto:wght@300;400;500;700&display=swap'
 ];
 
-// Instalación: Cachear solo lo mínimo indispensable
+// Instalación: Cachear activos estáticos críticos
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(CACHE_FILES);
+      console.log('Cacheando activos estáticos');
+      return cache.addAll(STATIC_ASSETS);
     })
   );
   self.skipWaiting();
@@ -27,33 +30,31 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// --- ESTRATEGIA: Cache-First, Network Fallback (Dinámica) ---
+// Estrategia: Network First, Fallback to Cache
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      // 1. Si está en caché, devolverlo inmediatamente
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-
-      // 2. Si no está en caché, ir a la red
-      return fetch(event.request).then((networkResponse) => {
-        // Cachear dinámicamente CUALQUIER GET request exitoso
-        if (networkResponse && networkResponse.status === 200) {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-        }
+    fetch(event.request)
+      .then((networkResponse) => {
+        // Si la red funciona, cachear dinámicamente y devolver respuesta
+        const responseToCache = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, responseToCache);
+        });
         return networkResponse;
-      }).catch(() => {
-        // 3. Fallback: Si no hay red y no está en caché, devolver index.html
-        if (event.request.mode === 'navigate') {
-          return caches.match('/index.html');
-        }
-      });
-    })
+      })
+      .catch(() => {
+        // SI LA RED FALLA (Offline), buscar en caché
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          // Si no está en caché y es navegación, devolver index.html
+          if (event.request.mode === 'navigate') {
+            return caches.match('/index.html');
+          }
+        });
+      })
   );
 });
