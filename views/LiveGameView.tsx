@@ -30,6 +30,8 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
   const [seconds, setSeconds] = useState(0);
   const [possession, setPossession] = useState<Possession>(Possession.NONE);
   const [passCount, setPassCount] = useState(0);
+  const [foulPlayer, setFoulPlayer] = useState('');
+  const [foulMinutes, setFoulMinutes] = useState('');
   const [showPopup, setShowPopup] = useState<{ x: number, y: number, type: 'FOUL' | 'SHOT', targetGoal?: 'TOP' | 'BOTTOM' } | null>(null);
 
   // Modal de detalles de gol
@@ -55,6 +57,7 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
   const [atajadoSelected, setAtajadoSelected] = useState(false);
   const [localPossessionTime, setLocalPossessionTime] = useState(0);
   const [awayPossessionTime, setAwayPossessionTime] = useState(0);
+  const [foulCardType, setFoulCardType] = useState<'NONE' | 'VERDE' | 'AMARILLA' | 'ROJA'>('NONE');
 
   // Estados de orientación de la cancha
   const [isLandscape, setIsLandscape] = useState(false);
@@ -100,7 +103,11 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
   }, [isRunning, possession]);
 
   useEffect(() => {
-    if (!showPopup) setAtajadoSelected(false);
+    if (!showPopup) {
+      setAtajadoSelected(false);
+      setFoulPlayer('');
+      setFoulMinutes('');
+    }
   }, [showPopup]);
 
   if (!game) return <div className="p-8 text-center text-onSurfaceVariant font-bold">Cargando datos...</div>;
@@ -151,6 +158,7 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
       setSnackbar({ message: `Iniciado ${periodToConfirm}Q. Cronómetro a 0:00. Selecciona posesión inicial.`, visible: true });
       setTimeout(() => setSnackbar(prev => ({ ...prev, visible: false })), 3000);
       setPeriodToConfirm(null);
+      setPassCount(0);
     }
   };
 
@@ -215,11 +223,21 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
     const isInBottomGoal = y >= 92 && x >= 42 && x <= 58;
 
     if (isInTopGoal) {
+      if (possession !== Possession.HOME) {
+        setSnackbar({ message: "Solo puedes disparar al arco rival con la posesión del balón", visible: true });
+        setTimeout(() => setSnackbar(prev => ({ ...prev, visible: false })), 2000);
+        return;
+      }
       registerEvent('DISPARO', Possession.NONE, x, y, "Remate", game.teamHome.id);
       setShowPopup({ x, y, type: 'SHOT', targetGoal: 'TOP' });
       return;
     }
     if (isInBottomGoal) {
+      if (possession !== Possession.AWAY) {
+        setSnackbar({ message: "Solo el rival puede disparar en tu arco propio", visible: true });
+        setTimeout(() => setSnackbar(prev => ({ ...prev, visible: false })), 2000);
+        return;
+      }
       registerEvent('DISPARO', Possession.NONE, x, y, "Remate", game.teamAway.id);
       setShowPopup({ x, y, type: 'SHOT', targetGoal: 'BOTTOM' });
       return;
@@ -272,7 +290,8 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
       half: sector.half,
       lane: sector.lane,
       details: finalDetails,
-      audioData: audioData
+      audioData: audioData,
+      scoringTeam: scoringTeam
     };
 
     let updatedScoreHome = game.scoreHome;
@@ -369,12 +388,16 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
       }
       return prev;
     });
-    if (nextPoss) setPossession(nextPoss);
+    setPossession(nextPoss);
     setShowPopup(null);
+    setFoulPlayer('');
+    setFoulMinutes('');
+    setFoulCardType('NONE');
   };
 
   const handleGoalClick = (scoreUpdate: { home: number, away: number }, nextPoss: Possession) => {
     setPendingGoalAction({ scoreUpdate, nextPoss });
+    if (foulPlayer) setGoalAuthor(foulPlayer);
     setShowGoalModal(true);
   };
 
@@ -389,7 +412,7 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
       'Corto': 'C. Corto'
     };
     const typeStr = goalType ? typeMap[goalType] : 'Tipo: No especificado';
-    const finalDetails = `GOL | ${authorStr} | ${typeStr}`;
+    const finalDetails = `GOL${foulPlayer ? ` (#${foulPlayer})` : ''} | ${authorStr} | ${typeStr}`;
 
     updateLastEvent('DISPARO (GOL)', finalDetails, pendingGoalAction.scoreUpdate, pendingGoalAction.nextPoss);
     resetGoalModal();
@@ -919,7 +942,19 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3 overflow-hidden">
                         <span className="text-primary font-black text-[9px] bg-primary/5 px-1.5 py-0.5 rounded shrink-0">{e.gameTime}</span>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex items-center gap-2">
+                          {(e.type.includes('DISPARO') || e.type.includes('GOL') || e.type.includes('FALTA')) && (
+                            <span
+                              className="text-[9px] font-black px-1.5 py-0.5 rounded border border-current shrink-0 min-w-[18px] text-center"
+                              style={{
+                                color: (e.teamId === game.teamHome.id || e.scoringTeam === Possession.HOME) ? (game.teamHome.primaryColor || '#6d5dfc') : (game.teamAway.primaryColor || '#ef4444'),
+                                borderColor: (e.teamId === game.teamHome.id || e.scoringTeam === Possession.HOME) ? (game.teamHome.primaryColor || '#6d5dfc') : (game.teamAway.primaryColor || '#ef4444'),
+                                backgroundColor: (e.teamId === game.teamHome.id || e.scoringTeam === Possession.HOME) ? `${game.teamHome.primaryColor || '#6d5dfc'}11` : `${game.teamAway.primaryColor || '#ef4444'}11`
+                              }}
+                            >
+                              {((e.teamId === game.teamHome.id && !e.type.includes('GOL')) || (e.scoringTeam === Possession.HOME)) ? 'L' : 'V'}
+                            </span>
+                          )}
                           <p className="text-dark text-[11px] font-bold truncate uppercase">{e.type}</p>
                         </div>
                       </div>
@@ -1022,7 +1057,21 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
                             <span className="text-primary font-black text-xs bg-primary/10 px-2 py-1 rounded shrink-0">{e.gameTime}</span>
-                            <p className="text-dark text-sm font-bold uppercase">{e.type}</p>
+                            <div className="flex items-center gap-2">
+                              {(e.type.includes('DISPARO') || e.type.includes('GOL') || e.type.includes('FALTA')) && (
+                                <span
+                                  className="text-[10px] font-black px-2 py-0.5 rounded border border-current shrink-0 min-w-[24px] text-center"
+                                  style={{
+                                    color: (e.teamId === game.teamHome.id || e.scoringTeam === Possession.HOME) ? (game.teamHome.primaryColor || '#6d5dfc') : (game.teamAway.primaryColor || '#ef4444'),
+                                    borderColor: (e.teamId === game.teamHome.id || e.scoringTeam === Possession.HOME) ? (game.teamHome.primaryColor || '#6d5dfc') : (game.teamAway.primaryColor || '#ef4444'),
+                                    backgroundColor: (e.teamId === game.teamHome.id || e.scoringTeam === Possession.HOME) ? `${game.teamHome.primaryColor || '#6d5dfc'}11` : `${game.teamAway.primaryColor || '#ef4444'}11`
+                                  }}
+                                >
+                                  {((e.teamId === game.teamHome.id && !e.type.includes('GOL')) || (e.scoringTeam === Possession.HOME)) ? 'L' : 'V'}
+                                </span>
+                              )}
+                              <p className="text-dark text-sm font-bold uppercase">{e.type}</p>
+                            </div>
                           </div>
                           <div className="flex items-center gap-2">
                             <button onClick={() => setEventToEdit(e)} className="text-primary p-2">✏️</button>
@@ -1243,51 +1292,105 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
                       style={{
                         left: `${showPopup.x}%`,
                         top: showPopup.y < 35 ? `${showPopup.y + 10}%` : `${showPopup.y}%`,
-                        transform: `${showPopup.y < 35 ? 'translate(-50%, 0)' : 'translate(-50%, -100%)'} ${isFlipped ? 'rotate(-180deg)' : ''}`.trim()
+                        transform: `${showPopup.y < 35 ? 'translate(-50%, 0)' : 'translate(-50%, -100%)'} ${isLandscape ? 'rotate(-90deg)' : ''} ${isFlipped ? 'rotate(-180deg)' : ''}`.trim()
                       }}
                       onClick={e => e.stopPropagation()}
                     >
                       <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest border-b border-surfaceVariant pb-2 mb-1">Resultado de Acción</p>
                       {showPopup.type === 'FOUL' ? (
-                        <div className="grid grid-cols-1 gap-2">
-                          {!isIn23Zone(showPopup.y) ? (
-                            <div className="grid grid-cols-3 gap-2">
-                              <button className="text-[10px] font-black text-onSurface py-3 rounded-xl bg-surface border border-surfaceVariant flex items-center justify-center gap-2" onClick={() => updateLastEvent('FALTA (VERDE) / PÉRDIDA', 'VERDE')}>
-                                <span className="w-2.5 h-2.5 bg-green-500 rounded-sm shrink-0"></span> VER
+                        <div className="flex flex-col gap-3">
+                          {foulCardType === 'AMARILLA' ? (
+                            <div className="flex flex-col gap-3 animate-in fade-in zoom-in duration-200">
+                              <div className="flex flex-col gap-2">
+                                <label className="text-[8px] font-bold text-onSurfaceVariant uppercase">Jugador #</label>
+                                <input
+                                  type="text"
+                                  value={foulPlayer}
+                                  onChange={(e) => setFoulPlayer(e.target.value)}
+                                  className="w-full bg-surface border border-surfaceVariant rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:border-primary"
+                                  placeholder="Ej: 8"
+                                />
+                              </div>
+                              <div className="flex flex-col gap-2 bg-yellow-50/50 p-2 rounded-xl border border-yellow-100">
+                                <label className="text-[7px] font-black text-yellow-700 uppercase">Minutos Sanción (Amarilla)</label>
+                                <input
+                                  type="text"
+                                  value={foulMinutes}
+                                  onChange={(e) => setFoulMinutes(e.target.value)}
+                                  className="w-full bg-white border border-yellow-200 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:border-yellow-400"
+                                  placeholder="Ej: 5"
+                                />
+                              </div>
+                              <button
+                                className="w-full py-3 rounded-xl bg-yellow-400 text-white font-black text-xs uppercase shadow-lg shadow-yellow-100 active:scale-95 transition-all"
+                                onClick={() => updateLastEvent('FALTA (AMARILLA) / PÉRDIDA', `AMARILLA${foulMinutes ? ` (${foulMinutes} minutos)` : ''}${foulPlayer ? ` - Jugador #${foulPlayer}` : ''}`)}
+                              >
+                                Confirmar Amarilla
                               </button>
-                              <button className="text-[10px] font-black text-onSurface py-3 rounded-xl bg-surface border border-surfaceVariant flex items-center justify-center gap-2" onClick={() => updateLastEvent('FALTA (AMARILLA) / PÉRDIDA', 'AMARILLA')}>
-                                <span className="w-2.5 h-2.5 bg-yellow-400 rounded-sm shrink-0"></span> AMA
-                              </button>
-                              <button className="text-[10px] font-black text-onSurface py-3 rounded-xl bg-surface border border-surfaceVariant flex items-center justify-center gap-2" onClick={() => updateLastEvent('FALTA (ROJA) / PÉRDIDA', 'ROJA')}>
-                                <span className="w-2.5 h-2.5 bg-red-600 rounded-sm shrink-0"></span> ROJ
+                              <button
+                                className="text-[8px] font-black text-onSurfaceVariant uppercase text-center py-1 hover:text-primary transition-colors"
+                                onClick={() => setFoulCardType('NONE')}
+                              >
+                                Atrás
                               </button>
                             </div>
                           ) : (
-                            <div className="flex flex-col gap-2">
-                              <button className="text-[10px] font-black text-indigo-600 py-3 rounded-xl bg-indigo-50 border border-indigo-100 uppercase flex items-center justify-center gap-2" onClick={() => updateLastEvent('CORNER CORTO / PÉRDIDA', "C. CORTO")}>🏑 C. CORTO</button>
-                              <button className="text-[10px] font-black text-purple-600 py-3 rounded-xl bg-purple-50 border border-purple-100 uppercase flex items-center justify-center gap-2" onClick={() => updateLastEvent('PENAL / PÉRDIDA', "PENAL")}>🎯 PENAL</button>
+                            <div className="grid grid-cols-1 gap-2">
+                              {!isIn23Zone(showPopup.y) ? (
+                                <div className="grid grid-cols-3 gap-2">
+                                  <button className="text-[10px] font-black text-onSurface py-3 rounded-xl bg-surface border border-surfaceVariant flex flex-col items-center justify-center gap-1.5" onClick={() => updateLastEvent('FALTA (VERDE) / PÉRDIDA', 'VERDE')}>
+                                    <span className="w-4 h-4 bg-green-500 rounded-sm"></span>
+                                    <span>VER</span>
+                                  </button>
+                                  <button className="text-[10px] font-black text-onSurface py-3 rounded-xl bg-surface border border-surfaceVariant flex flex-col items-center justify-center gap-1.5" onClick={() => setFoulCardType('AMARILLA')}>
+                                    <span className="w-4 h-4 bg-yellow-400 rounded-sm"></span>
+                                    <span>AMA</span>
+                                  </button>
+                                  <button className="text-[10px] font-black text-onSurface py-3 rounded-xl bg-surface border border-surfaceVariant flex flex-col items-center justify-center gap-1.5" onClick={() => updateLastEvent('FALTA (ROJA) / PÉRDIDA', 'ROJA')}>
+                                    <span className="w-4 h-4 bg-red-600 rounded-sm"></span>
+                                    <span>ROJ</span>
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex flex-col gap-2">
+                                  <button className="text-[10px] font-black text-indigo-600 py-3 rounded-xl bg-indigo-50 border border-indigo-100 uppercase flex items-center justify-center gap-2" onClick={() => updateLastEvent('CORNER CORTO / PÉRDIDA', "C. CORTO")}>🏑 C. CORTO</button>
+                                  <button className="text-[10px] font-black text-purple-600 py-3 rounded-xl bg-purple-50 border border-purple-100 uppercase flex items-center justify-center gap-2" onClick={() => updateLastEvent('PENAL / PÉRDIDA', "PENAL")}>🎯 PENAL</button>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
                       ) : (
-                        <>
+                        <div className="flex flex-col gap-3">
+                          <p className="text-[9px] font-black text-dark uppercase mb-1">Detalles del Remate</p>
+                          <div className="flex flex-col gap-2 mb-1">
+                            <label className="text-[8px] font-bold text-onSurfaceVariant uppercase">Jugador #</label>
+                            <input
+                              type="text"
+                              value={foulPlayer}
+                              onChange={(e) => setFoulPlayer(e.target.value)}
+                              className="w-full bg-surface border border-surfaceVariant rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:border-primary"
+                              placeholder="Ej: 8"
+                            />
+                          </div>
                           {!atajadoSelected ? (
-                            <>
+                            <div className="flex flex-col gap-2">
                               <button className="text-xs font-black text-primary text-left py-4 px-5 rounded-xl bg-primary/5 border border-primary/10 flex items-center gap-4 uppercase" onClick={() => handleGoalClick(showPopup.targetGoal === 'TOP' ? { home: 1, away: 0 } : { home: 0, away: 1 }, showPopup.targetGoal === 'TOP' ? Possession.AWAY : Possession.HOME)}>🥅 GOL</button>
                               <button className="text-xs font-black text-dark text-left py-4 px-5 rounded-xl bg-surface border border-surfaceVariant flex items-center gap-4 uppercase" onClick={() => setAtajadoSelected(true)}>🛡️ ATAJADO</button>
-                              <button className="text-xs font-black text-onSurfaceVariant text-left py-4 px-5 rounded-xl bg-surface border border-surfaceVariant flex items-center gap-4 uppercase" onClick={() => updateLastEvent('DISPARO (DESVIADO)', "DESVIADO", undefined, Possession.AWAY)}>💨 DESVIADO</button>
-                            </>
+                              <button className="text-xs font-black text-onSurfaceVariant text-left py-4 px-5 rounded-xl bg-surface border border-surfaceVariant flex items-center gap-4 uppercase" onClick={() => updateLastEvent('DISPARO (DESVIADO)', `DESVIADO${foulPlayer ? ` - Jugador #${foulPlayer}` : ''}`, undefined, Possession.AWAY)}>💨 DESVIADO</button>
+                            </div>
                           ) : (
                             <div className="flex flex-col gap-2 animate-in slide-in-from-right duration-200">
                               <p className="text-[9px] font-black text-dark uppercase mb-1">¿Qué sucede con la posesión?</p>
-                              <button className="text-xs font-black text-green-600 text-left py-4 px-5 rounded-xl bg-green-50 border border-green-100 flex items-center gap-4 uppercase" onClick={() => updateLastEvent('DISPARO (ATAJADO)', "ATAJADO | Mantiene posesión", undefined, possession)}>📈 MANTIENE</button>
-                              <button className="text-xs font-black text-red-600 text-left py-4 px-5 rounded-xl bg-red-50 border border-red-100 flex items-center gap-4 uppercase" onClick={() => updateLastEvent('DISPARO (ATAJADO)', "ATAJADO | Pierde posesión", undefined, possession === Possession.HOME ? Possession.AWAY : Possession.HOME)}>📉 PIERDE</button>
+                              <button className="text-xs font-black text-green-600 text-left py-4 px-5 rounded-xl bg-green-50 border border-green-100 flex items-center gap-4 uppercase" onClick={() => updateLastEvent('DISPARO (ATAJADO)', `ATAJADO${foulPlayer ? ` (#${foulPlayer})` : ''} | Mantiene posesión`, undefined, possession)}>📈 MANTIENE</button>
+                              <button className="text-xs font-black text-red-600 text-left py-4 px-5 rounded-xl bg-red-50 border border-red-100 flex items-center gap-4 uppercase" onClick={() => updateLastEvent('DISPARO (ATAJADO)', `ATAJADO${foulPlayer ? ` (#${foulPlayer})` : ''} | Pierde posesión`, undefined, possession === Possession.HOME ? Possession.AWAY : Possession.HOME)}>📉 PIERDE</button>
                               <button className="text-[8px] font-black text-onSurfaceVariant uppercase mt-1 text-center py-1 hover:text-primary transition-colors" onClick={() => setAtajadoSelected(false)}>ATRÁS</button>
                             </div>
                           )}
-                        </>
+                        </div>
                       )}
-                      <button className="text-[8px] font-black text-onSurfaceVariant uppercase mt-1 text-center py-1 hover:text-primary transition-colors" onClick={() => setShowPopup(null)}>Cerrar</button>
+
+                      <button className="text-[8px] font-black text-onSurfaceVariant uppercase mt-1 text-center py-1 hover:text-primary transition-colors" onClick={() => { setShowPopup(null); setFoulCardType('NONE'); }}>Cerrar</button>
                     </div>
                   )}
 
@@ -1328,79 +1431,81 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
           )}
         </div>
 
-        {!isLandscape && (
-          <aside className="hidden lg:flex w-[320px] flex-col p-4 bg-white border-l border-surfaceVariant overflow-y-auto no-scrollbar">
-            <div className="flex flex-col gap-4 pb-10">
-              <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest border-b border-surfaceVariant pb-2 italic">Data Report Real-Time</h3>
+        {
+          !isLandscape && (
+            <aside className="hidden lg:flex w-[320px] flex-col p-4 bg-white border-l border-surfaceVariant overflow-y-auto no-scrollbar">
+              <div className="flex flex-col gap-4 pb-10">
+                <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest border-b border-surfaceVariant pb-2 italic">Data Report Real-Time</h3>
 
-              {/* Posesión Sidebar */}
-              <div className="bg-surface/50 p-4 rounded-[24px] border border-surfaceVariant shadow-inner">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-[8px] font-black text-onSurfaceVariant uppercase tracking-widest flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
-                    {localPct}%
-                  </span>
-                  <span className="text-[8px] font-black text-onSurfaceVariant uppercase tracking-widest flex items-center gap-1.5">
-                    {awayPct}%
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
-                  </span>
+                {/* Posesión Sidebar */}
+                <div className="bg-surface/50 p-4 rounded-[24px] border border-surfaceVariant shadow-inner">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[8px] font-black text-onSurfaceVariant uppercase tracking-widest flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
+                      {localPct}%
+                    </span>
+                    <span className="text-[8px] font-black text-onSurfaceVariant uppercase tracking-widest flex items-center gap-1.5">
+                      {awayPct}%
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
+                    </span>
+                  </div>
+                  <div className="w-full h-4 bg-surfaceVariant/20 rounded-full overflow-hidden flex border border-surfaceVariant/50">
+                    <div className="h-full transition-all duration-700" style={{ width: `${localPct}%`, backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
+                    <div className="h-full transition-all duration-700" style={{ width: `${awayPct}%`, backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
+                  </div>
                 </div>
-                <div className="w-full h-4 bg-surfaceVariant/20 rounded-full overflow-hidden flex border border-surfaceVariant/50">
-                  <div className="h-full transition-all duration-700" style={{ width: `${localPct}%`, backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
-                  <div className="h-full transition-all duration-700" style={{ width: `${awayPct}%`, backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
+
+                {/* Remates Sidebar */}
+                <div className="bg-surface/50 p-4 rounded-[24px] border border-surfaceVariant shadow-sm flex flex-col gap-3">
+                  <div className="flex justify-between items-center">
+                    <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest leading-none">Remates Totales</p>
+                    <span className="text-xl font-black text-dark leading-none">{getStat(['DISPARO'])}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5 border-t border-surfaceVariant pt-2">
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] font-black text-primary uppercase mb-0.5">Goles</span>
+                      <span className="text-[10px] font-black text-dark leading-none">{getStat(['GOL'])}</span>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] font-black text-onSurfaceVariant uppercase mb-0.5">Ata.</span>
+                      <span className="text-[10px] font-black text-dark leading-none">{getStat(['ATAJADO'])}</span>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] font-black text-onSurfaceVariant uppercase mb-0.5">Desv.</span>
+                      <span className="text-[10px] font-black text-dark leading-none">{getStat(['DESVIADO'])}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Desgloses Detallados Sidebar */}
+                <StatDetailCard title="Pérdidas" types={['PÉRDIDA']} colorClass="text-orange-600" compact={true} />
+                <StatDetailCard title="Recuperos" types={['RECUPERO']} colorClass="text-green-600" compact={true} />
+                <StatDetailCard title="Faltas Cometidas" types={['FALTA']} colorClass="text-red-600" compact={true} />
+
+                {/* Análisis de Pases Sidebar Horizontal */}
+                <div className="mt-2">
+                  <h3 className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest mb-3 italic">Análisis de Pases</h3>
+                  <div className="flex flex-row items-stretch gap-2 h-24">
+                    <div className="flex-1 bg-surface/50 p-2 rounded-2xl border border-surfaceVariant text-center shadow-inner flex flex-col justify-center">
+                      <p className="text-[7px] font-black text-onSurfaceVariant uppercase mb-0.5">Mín</p>
+                      <p className="text-lg font-black text-dark leading-none">{pMin}</p>
+                      {minPassEvent && <p className="text-[6px] font-bold text-onSurfaceVariant/40 mt-0.5 leading-none">{minPassEvent.gameTime}</p>}
+                    </div>
+                    <div className="flex-[1.2] bg-primary p-2 rounded-[20px] shadow-lg shadow-primary/10 text-center flex flex-col justify-center border border-white/10">
+                      <p className="text-[8px] font-black text-white/60 uppercase mb-0.5">Prom</p>
+                      <p className="text-2xl font-black text-white leading-none">{pAvg}</p>
+                    </div>
+                    <div className="flex-1 bg-surface/50 p-2 rounded-2xl border border-surfaceVariant text-center shadow-inner flex flex-col justify-center">
+                      <p className="text-[7px] font-black text-onSurfaceVariant uppercase mb-0.5">Máx</p>
+                      <p className="text-lg font-black text-dark leading-none">{pMax}</p>
+                      {maxPassEvent && <p className="text-[6px] font-bold text-onSurfaceVariant/40 mt-0.5 leading-none">{maxPassEvent.gameTime}</p>}
+                    </div>
+                  </div>
                 </div>
               </div>
-
-              {/* Remates Sidebar */}
-              <div className="bg-surface/50 p-4 rounded-[24px] border border-surfaceVariant shadow-sm flex flex-col gap-3">
-                <div className="flex justify-between items-center">
-                  <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest leading-none">Remates Totales</p>
-                  <span className="text-xl font-black text-dark leading-none">{getStat(['DISPARO'])}</span>
-                </div>
-                <div className="grid grid-cols-3 gap-1.5 border-t border-surfaceVariant pt-2">
-                  <div className="flex flex-col items-center">
-                    <span className="text-[7px] font-black text-primary uppercase mb-0.5">Goles</span>
-                    <span className="text-[10px] font-black text-dark leading-none">{getStat(['GOL'])}</span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <span className="text-[7px] font-black text-onSurfaceVariant uppercase mb-0.5">Ata.</span>
-                    <span className="text-[10px] font-black text-dark leading-none">{getStat(['ATAJADO'])}</span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <span className="text-[7px] font-black text-onSurfaceVariant uppercase mb-0.5">Desv.</span>
-                    <span className="text-[10px] font-black text-dark leading-none">{getStat(['DESVIADO'])}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Desgloses Detallados Sidebar */}
-              <StatDetailCard title="Pérdidas" types={['PÉRDIDA']} colorClass="text-orange-600" compact={true} />
-              <StatDetailCard title="Recuperos" types={['RECUPERO']} colorClass="text-green-600" compact={true} />
-              <StatDetailCard title="Faltas Cometidas" types={['FALTA']} colorClass="text-red-600" compact={true} />
-
-              {/* Análisis de Pases Sidebar Horizontal */}
-              <div className="mt-2">
-                <h3 className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest mb-3 italic">Análisis de Pases</h3>
-                <div className="flex flex-row items-stretch gap-2 h-24">
-                  <div className="flex-1 bg-surface/50 p-2 rounded-2xl border border-surfaceVariant text-center shadow-inner flex flex-col justify-center">
-                    <p className="text-[7px] font-black text-onSurfaceVariant uppercase mb-0.5">Mín</p>
-                    <p className="text-lg font-black text-dark leading-none">{pMin}</p>
-                    {minPassEvent && <p className="text-[6px] font-bold text-onSurfaceVariant/40 mt-0.5 leading-none">{minPassEvent.gameTime}</p>}
-                  </div>
-                  <div className="flex-[1.2] bg-primary p-2 rounded-[20px] shadow-lg shadow-primary/10 text-center flex flex-col justify-center border border-white/10">
-                    <p className="text-[8px] font-black text-white/60 uppercase mb-0.5">Prom</p>
-                    <p className="text-2xl font-black text-white leading-none">{pAvg}</p>
-                  </div>
-                  <div className="flex-1 bg-surface/50 p-2 rounded-2xl border border-surfaceVariant text-center shadow-inner flex flex-col justify-center">
-                    <p className="text-[7px] font-black text-onSurfaceVariant uppercase mb-0.5">Máx</p>
-                    <p className="text-lg font-black text-dark leading-none">{pMax}</p>
-                    {maxPassEvent && <p className="text-[6px] font-bold text-onSurfaceVariant/40 mt-0.5 leading-none">{maxPassEvent.gameTime}</p>}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </aside>
-        )}
+            </aside>
+          )
+        }
       </main>
 
       <footer className="h-20 md:h-24 bg-white flex flex-wrap items-center justify-between px-4 md:px-10 shrink-0 border-t border-surfaceVariant shadow-lg relative z-[200] gap-2">

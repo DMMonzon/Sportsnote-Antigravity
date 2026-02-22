@@ -48,6 +48,7 @@ export interface GameEvent {
   audioData?: string; // Base64 del audio grabado
   transcription?: string; // Texto transcrito por IA
   isTranscribing?: boolean; // Estado de carga de la transcripción
+  scoringTeam?: Possession; // Equipo que anotó (para goles)
 }
 
 export interface Game {
