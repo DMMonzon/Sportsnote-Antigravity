@@ -597,46 +597,65 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
     </div>
   );
 
+
   const StatDetailCard = ({ title, types, colorClass, showDetails = true, compact = false, teamId }: { title: string, types: string[], colorClass: string, showDetails?: boolean, compact?: boolean, teamId?: string }) => {
     const data = getDetailedStat(types, teamId);
+
+    const colorMap: { [key: string]: { text: string, bg: string, border: string, accent: string } } = {
+      'text-orange-600': { text: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-200', accent: 'text-orange-500' },
+      'text-emerald-600': { text: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', accent: 'text-emerald-500' },
+      'text-red-600': { text: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200', accent: 'text-red-500' },
+      'text-slate-700': { text: 'text-slate-700', bg: 'bg-slate-50', border: 'border-slate-200', accent: 'text-slate-500' },
+    };
+    const style = colorMap[colorClass] || colorMap['text-slate-700'];
+    const highlightBg = style.bg.replace('50', '100'); // Más intenso para el máximo
+
+    const halfValues = [data.own, data.rival].filter(v => v > 0);
+    const maxHalfVal = halfValues.length > 0 ? Math.max(...halfValues) : -1;
+    const isMaxHalf = (val: number) => val > 0 && val === maxHalfVal;
+
+    const laneValues = [data.left, data.center, data.right].filter(v => v > 0);
+    const maxLaneVal = laneValues.length > 0 ? Math.max(...laneValues) : -1;
+    const isMaxLane = (val: number) => val > 0 && val === maxLaneVal;
+
     return (
       <div className={`bg-surface/50 ${compact ? 'p-3 rounded-2xl' : 'p-5 rounded-[28px]'} border border-surfaceVariant shadow-sm flex flex-col ${compact ? 'gap-2' : 'gap-3'}`}>
         <div className={`flex justify-between items-center ${showDetails ? 'border-b border-surfaceVariant pb-2' : ''}`}>
           <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">{title}</p>
-          <span className={`${compact ? 'text-xl' : 'text-2xl'} font-black ${colorClass}`}>{data.total}</span>
+          <span className={`${compact ? 'text-xl' : 'text-2xl'} font-black ${style.text}`}>{data.total}</span>
         </div>
 
         {showDetails && (
           <>
             <div className="grid grid-cols-2 gap-2">
-              <div className="flex items-center gap-2 bg-white/40 p-2 rounded-xl border border-surfaceVariant/30">
-                <span className="text-blue-500 text-[10px]">↓</span>
+              <div className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${isMaxHalf(data.own) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-white/40 border-surfaceVariant/30'}`}>
+                <span className={`${isMaxHalf(data.own) ? style.accent : 'text-blue-500'} text-[10px]`}>↓</span>
                 <div className="flex flex-col">
-                  <span className="text-[8px] text-onSurfaceVariant font-bold uppercase opacity-60 leading-none">Propio</span>
-                  <span className="text-[11px] font-black text-dark leading-none">{data.own}</span>
+                  <span className={`text-[8px] font-bold uppercase ${isMaxHalf(data.own) ? style.text : 'text-onSurfaceVariant opacity-60'} leading-none`}>Propio</span>
+                  <span className={`text-[11px] font-black leading-none ${isMaxHalf(data.own) ? style.text : 'text-dark'}`}>{data.own}</span>
                 </div>
               </div>
-              <div className="flex items-center gap-2 bg-white/40 p-2 rounded-xl border border-surfaceVariant/30">
-                <span className="text-orange-500 text-[10px]">↑</span>
+              <div className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${isMaxHalf(data.rival) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-white/40 border-surfaceVariant/30'}`}>
+                <span className={`${isMaxHalf(data.rival) ? style.accent : 'text-orange-500'} text-[10px]`}>↑</span>
                 <div className="flex flex-col">
-                  <span className="text-[8px] text-onSurfaceVariant font-bold uppercase opacity-60 leading-none">Rival</span>
-                  <span className="text-[11px] font-black text-dark leading-none">{data.rival}</span>
+                  <span className={`text-[8px] font-bold uppercase ${isMaxHalf(data.rival) ? style.text : 'text-onSurfaceVariant opacity-60'} leading-none`}>Rival</span>
+                  <span className={`text-[11px] font-black leading-none ${isMaxHalf(data.rival) ? style.text : 'text-dark'}`}>{data.rival}</span>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-1.5">
-              <div className="flex flex-col items-center bg-white/40 p-2 rounded-xl border border-surfaceVariant/30">
-                <span className="text-[7px] text-onSurfaceVariant font-black uppercase mb-0.5">Izq</span>
-                <span className="text-[10px] font-black text-dark">{data.left}</span>
+            <div className="grid grid-cols-3 gap-1.5 pt-1">
+              <div className={`flex flex-col items-center p-1.5 rounded-xl border transition-all ${isMaxLane(data.left) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-white/40 border-surfaceVariant/30'}`}>
+                <span className={`text-[7px] font-black uppercase mb-0.5 ${isMaxLane(data.left) ? style.text : 'text-onSurfaceVariant'}`}>Izq</span>
+                <span className={`text-[10px] font-black ${isMaxLane(data.left) ? style.text : 'text-dark'}`}>{data.left}</span>
               </div>
-              <div className="flex flex-col items-center bg-white/40 p-2 rounded-xl border border-surfaceVariant/30">
-                <span className="text-[7px] text-onSurfaceVariant font-black uppercase mb-0.5">Centro</span>
-                <span className="text-[10px] font-black text-dark">{data.center}</span>
+              <div className={`flex flex-col items-center p-1.5 rounded-xl border transition-all ${isMaxLane(data.center) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-white/40 border-surfaceVariant/30'}`}>
+                <span className={`text-[7px] font-black uppercase mb-0.5 ${isMaxLane(data.center) ? style.text : 'text-onSurfaceVariant'}`}>Ctr</span>
+                <span className={`text-[10px] font-black ${isMaxLane(data.center) ? style.text : 'text-dark'}`}>{data.center}</span>
               </div>
-              <div className="flex flex-col items-center bg-white/40 p-2 rounded-xl border border-surfaceVariant/30">
-                <span className="text-[7px] text-onSurfaceVariant font-black uppercase mb-0.5">Der</span>
-                <span className="text-[10px] font-black text-dark">{data.right}</span>
+              <div className={`flex flex-col items-center p-1.5 rounded-xl border transition-all ${isMaxLane(data.right) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-white/40 border-surfaceVariant/30'}`}>
+                <span className={`text-[7px] font-black uppercase mb-0.5 ${isMaxLane(data.right) ? style.text : 'text-onSurfaceVariant'}`}>Der</span>
+                <span className={`text-[10px] font-black ${isMaxLane(data.right) ? style.text : 'text-dark'}`}>{data.right}</span>
               </div>
             </div>
           </>
@@ -1187,12 +1206,10 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
                         </div>
                       </div>
 
-                      <StatDetailCard title="Recuperos" types={['RECUPERO']} colorClass="text-green-600" />
-                      <StatDetailCard title="Pérdidas" types={['PÉRDIDA']} colorClass="text-orange-600" />
-
-                      <div className="md:col-span-2">
-                        <StatDetailCard title="Faltas Cometidas" types={['FALTA']} colorClass="text-red-600" />
-                      </div>
+                      <StatDetailCard title="Pérdidas 📉" types={['PÉRDIDA']} colorClass="text-orange-600" />
+                      <StatDetailCard title="Recuperos 🛡️" types={['RECUPERO']} colorClass="text-emerald-600" />
+                      <StatDetailCard title="Faltas ⚠️" types={['FALTA']} colorClass="text-red-600" />
+                      <StatDetailCard title="Remates 🥅" types={['DISPARO']} colorClass="text-slate-700" />
                     </div>
 
                     <div className="mt-8 mb-6">

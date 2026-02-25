@@ -5,9 +5,9 @@ import { Game, UserRole, GameEvent, Possession } from '../types';
 import { dbService } from '../services/dbService';
 import { Button } from '../components/Button';
 import { GameField } from '../components/GameField';
-import { 
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, 
-  LineChart, Line, CartesianGrid, Legend 
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  LineChart, Line, CartesianGrid, Legend
 } from 'recharts';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -18,7 +18,7 @@ const SummaryView: React.FC = () => {
   const [game, setGame] = useState<Game | null>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
-  
+
   // Filtros para el Mapa de Calor
   const [actionFilter, setActionFilter] = useState<'ALL' | 'DISPARO' | 'FALTA' | 'PÉRDIDA' | 'RECUPERO'>('ALL');
   const [periodFilter, setPeriodFilter] = useState<'ALL' | 1 | 2 | 3 | 4>('ALL');
@@ -51,11 +51,11 @@ const SummaryView: React.FC = () => {
           const match = e.details?.match(/\((\d+) pases\)/);
           return match ? parseInt(match[1]) : 0;
         });
-      
-      const avg = periodPasses.length > 0 
+
+      const avg = periodPasses.length > 0
         ? (periodPasses.reduce((a, b) => a + b, 0) / periodPasses.length)
         : 0;
-      
+
       return { name: p, pases: parseFloat(avg.toFixed(1)) };
     });
   }, [game]);
@@ -80,7 +80,7 @@ const SummaryView: React.FC = () => {
 
   // --- Lógica de Estadísticas Detalladas ---
   const getDetailedStat = (types: string[], teamId: string) => {
-    const events = game.events.filter(e => 
+    const events = game.events.filter(e =>
       e.teamId === teamId && types.some(t => e.type.toUpperCase().includes(t.toUpperCase()))
     );
 
@@ -126,10 +126,11 @@ const SummaryView: React.FC = () => {
     </div>
   );
 
+
   // --- Exportar PDF Profesional ---
   const handleDownloadPDF = async () => {
     if (!reportRef.current || isGeneratingPDF) return;
-    
+
     setIsGeneratingPDF(true);
     try {
       const element = reportRef.current;
@@ -140,27 +141,27 @@ const SummaryView: React.FC = () => {
         backgroundColor: '#f4f4f7',
         ignoreElements: (el) => el.hasAttribute('data-html2canvas-ignore')
       });
-      
+
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
-      
+
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-      
+
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
       const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-      
+
       const finalWidth = imgWidth * ratio;
       const finalHeight = imgHeight * ratio;
-      
+
       const xOffset = (pdfWidth - finalWidth) / 2;
-      
+
       pdf.addImage(imgData, 'PNG', xOffset, 10, finalWidth, finalHeight);
-      
+
       const dateStr = new Date().toISOString().split('T')[0];
       const fileName = `Reporte_${game.teamHome.name}_vs_${game.teamAway.name}_${dateStr}.pdf`.replace(/\s+/g, '_');
-      
+
       pdf.save(fileName);
     } catch (error) {
       console.error("Error generating PDF:", error);
@@ -219,9 +220,9 @@ const SummaryView: React.FC = () => {
                 ))}
               </div>
             </div>
-            
+
             <div className="flex flex-col items-center">
-               <div className="w-10 h-10 rounded-full bg-surface flex items-center justify-center font-black text-onSurfaceVariant text-xs border border-surfaceVariant shadow-inner">VS</div>
+              <div className="w-10 h-10 rounded-full bg-surface flex items-center justify-center font-black text-onSurfaceVariant text-xs border border-surfaceVariant shadow-inner">VS</div>
             </div>
 
             <div className="flex-1 text-right">
@@ -247,23 +248,23 @@ const SummaryView: React.FC = () => {
           </h3>
           <div className="flex flex-col md:flex-row gap-4">
             {/* Equipo Local */}
-            <div className="flex-1 bg-primary/5 rounded-[24px] p-5 border border-primary/10">
+            <div className="flex-1 bg-surface rounded-[24px] p-5 border border-surfaceVariant/50">
               <div className="flex justify-between items-center mb-4">
-                <span className="text-[9px] font-black text-primary uppercase tracking-widest">Realizados</span>
-                <span className="text-3xl font-black text-primary">{homeShots.total}</span>
+                <span className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">Local</span>
+                <span className="text-3xl font-black text-dark">{homeShots.total}</span>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-2 mb-4">
                 <div className="text-center">
                   <p className="text-[7px] font-black text-onSurfaceVariant/60 uppercase">Gol</p>
-                  <p className="text-sm font-black text-primary">{homeShots.goals}</p>
+                  <p className="text-sm font-black text-slate-700">{homeShots.goals}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-[7px] font-black text-onSurfaceVariant/60 uppercase">Atajado</p>
-                  <p className="text-sm font-black text-primary">{homeShots.saved}</p>
+                  <p className="text-sm font-black text-slate-700">{homeShots.saved}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-[7px] font-black text-onSurfaceVariant/60 uppercase">Desv.</p>
-                  <p className="text-sm font-black text-primary">{homeShots.missed}</p>
+                  <p className="text-sm font-black text-slate-700">{homeShots.missed}</p>
                 </div>
               </div>
               <PeriodRow periods={homeShots.periods} />
@@ -301,44 +302,69 @@ const SummaryView: React.FC = () => {
           <h3 className="text-xs font-black uppercase text-onSurfaceVariant mb-6 italic">Balance de Acciones (Local)</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
-              { label: 'Pérdidas', types: ['PÉRDIDA'], color: 'text-orange-600' },
-              { label: 'Recuperos', types: ['RECUPERO'], color: 'text-emerald-600' },
-              { label: 'Faltas', types: ['FALTA'], color: 'text-red-600' }
+              { label: 'Pérdidas 📉', types: ['PÉRDIDA'], color: 'text-orange-600' },
+              { label: 'Recuperos 🛡️', types: ['RECUPERO'], color: 'text-emerald-600' },
+              { label: 'Faltas ⚠️', types: ['FALTA'], color: 'text-red-600' }
             ].map(stat => {
               const data = getDetailedStat(stat.types, game.teamHome.id);
+
+              const colorMap: { [key: string]: { text: string, bg: string, border: string, accent: string } } = {
+                'text-orange-600': { text: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-200', accent: 'text-orange-500' },
+                'text-emerald-600': { text: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', accent: 'text-emerald-500' },
+                'text-red-600': { text: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200', accent: 'text-red-500' },
+                'text-slate-700': { text: 'text-slate-700', bg: 'bg-slate-50', border: 'border-slate-200', accent: 'text-slate-500' },
+              };
+
+              const style = colorMap[stat.color] || colorMap['text-slate-700'];
+              const highlightBg = style.bg.replace('50', '100'); // Más intenso para el máximo
+
+              const halfValues = [data.own, data.rival].filter(v => v > 0);
+              const maxHalfVal = halfValues.length > 0 ? Math.max(...halfValues) : -1;
+              const isMaxHalf = (val: number) => val > 0 && val === maxHalfVal;
+
+              const laneValues = [data.left, data.center, data.right].filter(v => v > 0);
+              const maxLaneVal = laneValues.length > 0 ? Math.max(...laneValues) : -1;
+              const isMaxLane = (val: number) => val > 0 && val === maxLaneVal;
+
               return (
                 <div key={stat.label} className="bg-surface/30 p-5 rounded-[28px] border border-surfaceVariant flex flex-col gap-2">
                   <div className="flex justify-between items-center border-b border-surfaceVariant pb-2">
                     <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">{stat.label}</p>
-                    <span className={`text-2xl font-black ${stat.color}`}>{data.total}</span>
+                    <span className={`text-2xl font-black ${style.text}`}>{data.total}</span>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-2 mt-1">
-                    <div className="bg-white p-2 rounded-xl border border-surfaceVariant/50 text-center">
-                      <p className="text-[7px] font-black opacity-40 uppercase">Propio</p>
-                      <p className="text-xs font-black">{data.own}</p>
+                    <div className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${isMaxHalf(data.own) ? `${highlightBg} ${style.border} shadow-sm scale-[1.02]` : 'bg-white/40 border-surfaceVariant/30'}`}>
+                      <span className={`${isMaxHalf(data.own) ? style.accent : 'text-blue-500'} text-[10px]`}>↓</span>
+                      <div className="flex flex-col">
+                        <span className={`text-[8px] font-bold uppercase ${isMaxHalf(data.own) ? style.text : 'text-onSurfaceVariant opacity-60'} leading-none`}>Propio</span>
+                        <span className={`text-[11px] font-black leading-none ${isMaxHalf(data.own) ? style.text : 'text-dark'}`}>{data.own}</span>
+                      </div>
                     </div>
-                    <div className="bg-white p-2 rounded-xl border border-surfaceVariant/50 text-center">
-                      <p className="text-[7px] font-black opacity-40 uppercase">Rival</p>
-                      <p className="text-xs font-black">{data.rival}</p>
+                    <div className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${isMaxHalf(data.rival) ? `${highlightBg} ${style.border} shadow-sm scale-[1.02]` : 'bg-white/40 border-surfaceVariant/30'}`}>
+                      <span className={`${isMaxHalf(data.rival) ? style.accent : 'text-orange-500'} text-[10px]`}>↑</span>
+                      <div className="flex flex-col">
+                        <span className={`text-[8px] font-bold uppercase ${isMaxHalf(data.rival) ? style.text : 'text-onSurfaceVariant opacity-60'} leading-none`}>Rival</span>
+                        <span className={`text-[11px] font-black leading-none ${isMaxHalf(data.rival) ? style.text : 'text-dark'}`}>{data.rival}</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-1">
-                    <div className="text-center bg-white/60 p-1.5 rounded-lg border border-surfaceVariant/40">
-                      <p className="text-[6px] font-black opacity-30 uppercase">IZQ</p>
-                      <p className="text-[10px] font-black">{data.left}</p>
+                  <div className="grid grid-cols-3 gap-1.5 pt-1">
+                    <div className={`flex flex-col items-center p-1.5 rounded-xl border transition-all ${isMaxLane(data.left) ? `${highlightBg} ${style.border} shadow-sm scale-[1.02]` : 'bg-white/40 border-surfaceVariant/30'}`}>
+                      <p className={`text-[7px] font-black uppercase mb-0.5 ${isMaxLane(data.left) ? style.text : 'text-onSurfaceVariant'}`}>Izq</p>
+                      <p className={`text-[10px] font-black ${isMaxLane(data.left) ? style.text : 'text-dark'}`}>{data.left}</p>
                     </div>
-                    <div className="text-center bg-white/60 p-1.5 rounded-lg border border-surfaceVariant/40">
-                      <p className="text-[6px] font-black opacity-30 uppercase">CTR</p>
-                      <p className="text-[10px] font-black">{data.center}</p>
+                    <div className={`flex flex-col items-center p-1.5 rounded-xl border transition-all ${isMaxLane(data.center) ? `${highlightBg} ${style.border} shadow-sm scale-[1.02]` : 'bg-white/40 border-surfaceVariant/30'}`}>
+                      <p className={`text-[7px] font-black uppercase mb-0.5 ${isMaxLane(data.center) ? style.text : 'text-onSurfaceVariant'}`}>Ctr</p>
+                      <p className={`text-[10px] font-black ${isMaxLane(data.center) ? style.text : 'text-dark'}`}>{data.center}</p>
                     </div>
-                    <div className="text-center bg-white/60 p-1.5 rounded-lg border border-surfaceVariant/40">
-                      <p className="text-[6px] font-black opacity-30 uppercase">DER</p>
-                      <p className="text-[10px] font-black">{data.right}</p>
+                    <div className={`flex flex-col items-center p-1.5 rounded-xl border transition-all ${isMaxLane(data.right) ? `${highlightBg} ${style.border} shadow-sm scale-[1.02]` : 'bg-white/40 border-surfaceVariant/30'}`}>
+                      <p className={`text-[7px] font-black uppercase mb-0.5 ${isMaxLane(data.right) ? style.text : 'text-onSurfaceVariant'}`}>Der</p>
+                      <p className={`text-[10px] font-black ${isMaxLane(data.right) ? style.text : 'text-dark'}`}>{data.right}</p>
                     </div>
                   </div>
-                  
+
                   <PeriodRow periods={data.periods} />
                 </div>
               );
@@ -353,10 +379,10 @@ const SummaryView: React.FC = () => {
               Distribución Táctica (Heatmap)
               <div className="h-px w-12 bg-surfaceVariant"></div>
             </h3>
-            
+
             <div className="flex flex-wrap gap-2">
-              <select 
-                value={actionFilter} 
+              <select
+                value={actionFilter}
                 onChange={(e) => setActionFilter(e.target.value as any)}
                 className="text-[10px] font-black uppercase bg-surface border border-surfaceVariant rounded-lg px-2 py-1 outline-none"
               >
@@ -366,8 +392,8 @@ const SummaryView: React.FC = () => {
                 <option value="PÉRDIDA">Pérdidas</option>
                 <option value="RECUPERO">Recuperos</option>
               </select>
-              <select 
-                value={periodFilter} 
+              <select
+                value={periodFilter}
                 onChange={(e) => setPeriodFilter(e.target.value === 'ALL' ? 'ALL' : parseInt(e.target.value) as any)}
                 className="text-[10px] font-black uppercase bg-surface border border-surfaceVariant rounded-lg px-2 py-1 outline-none"
               >
@@ -379,14 +405,14 @@ const SummaryView: React.FC = () => {
               </select>
             </div>
           </div>
-          
+
           <GameField showHeatmap events={filteredEvents} />
-          
+
           <div className="mt-4 flex justify-center gap-4">
-             <div className="flex items-center gap-1.5">
-               <div className="w-2.5 h-2.5 rounded-full bg-white border border-surfaceVariant shadow-sm"></div>
-               <span className="text-[8px] font-black text-onSurfaceVariant uppercase tracking-widest">Actividad Registrada</span>
-             </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-white border border-surfaceVariant shadow-sm"></div>
+              <span className="text-[8px] font-black text-onSurfaceVariant uppercase tracking-widest">Actividad Registrada</span>
+            </div>
           </div>
         </section>
 
@@ -399,15 +425,15 @@ const SummaryView: React.FC = () => {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={10} stroke="#94a3b8" />
                 <YAxis axisLine={false} tickLine={false} fontSize={10} stroke="#94a3b8" />
-                <Tooltip 
-                  contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '10px'}}
-                  labelStyle={{fontWeight: 'bold', color: '#6d5dfc'}}
+                <Tooltip
+                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '10px' }}
+                  labelStyle={{ fontWeight: 'bold', color: '#6d5dfc' }}
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="pases" 
-                  stroke="#6d5dfc" 
-                  strokeWidth={4} 
+                <Line
+                  type="monotone"
+                  dataKey="pases"
+                  stroke="#6d5dfc"
+                  strokeWidth={4}
                   dot={{ r: 6, fill: '#6d5dfc', strokeWidth: 2, stroke: '#fff' }}
                 />
               </LineChart>
@@ -430,9 +456,9 @@ const SummaryView: React.FC = () => {
       {/* Botones de acción */}
       <div className="flex flex-col gap-4">
         <div className="flex gap-3">
-          <Button 
-            variant="outline" 
-            className="flex-1 bg-white border-surfaceVariant text-dark h-14" 
+          <Button
+            variant="outline"
+            className="flex-1 bg-white border-surfaceVariant text-dark h-14"
             onClick={handleDownloadPDF}
             disabled={isGeneratingPDF}
           >
