@@ -11,17 +11,18 @@ interface LoginViewProps {
 const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-8 bg-surface">
-      <div className="w-20 h-20 bg-primary rounded-[28px] mb-8 flex items-center justify-center shadow-lg shadow-primary/20 rotate-12">
-        <span className="text-onPrimary text-4xl">🏑</span>
-      </div>
-      <h1 className="contrail-font text-5xl text-onSurface mb-2">SPORTNOTE</h1>
+      <img
+        src="/assets/logoLargoSN.svg"
+        alt="Sportsnote Logo"
+        className="w-64 md:w-80 h-auto mb-10 drop-shadow-xl"
+      />
       <p className="contrail-font text-onSurfaceVariant mb-12 text-center text-lg leading-tight tracking-wide">Registra, Analiza, Comparte.</p>
-      
+
       <div className="w-full max-w-xs flex flex-col gap-4">
         {ROLES.map((role) => (
-          <Button 
-            key={role.id} 
-            variant="tonal" 
+          <Button
+            key={role.id}
+            variant="tonal"
             className="w-full h-16 flex-row justify-start pl-8 gap-6 rounded-[28px] border-surfaceVariant"
             onClick={() => onLogin(role.id)}
           >
@@ -33,9 +34,9 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
           </Button>
         ))}
       </div>
-      
+
       <p className="mt-16 text-[10px] text-onSurfaceVariant opacity-60 font-black tracking-widest uppercase">v1.4.0 Material Edition</p>
-    </div>
+    </div >
   );
 };
 

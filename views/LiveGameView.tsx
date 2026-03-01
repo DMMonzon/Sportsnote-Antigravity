@@ -7,15 +7,11 @@ import { aiService } from '../services/aiService';
 
 const NSeparator = () => (
   <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center shrink-0">
-    <svg viewBox="0 0 100 150" className="w-full h-full drop-shadow-[0_2px_4px_rgba(0,0,0,0.1)]">
-      <path
-        d="M20,130 L20,30 C20,20 30,15 35,20 L75,85 L75,25 L55,25 L80,0 L105,25 L85,25 L85,120 C85,130 75,135 70,130 L30,65 L30,125 L45,125 L25,150 L5,125 L20,125 Z"
-        fill="#6d5dfc"
-        stroke="#131041"
-        strokeWidth="4"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <img
+      src="/assets/logo-sportsnote-v2.png"
+      alt="Sportsnote Logo"
+      className="w-full h-full object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.1)]"
+    />
   </div>
 );
 
@@ -598,7 +594,7 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
   );
 
 
-  const StatDetailCard = ({ title, types, colorClass, showDetails = true, compact = false, teamId }: { title: string, types: string[], colorClass: string, showDetails?: boolean, compact?: boolean, teamId?: string }) => {
+  const StatDetailCard = ({ title, types, colorClass, showDetails = true, compact = false, teamId, icon }: { title: string, types: string[], colorClass: string, showDetails?: boolean, compact?: boolean, teamId?: string, icon?: string }) => {
     const data = getDetailedStat(types, teamId);
 
     const colorMap: { [key: string]: { text: string, bg: string, border: string, accent: string } } = {
@@ -621,8 +617,11 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
     return (
       <div className={`bg-surface/50 ${compact ? 'p-3 rounded-2xl' : 'p-5 rounded-[28px]'} border border-surfaceVariant shadow-sm flex flex-col ${compact ? 'gap-2' : 'gap-3'}`}>
         <div className={`flex justify-between items-center ${showDetails ? 'border-b border-surfaceVariant pb-2' : ''}`}>
-          <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">{title}</p>
-          <span className={`${compact ? 'text-xl' : 'text-2xl'} font-black ${style.text}`}>{data.total}</span>
+          <div className="flex items-center gap-2">
+            {icon && <span className="text-xs">{icon}</span>}
+            <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">{title}</p>
+          </div>
+          <span className={`${compact ? 'text-xl' : 'text-2xl'} font-black text-dark`}>{data.total}</span>
         </div>
 
         {showDetails && (
@@ -632,14 +631,14 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
                 <span className={`${isMaxHalf(data.own) ? style.accent : 'text-blue-500'} text-[10px]`}>↓</span>
                 <div className="flex flex-col">
                   <span className={`text-[8px] font-bold uppercase ${isMaxHalf(data.own) ? style.text : 'text-onSurfaceVariant opacity-60'} leading-none`}>Propio</span>
-                  <span className={`text-[11px] font-black leading-none ${isMaxHalf(data.own) ? style.text : 'text-dark'}`}>{data.own}</span>
+                  <span className="text-[11px] font-black leading-none text-dark">{data.own}</span>
                 </div>
               </div>
               <div className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${isMaxHalf(data.rival) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-white/40 border-surfaceVariant/30'}`}>
                 <span className={`${isMaxHalf(data.rival) ? style.accent : 'text-orange-500'} text-[10px]`}>↑</span>
                 <div className="flex flex-col">
                   <span className={`text-[8px] font-bold uppercase ${isMaxHalf(data.rival) ? style.text : 'text-onSurfaceVariant opacity-60'} leading-none`}>Rival</span>
-                  <span className={`text-[11px] font-black leading-none ${isMaxHalf(data.rival) ? style.text : 'text-dark'}`}>{data.rival}</span>
+                  <span className="text-[11px] font-black leading-none text-dark">{data.rival}</span>
                 </div>
               </div>
             </div>
@@ -647,15 +646,15 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
             <div className="grid grid-cols-3 gap-1.5 pt-1">
               <div className={`flex flex-col items-center p-1.5 rounded-xl border transition-all ${isMaxLane(data.left) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-white/40 border-surfaceVariant/30'}`}>
                 <span className={`text-[7px] font-black uppercase mb-0.5 ${isMaxLane(data.left) ? style.text : 'text-onSurfaceVariant'}`}>Izq</span>
-                <span className={`text-[10px] font-black ${isMaxLane(data.left) ? style.text : 'text-dark'}`}>{data.left}</span>
+                <span className="text-[10px] font-black text-dark">{data.left}</span>
               </div>
               <div className={`flex flex-col items-center p-1.5 rounded-xl border transition-all ${isMaxLane(data.center) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-white/40 border-surfaceVariant/30'}`}>
                 <span className={`text-[7px] font-black uppercase mb-0.5 ${isMaxLane(data.center) ? style.text : 'text-onSurfaceVariant'}`}>Ctr</span>
-                <span className={`text-[10px] font-black ${isMaxLane(data.center) ? style.text : 'text-dark'}`}>{data.center}</span>
+                <span className="text-[10px] font-black text-dark">{data.center}</span>
               </div>
               <div className={`flex flex-col items-center p-1.5 rounded-xl border transition-all ${isMaxLane(data.right) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-white/40 border-surfaceVariant/30'}`}>
                 <span className={`text-[7px] font-black uppercase mb-0.5 ${isMaxLane(data.right) ? style.text : 'text-onSurfaceVariant'}`}>Der</span>
-                <span className={`text-[10px] font-black ${isMaxLane(data.right) ? style.text : 'text-dark'}`}>{data.right}</span>
+                <span className="text-[10px] font-black text-dark">{data.right}</span>
               </div>
             </div>
           </>
@@ -1452,7 +1451,7 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
           !isLandscape && (
             <aside className="hidden lg:flex w-[320px] flex-col p-4 bg-white border-l border-surfaceVariant overflow-y-auto no-scrollbar">
               <div className="flex flex-col gap-4 pb-10">
-                <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest border-b border-surfaceVariant pb-2 italic">Data Report Real-Time</h3>
+                <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest border-b border-surfaceVariant pb-2 italic">Estadísticas En vivo</h3>
 
                 {/* Posesión Sidebar */}
                 <div className="bg-surface/50 p-4 rounded-[24px] border border-surfaceVariant shadow-inner">
@@ -1474,30 +1473,60 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
 
                 {/* Remates Sidebar */}
                 <div className="bg-surface/50 p-4 rounded-[24px] border border-surfaceVariant shadow-sm flex flex-col gap-3">
-                  <div className="flex justify-between items-center">
-                    <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest leading-none">Remates Totales</p>
-                    <span className="text-xl font-black text-dark leading-none">{getStat(['DISPARO'])}</span>
+                  <div className="flex justify-between items-center border-b border-surfaceVariant pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs">🥅</span>
+                      <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest leading-none">Remates Totales</p>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-xl font-black px-2 rounded-lg transition-all ${landscapeShots.home > landscapeShots.away ? 'bg-primary/10 text-dark border border-primary/20 shadow-sm' : 'text-dark opacity-40'}`}>{landscapeShots.home}</span>
+                      <span className="text-xs font-bold text-onSurfaceVariant/40">/</span>
+                      <span className={`text-xl font-black px-2 rounded-lg transition-all ${landscapeShots.away > landscapeShots.home ? 'bg-primary/10 text-dark border border-primary/20 shadow-sm' : 'text-dark opacity-40'}`}>{landscapeShots.away}</span>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-1.5 border-t border-surfaceVariant pt-2">
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] font-black text-primary uppercase mb-0.5">Goles</span>
-                      <span className="text-[10px] font-black text-dark leading-none">{getStat(['GOL'])}</span>
+                  {/* Detalle Local */}
+                  <div className="flex items-center gap-3 py-1 border-b border-surfaceVariant/30">
+                    <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
+                    <div className="grid grid-cols-3 flex-1 gap-2">
+                      <div className="flex items-center gap-1">
+                        <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Gol:</span>
+                        <span className="text-[10px] font-black text-dark leading-none">{getStat(['GOL'], game.teamHome.id)}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Ata:</span>
+                        <span className="text-[10px] font-black text-dark leading-none">{getStat(['ATAJADO'], game.teamHome.id)}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Des:</span>
+                        <span className="text-[10px] font-black text-dark leading-none">{getStat(['DESVIADO'], game.teamHome.id)}</span>
+                      </div>
                     </div>
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] font-black text-onSurfaceVariant uppercase mb-0.5">Ata.</span>
-                      <span className="text-[10px] font-black text-dark leading-none">{getStat(['ATAJADO'])}</span>
-                    </div>
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] font-black text-onSurfaceVariant uppercase mb-0.5">Desv.</span>
-                      <span className="text-[10px] font-black text-dark leading-none">{getStat(['DESVIADO'])}</span>
+                  </div>
+
+                  {/* Detalle Visitante */}
+                  <div className="flex items-center gap-3 py-1">
+                    <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
+                    <div className="grid grid-cols-3 flex-1 gap-2">
+                      <div className="flex items-center gap-1">
+                        <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Gol:</span>
+                        <span className="text-[10px] font-black text-dark leading-none">{getStat(['GOL'], game.teamAway.id)}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Ata:</span>
+                        <span className="text-[10px] font-black text-dark leading-none">{getStat(['ATAJADO'], game.teamAway.id)}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Des:</span>
+                        <span className="text-[10px] font-black text-dark leading-none">{getStat(['DESVIADO'], game.teamAway.id)}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Desgloses Detallados Sidebar */}
-                <StatDetailCard title="Pérdidas" types={['PÉRDIDA']} colorClass="text-orange-600" compact={true} />
-                <StatDetailCard title="Recuperos" types={['RECUPERO']} colorClass="text-green-600" compact={true} />
-                <StatDetailCard title="Faltas Cometidas" types={['FALTA']} colorClass="text-red-600" compact={true} />
+                <StatDetailCard title="Pérdidas" types={['PÉRDIDA']} colorClass="text-orange-600" compact={true} icon="📉" />
+                <StatDetailCard title="Recuperos" types={['RECUPERO']} colorClass="text-emerald-600" compact={true} icon="📈" />
+                <StatDetailCard title="Faltas" types={['FALTA']} colorClass="text-red-600" compact={true} icon="⚠️" />
 
                 {/* Análisis de Pases Sidebar Horizontal */}
                 <div className="mt-2">

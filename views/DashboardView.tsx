@@ -21,10 +21,10 @@ const ActionCard: React.FC<ActionCardProps> = ({ title, subtitle, description, c
     <div className="absolute -right-8 -bottom-8 w-64 h-64 text-white/5 group-hover:scale-110 group-hover:-rotate-12 transition-all duration-700 pointer-events-none">
       {bgIcon}
     </div>
-    
+
     {/* FILA PRINCIPAL: Responsiva (Columna en móvil, Fila en tablet/desktop) */}
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 relative z-10 w-full border-b border-white/10 pb-5 lg:pb-6">
-      
+
       {/* Bloque 1: Identidad (Icono + Textos) - SIEMPRE flex-row e items-center según última petición */}
       <div className="flex flex-row items-center gap-4 shrink-0">
         <div className="w-12 h-12 bg-white/20 backdrop-blur-lg rounded-2xl flex items-center justify-center text-white shadow-inner border border-white/20 shrink-0">
@@ -50,7 +50,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ title, subtitle, description, c
       <div className="hidden md:block w-px h-12 bg-white/20"></div>
 
       {/* Bloque 3: Botón de Acción Principal - Ubicado debajo de todo en móvil para maximizar espacio */}
-      <button 
+      <button
         onClick={onClick}
         className="w-full md:w-auto mt-2 md:mt-0 shrink-0 bg-white text-dark px-6 py-4 md:py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brandDark hover:text-white transition-all duration-300 shadow-xl active:scale-95 flex items-center justify-center gap-2"
       >
@@ -83,8 +83,8 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, games, onLogout }) 
 
   const statsData = useMemo(() => {
     const allChains = games.flatMap(g => g.passChains);
-    const avgChains = allChains.length > 0 
-      ? (allChains.reduce((a, b) => a + b, 0) / allChains.length).toFixed(1) 
+    const avgChains = allChains.length > 0
+      ? (allChains.reduce((a, b) => a + b, 0) / allChains.length).toFixed(1)
       : "0.0";
 
     const goals = games.flatMap(g => g.events).filter(e => e.type.includes('GOL'));
@@ -97,16 +97,14 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, games, onLogout }) 
   return (
     <div className="min-h-screen w-full flex flex-col bg-surface overflow-y-auto no-scrollbar pb-16">
       <header className="sticky top-0 z-50 flex justify-between items-center px-6 py-3 bg-white/80 backdrop-blur-xl border-b border-surfaceVariant shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/20 rotate-12 group hover:rotate-0 transition-transform cursor-pointer">
-            <span className="text-lg font-black">S</span>
-          </div>
-          <div>
-            <h1 className="contrail-font text-lg text-dark uppercase tracking-tight leading-none">SportsNote</h1>
-            <p className="text-[9px] font-black text-primary uppercase mt-0.5 tracking-[1px]">Elite Pro Engine</p>
-          </div>
+        <div className="flex items-center">
+          <img
+            src="/assets/logoLargoSN.svg"
+            alt="Sportsnote Logo"
+            className="h-8 md:h-9 w-auto"
+          />
         </div>
-        
+
         <div className="flex items-center gap-3">
           <div className="hidden sm:block text-right">
             <p className="text-[10px] font-black text-dark leading-none">{user.name}</p>
@@ -119,7 +117,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, games, onLogout }) 
       </header>
 
       <main className="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full flex flex-col gap-8">
-        
+
         <section className="flex justify-between items-end border-b border-surfaceVariant pb-4">
           <div>
             <h2 className="contrail-font text-3xl text-dark uppercase tracking-tighter">Panel de Control</h2>
@@ -128,17 +126,17 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, games, onLogout }) 
         </section>
 
         <section className="flex flex-col gap-6">
-          
+
           {/* TARJETA 1: PANEL DE JUEGOS */}
-          <ActionCard 
-            title="Panel de Juegos" 
+          <ActionCard
+            title="Panel de Juegos"
             subtitle={`${games.length} registrados`}
             description="Control total sobre el registro de eventos tácticos, goles y faltas en tiempo real para análisis inmediato de rendimiento."
             ctaText="iniciar juego nuevo"
             colorClass="bg-primary shadow-primary/30"
             onClick={() => navigate('/new-game')}
             icon={<span className="text-2xl">🏟️</span>}
-            bgIcon={<svg fill="currentColor" viewBox="0 0 24 24" className="w-full h-full"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-12h2v6h-2zm0 8h2v2h-2z"/></svg>}
+            bgIcon={<svg fill="currentColor" viewBox="0 0 24 24" className="w-full h-full"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-12h2v6h-2zm0 8h2v2h-2z" /></svg>}
           >
             {/* Sub-card 1: Historial */}
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-5 flex flex-col justify-between">
@@ -165,7 +163,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, games, onLogout }) 
               <div>
                 <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-3 italic">Agenda Próxima</p>
                 <div className="space-y-2 mb-4">
-                  {[ { r: 'Lions Club', d: '24/05' }, { r: 'Tigres HC', d: '28/05' } ].map((g, i) => (
+                  {[{ r: 'Lions Club', d: '24/05' }, { r: 'Tigres HC', d: '28/05' }].map((g, i) => (
                     <div key={i} className="flex items-center justify-between bg-white/5 p-2 rounded-xl text-[10px] text-white font-bold">
                       <span className="truncate w-24">vs {g.r}</span>
                       <span className="opacity-60">{g.d}</span>
@@ -182,15 +180,15 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, games, onLogout }) 
           </ActionCard>
 
           {/* TARJETA 2: GESTIÓN DE EQUIPO */}
-          <ActionCard 
-            title="Gestión de Equipo" 
+          <ActionCard
+            title="Gestión de Equipo"
             subtitle="18 jugadores"
             description="Administra los perfiles de tus jugadores, gestiona dorsales y revisa la disponibilidad de tu plantilla en tiempo real."
             ctaText="gestionar mi plantel"
             colorClass="bg-emerald-800 shadow-emerald-900/40"
-            onClick={() => {}}
+            onClick={() => { }}
             icon={<span className="text-2xl">👥</span>}
-            bgIcon={<svg fill="currentColor" viewBox="0 0 24 24" className="w-full h-full"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>}
+            bgIcon={<svg fill="currentColor" viewBox="0 0 24 24" className="w-full h-full"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg>}
           >
             {/* Sub-card 1: Jugadores */}
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 flex flex-col justify-between">
@@ -219,15 +217,15 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, games, onLogout }) 
           </ActionCard>
 
           {/* TARJETA 3: ESTADÍSTICAS PRO */}
-          <ActionCard 
-            title="Estadísticas Pro" 
+          <ActionCard
+            title="Estadísticas Pro"
             subtitle="Data Intelligence"
             description="Análisis avanzado sobre el volumen de pases y eficiencia ofensiva de tus jugadores basada en datos reales del campo."
             ctaText="Ver estadísticas"
             colorClass="bg-brandDark shadow-dark/30"
-            onClick={() => {}}
+            onClick={() => { }}
             icon={<span className="text-2xl">📈</span>}
-            bgIcon={<svg fill="currentColor" viewBox="0 0 24 24" className="w-full h-full"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>}
+            bgIcon={<svg fill="currentColor" viewBox="0 0 24 24" className="w-full h-full"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" /></svg>}
           >
             {/* Sub-card 1: Pases */}
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 flex flex-col justify-center text-center">
@@ -244,15 +242,15 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, games, onLogout }) 
           </ActionCard>
 
           {/* TARJETA 4: CONFIGURACIÓN */}
-          <ActionCard 
-            title="Configuración" 
+          <ActionCard
+            title="Configuración"
             subtitle="sistema operativo"
             description="Modifica los parámetros reglamentarios del deporte y administra tus listas de contactos para envíos automáticos."
             ctaText="configurar deporte"
             colorClass="bg-slate-600 shadow-slate-300/30"
-            onClick={() => {}}
+            onClick={() => { }}
             icon={<span className="text-2xl">⚙️</span>}
-            bgIcon={<svg fill="currentColor" viewBox="0 0 24 24" className="w-full h-full"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>}
+            bgIcon={<svg fill="currentColor" viewBox="0 0 24 24" className="w-full h-full"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" /></svg>}
           >
             {/* Sub-card 1: Deporte */}
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 flex flex-col justify-between">
@@ -282,13 +280,13 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, games, onLogout }) 
       </main>
 
       <footer className="px-8 py-8 flex flex-col items-center shrink-0 bg-white border-t border-surfaceVariant mt-6">
-          <button 
-            onClick={onLogout} 
-            className="group flex items-center gap-2 text-[10px] font-black text-red-600 uppercase tracking-[3px] bg-red-50 px-10 py-4 rounded-full hover:bg-red-600 hover:text-white transition-all duration-300 shadow-md active:scale-95 border border-red-100"
-          >
-            <span>🚪</span> FINALIZAR SESIÓN SEGURA
-          </button>
-          <p className="mt-8 text-[8px] text-onSurfaceVariant/40 font-black tracking-[4px] uppercase italic">SportsNote Professional Dashboard • 2024</p>
+        <button
+          onClick={onLogout}
+          className="group flex items-center gap-2 text-[10px] font-black text-red-600 uppercase tracking-[3px] bg-red-50 px-10 py-4 rounded-full hover:bg-red-600 hover:text-white transition-all duration-300 shadow-md active:scale-95 border border-red-100"
+        >
+          <span>🚪</span> FINALIZAR SESIÓN SEGURA
+        </button>
+        <p className="mt-8 text-[8px] text-onSurfaceVariant/40 font-black tracking-[4px] uppercase italic">SportsNote Professional Dashboard • 2024</p>
       </footer>
     </div>
   );

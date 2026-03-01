@@ -303,7 +303,7 @@ const SummaryView: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
               { label: 'Pérdidas 📉', types: ['PÉRDIDA'], color: 'text-orange-600' },
-              { label: 'Recuperos 🛡️', types: ['RECUPERO'], color: 'text-emerald-600' },
+              { label: 'Recuperos 📈', types: ['RECUPERO'], color: 'text-emerald-600' },
               { label: 'Faltas ⚠️', types: ['FALTA'], color: 'text-red-600' }
             ].map(stat => {
               const data = getDetailedStat(stat.types, game.teamHome.id);
