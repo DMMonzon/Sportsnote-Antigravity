@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { telemetryService, TelemetryEvent } from '../services/telemetryService';
 import { UserRole, Game, GameEvent, Possession } from '../types';
 import { dbService } from '../services/dbService';
 import { aiService } from '../services/aiService';
@@ -18,7 +19,11 @@ const NSeparator = () => (
 type ActionFilter = 'ALL' | 'DISPARO' | 'FALTA' | 'PÉRDIDA' | 'RECUPERO';
 type PeriodFilter = 'ALL' | 1 | 2 | 3 | 4;
 
-const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
+const LiveGameView: React.FC<{
+  role: UserRole,
+  onExitGame: () => void,
+  onAnnulGame: () => void
+}> = ({ role, onExitGame, onAnnulGame }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [game, setGame] = useState<Game | null>(null);
@@ -58,6 +63,7 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
   // Estados de orientación de la cancha
   const [isLandscape, setIsLandscape] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   const timerRef = useRef<number | null>(null);
   const lastClickTime = useRef<number>(0);
@@ -521,8 +527,11 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
 
   const handleFinishGame = () => {
     if (!game) return;
-    const state = dbService.loadState();
-    dbService.saveState({ ...state, activeGameId: null });
+    onExitGame();
+    telemetryService.logEvent(TelemetryEvent.FINISH_GAME, {
+      gameId: game.id,
+      score: `${game.scoreHome}-${game.scoreAway}`
+    });
     navigate(`/summary/${game.id}`);
   };
 
@@ -832,6 +841,36 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
         </div>
       )}
 
+      {/* Modal Confirmar Salida (Anular Juego) */}
+      {showExitConfirm && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-brandDark/40 backdrop-blur-sm">
+          <div className="relative w-full max-w-sm bg-white border border-surfaceVariant p-8 rounded-[40px] shadow-2xl animate-in zoom-in duration-200 text-center">
+            <div className="text-4xl mb-4">⚠️</div>
+            <h3 className="contrail-font text-2xl text-dark uppercase mb-2">¿Anular Juego?</h3>
+            <p className="text-[11px] font-bold text-onSurfaceVariant uppercase leading-relaxed mb-8">
+              Si regresas al dashboard ahora, el progreso actual se perderá y el juego no se guardará en el historial.
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => {
+                  onAnnulGame();
+                  navigate('/dashboard');
+                }}
+                className="w-full bg-red-600 text-white font-black py-4 rounded-2xl active:scale-95 text-xs uppercase shadow-lg shadow-red-200 transition-all"
+              >
+                SÍ, ANULAR Y SALIR
+              </button>
+              <button
+                onClick={() => setShowExitConfirm(false)}
+                className="w-full bg-surface text-onSurfaceVariant font-black py-4 rounded-2xl active:scale-95 text-xs uppercase border border-surfaceVariant transition-all"
+              >
+                CONTINUAR JUGANDO
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isMenuOpen && (
         <div className="fixed inset-0 z-[400] flex">
           <div className="absolute inset-0 bg-brandDark/20 backdrop-blur-md" onClick={() => setIsMenuOpen(false)} />
@@ -866,7 +905,12 @@ const LiveGameView: React.FC<{ role: UserRole }> = ({ role }) => {
               ))}
             </nav>
             <div className="pt-6 mt-6 border-t border-surfaceVariant">
-              <button onClick={() => navigate('/dashboard')} className="w-full text-left p-4 bg-red-50 text-red-600 rounded-xl font-black text-[11px] uppercase tracking-widest flex items-center gap-3 transition-all hover:bg-red-100 active:scale-95"><span>🏠</span> Regresar al dashboard</button>
+              <button
+                onClick={() => setShowExitConfirm(true)}
+                className="w-full text-left p-4 bg-red-50 text-red-600 rounded-xl font-black text-[11px] uppercase tracking-widest flex items-center gap-3 transition-all hover:bg-red-100 active:scale-95"
+              >
+                <span>🏠</span> Regresar al dashboard
+              </button>
             </div>
           </aside>
         </div>

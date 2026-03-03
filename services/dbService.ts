@@ -7,36 +7,47 @@ export const dbService = {
   saveState: (state: AppState) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   },
-  
+
   loadState: (): AppState => {
     const data = localStorage.getItem(STORAGE_KEY);
     if (!data) {
       return {
         currentUser: null,
-        games: [],
+        matches: [],
         activeGameId: null
       };
     }
-    return JSON.parse(data);
+    const state = JSON.parse(data);
+
+    // Migración: si existe 'games' pero no 'matches', renombrar
+    if (state.games && !state.matches) {
+      state.matches = state.games;
+      delete state.games;
+    }
+
+    // Asegurar estructura básica si falta algo
+    if (!state.matches) state.matches = [];
+
+    return state;
   },
 
   createGame: (game: Game) => {
     const state = dbService.loadState();
-    state.games.push(game);
+    state.matches.push(game);
     dbService.saveState(state);
   },
 
   updateGame: (game: Game) => {
     const state = dbService.loadState();
-    const index = state.games.findIndex(g => g.id === game.id);
+    const index = state.matches.findIndex(g => g.id === game.id);
     if (index !== -1) {
-      state.games[index] = game;
+      state.matches[index] = game;
       dbService.saveState(state);
     }
   },
 
   getGame: (id: string): Game | undefined => {
     const state = dbService.loadState();
-    return state.games.find(g => g.id === id);
+    return state.matches.find(g => g.id === id);
   }
 };

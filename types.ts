@@ -73,6 +73,6 @@ export interface AppState {
     name: string;
     avatar?: string;
   } | null;
-  games: Game[];
+  matches: Game[];
   activeGameId?: string | null;
 }

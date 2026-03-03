@@ -10,6 +10,8 @@ import DashboardView from './views/DashboardView';
 import NewGameView from './views/NewGameView';
 import LiveGameView from './views/LiveGameView';
 import SummaryView from './views/SummaryView';
+import MatchHistory from './views/MatchHistory';
+import GlobalStatsDashboard from './views/GlobalStatsDashboard';
 
 const AppContent: React.FC = () => {
   const [state, setState] = useState<AppState>(dbService.loadState());
@@ -47,32 +49,74 @@ const AppContent: React.FC = () => {
   const createGame = (game: Game) => {
     const newState = {
       ...state,
-      games: [...state.games, game],
+      matches: [...state.matches, game],
       activeGameId: game.id
     };
     setState(newState);
     navigate(`/live/${game.id}`);
   };
 
+  const closeActiveGame = () => {
+    setState({ ...state, activeGameId: null });
+  };
+
+  const handleAnnulGame = () => {
+    setState(prevState => ({
+      ...prevState,
+      matches: prevState.matches.filter(m => m.id !== prevState.activeGameId),
+      activeGameId: null
+    }));
+  };
+
   return (
     <div className="min-h-screen flex flex-col font-lato">
       <Routes>
         <Route path="/" element={
-          state.activeGameId 
-            ? <Navigate to={`/live/${state.activeGameId}`} replace /> 
+          state.activeGameId
+            ? <Navigate to={`/live/${state.activeGameId}`} replace />
             : (state.currentUser ? <Navigate to="/dashboard" replace /> : <LoginView onLogin={handleLogin} />)
         } />
-        
+
         <Route path="/dashboard" element={
-          state.currentUser ? <DashboardView user={state.currentUser} games={state.games} onLogout={handleLogout} /> : <Navigate to="/" />
+          state.currentUser ? (
+            state.activeGameId
+              ? <Navigate to={`/live/${state.activeGameId}`} replace />
+              : <DashboardView user={state.currentUser} matches={state.matches} onLogout={handleLogout} />
+          ) : <Navigate to="/" />
+        } />
+
+        <Route path="/history" element={
+          state.currentUser ? (
+            state.activeGameId
+              ? <Navigate to={`/live/${state.activeGameId}`} replace />
+              : <MatchHistory matches={state.matches} onCreateFromTemplate={(g) => navigate('/new-game', { state: { template: g } })} />
+          ) : <Navigate to="/" />
+        } />
+
+        <Route path="/trends" element={
+          state.currentUser ? (
+            state.activeGameId
+              ? <Navigate to={`/live/${state.activeGameId}`} replace />
+              : <GlobalStatsDashboard matches={state.matches} />
+          ) : <Navigate to="/" />
         } />
 
         <Route path="/new-game" element={
-          state.currentUser ? <NewGameView role={state.currentUser.role} onCreate={createGame} /> : <Navigate to="/" />
+          state.currentUser ? (
+            state.activeGameId
+              ? <Navigate to={`/live/${state.activeGameId}`} replace />
+              : <NewGameView role={state.currentUser.role} onCreate={createGame} />
+          ) : <Navigate to="/" />
         } />
 
         <Route path="/live/:id" element={
-          state.currentUser ? <LiveGameView role={state.currentUser.role} /> : <Navigate to="/" />
+          state.currentUser
+            ? <LiveGameView
+              role={state.currentUser.role}
+              onExitGame={closeActiveGame}
+              onAnnulGame={handleAnnulGame}
+            />
+            : <Navigate to="/" />
         } />
 
         <Route path="/summary/:id" element={

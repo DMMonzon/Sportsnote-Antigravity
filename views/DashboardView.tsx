@@ -1,7 +1,7 @@
-
 import React, { useMemo } from 'react';
 import { UserRole, Game } from '../types';
 import { useNavigate } from 'react-router-dom';
+import { LineChart, Line, ResponsiveContainer } from 'recharts';
 
 interface ActionCardProps {
   title: string;
@@ -25,7 +25,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ title, subtitle, description, c
     {/* FILA PRINCIPAL: Responsiva (Columna en móvil, Fila en tablet/desktop) */}
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 relative z-10 w-full border-b border-white/10 pb-5 lg:pb-6">
 
-      {/* Bloque 1: Identidad (Icono + Textos) - SIEMPRE flex-row e items-center según última petición */}
+      {/* Bloque 1: Identidad (Icono + Textos) */}
       <div className="flex flex-row items-center gap-4 shrink-0">
         <div className="w-12 h-12 bg-white/20 backdrop-blur-lg rounded-2xl flex items-center justify-center text-white shadow-inner border border-white/20 shrink-0">
           {icon}
@@ -39,7 +39,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ title, subtitle, description, c
       {/* Separador vertical (solo visible en desktop/tablet) */}
       <div className="hidden md:block w-px h-12 bg-white/20"></div>
 
-      {/* Bloque 2: Descripción - Ubicada debajo en móvil con margen superior */}
+      {/* Bloque 2: Descripción */}
       <div className="flex-1 md:px-4 mt-1 md:mt-0">
         <p className="text-white/80 text-[11px] font-medium leading-relaxed text-left max-w-2xl">
           {description}
@@ -49,7 +49,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ title, subtitle, description, c
       {/* Separador vertical (solo visible en desktop/tablet) */}
       <div className="hidden md:block w-px h-12 bg-white/20"></div>
 
-      {/* Bloque 3: Botón de Acción Principal - Ubicado debajo de todo en móvil para maximizar espacio */}
+      {/* Bloque 3: Botón de Acción Principal */}
       <button
         onClick={onClick}
         className="w-full md:w-auto mt-2 md:mt-0 shrink-0 bg-white text-dark px-6 py-4 md:py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brandDark hover:text-white transition-all duration-300 shadow-xl active:scale-95 flex items-center justify-center gap-2"
@@ -66,7 +66,6 @@ const ActionCard: React.FC<ActionCardProps> = ({ title, subtitle, description, c
   </div>
 );
 
-// Define the interface for the DashboardView component's props
 interface DashboardViewProps {
   user: {
     id: string;
@@ -74,28 +73,54 @@ interface DashboardViewProps {
     name: string;
     avatar?: string;
   };
-  games: Game[];
+  matches: Game[];
   onLogout: () => void;
 }
 
-const DashboardView: React.FC<DashboardViewProps> = ({ user, games, onLogout }) => {
+const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }) => {
   const navigate = useNavigate();
+  const [showRecycleModal, setShowRecycleModal] = React.useState<Game | null>(null);
 
   const statsData = useMemo(() => {
-    const allChains = games.flatMap(g => g.passChains);
+    const allChains = matches.flatMap(g => g.passChains);
     const avgChains = allChains.length > 0
       ? (allChains.reduce((a, b) => a + b, 0) / allChains.length).toFixed(1)
       : "0.0";
 
-    const goals = games.flatMap(g => g.events).filter(e => e.type.includes('GOL'));
+    const goals = matches.flatMap(g => g.events).filter(e => e.type.includes('GOL'));
     const topScorer = goals.length > 0 ? `Jugador #${Math.floor(Math.random() * 20) + 1}` : "N/A";
     const totalGoals = goals.length > 0 ? goals.length : 0;
 
-    return { avgChains, topScorer, totalGoals };
-  }, [games]);
+    // Sparkline data (last 3 matches)
+    const sparklineData = matches.slice(-3).map(m => ({
+      val: m.events.filter(e => e.type.includes('DISPARO') || e.type.includes('GOL')).length
+    }));
+
+    return { avgChains, topScorer, totalGoals, sparklineData };
+  }, [matches]);
+
+  const handleRecycle = (game: Game) => {
+    navigate('/new-game', { state: { template: game } });
+  };
+
+  const handleShare = (game: Game) => {
+    const text = `Resumen del partido: ${game.teamHome.name} ${game.scoreHome} - ${game.scoreAway} ${game.teamAway.name}\nVer más en Sportsnote.`;
+    const url = `${window.location.origin}/#/summary/${game.id}`;
+
+    if (navigator.share) {
+      navigator.share({
+        title: 'Sportsnote Match Summary',
+        text: text,
+        url: url,
+      }).catch(console.error);
+    } else {
+      navigator.clipboard.writeText(`${text}\n${url}`);
+      alert('Enlace copiado al portapapeles');
+    }
+  };
 
   return (
-    <div className="min-h-screen w-full flex flex-col bg-surface overflow-y-auto no-scrollbar pb-16">
+    <div className="min-h-screen w-full flex flex-col bg-surface overflow-y-auto no-scrollbar pb-16 relative">
       <header className="sticky top-0 z-50 flex justify-between items-center px-6 py-3 bg-white/80 backdrop-blur-xl border-b border-surfaceVariant shrink-0">
         <div className="flex items-center">
           <img
@@ -117,7 +142,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, games, onLogout }) 
       </header>
 
       <main className="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full flex flex-col gap-8">
-
         <section className="flex justify-between items-end border-b border-surfaceVariant pb-4">
           <div>
             <h2 className="contrail-font text-3xl text-dark uppercase tracking-tighter">Panel de Control</h2>
@@ -126,11 +150,10 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, games, onLogout }) 
         </section>
 
         <section className="flex flex-col gap-6">
-
           {/* TARJETA 1: PANEL DE JUEGOS */}
           <ActionCard
             title="Panel de Juegos"
-            subtitle={`${games.length} registrados`}
+            subtitle={`${matches.length} registrados`}
             description="Control total sobre el registro de eventos tácticos, goles y faltas en tiempo real para análisis inmediato de rendimiento."
             ctaText="iniciar juego nuevo"
             colorClass="bg-primary shadow-primary/30"
@@ -138,27 +161,29 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, games, onLogout }) 
             icon={<span className="text-2xl">🏟️</span>}
             bgIcon={<svg fill="currentColor" viewBox="0 0 24 24" className="w-full h-full"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-12h2v6h-2zm0 8h2v2h-2z" /></svg>}
           >
-            {/* Sub-card 1: Historial */}
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-5 flex flex-col justify-between">
               <div>
                 <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-3 italic">Últimos 5 Juegos</p>
                 <div className="space-y-2 mb-4">
-                  {games.slice(-3).reverse().map((g, i) => (
-                    <div key={i} className="flex items-center justify-between bg-white/5 p-2 rounded-xl text-[10px] text-white font-bold">
-                      <span className="truncate w-24">vs {g.teamAway.name}</span>
+                  {matches.slice(-5).reverse().map((g, i) => (
+                    <div key={g.id} className="flex items-center justify-between bg-white/5 p-2 rounded-xl text-[10px] text-white font-bold">
+                      <div className="flex flex-col truncate w-32">
+                        <span className="truncate">vs {g.teamAway.name}</span>
+                        <span className="text-[7px] text-white/40 uppercase tracking-tighter">{new Date(g.createdAt).toLocaleDateString()}</span>
+                      </div>
                       <div className="flex gap-2">
-                        <button title="Stats">📊</button>
-                        <button title="Share">📤</button>
-                        <button title="Recycle">♻️</button>
+                        <button onClick={() => navigate(`/summary/${g.id}`)} className="hover:scale-125 transition-transform" title="Stats">📊</button>
+                        <button onClick={() => handleShare(g)} className="hover:scale-125 transition-transform" title="Share">📤</button>
+                        <button onClick={() => setShowRecycleModal(g)} className="hover:scale-125 transition-transform" title="Recycle">♻️</button>
                       </div>
                     </div>
                   ))}
-                  {games.length === 0 && <p className="text-[10px] text-white/40 italic">Sin registros disponibles.</p>}
+                  {matches.length === 0 && <p className="text-[10px] text-white/40 italic">Sin registros disponibles.</p>}
                 </div>
               </div>
-              <button className="text-[9px] font-black text-white uppercase tracking-tighter hover:underline text-left opacity-80">ver historial completo</button>
+              <button onClick={() => navigate('/history')} className="text-[9px] font-black text-white uppercase tracking-tighter hover:underline text-left opacity-80">ver historial completo</button>
             </div>
-            {/* Sub-card 2: Agenda */}
+
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-5 flex flex-col justify-between">
               <div>
                 <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-3 italic">Agenda Próxima</p>
@@ -177,6 +202,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, games, onLogout }) 
               </div>
               <button className="text-[9px] font-black text-white uppercase tracking-tighter hover:underline text-left opacity-80">gestionar agenda</button>
             </div>
+            {/* actionCard Panel Juegos */}
           </ActionCard>
 
           {/* TARJETA 2: GESTIÓN DE EQUIPO */}
@@ -190,7 +216,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, games, onLogout }) 
             icon={<span className="text-2xl">👥</span>}
             bgIcon={<svg fill="currentColor" viewBox="0 0 24 24" className="w-full h-full"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg>}
           >
-            {/* Sub-card 1: Jugadores */}
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 flex flex-col justify-between">
               <div>
                 <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-2">Jugadores Registrados</p>
@@ -202,7 +227,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, games, onLogout }) 
               </div>
               <button className="text-[9px] font-black text-white uppercase tracking-tighter hover:underline mt-4 text-left opacity-80">ingresar nuevo jugador</button>
             </div>
-            {/* Sub-card 2: Dorsales */}
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 flex flex-col justify-between">
               <div>
                 <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-2">Dorsales Utilizados</p>
@@ -223,21 +247,30 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, games, onLogout }) 
             description="Análisis avanzado sobre el volumen de pases y eficiencia ofensiva de tus jugadores basada en datos reales del campo."
             ctaText="Ver estadísticas"
             colorClass="bg-brandDark shadow-dark/30"
-            onClick={() => { }}
+            onClick={() => navigate('/trends')}
             icon={<span className="text-2xl">📈</span>}
             bgIcon={<svg fill="currentColor" viewBox="0 0 24 24" className="w-full h-full"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" /></svg>}
           >
-            {/* Sub-card 1: Pases */}
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 flex flex-col justify-center text-center">
               <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-1">Promedio de pases por cadena</p>
               <h4 className="text-4xl font-black text-white mb-1 leading-none">{statsData.avgChains}</h4>
               <p className="text-[9px] font-bold text-white/30 uppercase tracking-[2px]">pases por cadena</p>
             </div>
-            {/* Sub-card 2: Goleador */}
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 flex flex-col justify-center text-center">
-              <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-1">Jugador con más goles (Local)</p>
-              <h4 className="text-lg font-black text-white uppercase mb-1 leading-none truncate">{statsData.topScorer}</h4>
-              <p className="text-sm font-black text-secondary uppercase leading-none">{statsData.totalGoals} goles jugador #23</p>
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 flex flex-col justify-center items-center">
+              <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-3 italic">Tendencia Últimos 3</p>
+              <div className="w-full h-16">
+                {statsData.sparklineData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={statsData.sparklineData}>
+                      <Line type="monotone" dataKey="val" stroke="#6d5dfc" strokeWidth={3} dot={false} isAnimationActive={true} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center border border-white/10 rounded-xl">
+                    <span className="text-[8px] text-white/20 font-black uppercase">Sin datos</span>
+                  </div>
+                )}
+              </div>
             </div>
           </ActionCard>
 
@@ -252,7 +285,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, games, onLogout }) 
             icon={<span className="text-2xl">⚙️</span>}
             bgIcon={<svg fill="currentColor" viewBox="0 0 24 24" className="w-full h-full"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" /></svg>}
           >
-            {/* Sub-card 1: Deporte */}
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 flex flex-col justify-between">
               <div>
                 <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-3">Configuración Deporte</p>
@@ -262,7 +294,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, games, onLogout }) 
               </div>
               <button className="text-[9px] font-black text-white uppercase tracking-tighter hover:underline mt-4 text-left opacity-80">editar deporte</button>
             </div>
-            {/* Sub-card 2: Contactos */}
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 flex flex-col justify-between">
               <div>
                 <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-3">Configuración Contactos</p>
@@ -274,9 +305,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, games, onLogout }) 
               <button className="text-[9px] font-black text-white uppercase tracking-tighter hover:underline mt-4 text-left opacity-80">gestionar listas de distribución</button>
             </div>
           </ActionCard>
-
         </section>
-
       </main>
 
       <footer className="px-8 py-8 flex flex-col items-center shrink-0 bg-white border-t border-surfaceVariant mt-6">
@@ -288,6 +317,37 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, games, onLogout }) 
         </button>
         <p className="mt-8 text-[8px] text-onSurfaceVariant/40 font-black tracking-[4px] uppercase italic">SportsNote Professional Dashboard • 2024</p>
       </footer>
+
+      {showRecycleModal && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-brandDark/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-sm rounded-[40px] p-8 shadow-2xl flex flex-col items-center text-center animate-in zoom-in duration-300 border border-surfaceVariant">
+            <div className="w-16 h-16 bg-blue-50 rounded-3xl flex items-center justify-center text-blue-600 text-3xl mb-6">♻️</div>
+            <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-[4px] mb-2">Reutilizar Partido</h3>
+            <p className="text-[11px] text-onSurfaceVariant/70 font-bold mb-8 leading-relaxed">
+              ¿Deseas generar un nuevo juego con los equipos <span className="text-dark font-black">{showRecycleModal.teamHome.name}</span> y <span className="text-dark font-black">{showRecycleModal.teamAway.name}</span>?
+              <br /><br />
+              Se mantendrán los colores y configuraciones, pero el marcador y eventos se reiniciarán.
+            </p>
+            <div className="flex flex-col w-full gap-3">
+              <button
+                onClick={() => {
+                  handleRecycle(showRecycleModal);
+                  setShowRecycleModal(null);
+                }}
+                className="w-full bg-primary text-white font-black py-4 rounded-2xl active:scale-95 text-xs uppercase tracking-widest shadow-xl shadow-primary/20"
+              >
+                SÍ, GENERAR NUEVO
+              </button>
+              <button
+                onClick={() => setShowRecycleModal(null)}
+                className="w-full bg-surface text-onSurfaceVariant font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest"
+              >
+                CANCELAR
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
