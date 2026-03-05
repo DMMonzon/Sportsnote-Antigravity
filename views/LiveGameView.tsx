@@ -5,6 +5,7 @@ import { telemetryService, TelemetryEvent } from '../services/telemetryService';
 import { UserRole, Game, GameEvent, Possession } from '../types';
 import { dbService } from '../services/dbService';
 import { aiService } from '../services/aiService';
+import { PitchMap } from '../components/PitchMap';
 
 const NSeparator = () => (
   <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center shrink-0">
@@ -18,6 +19,76 @@ const NSeparator = () => (
 
 type ActionFilter = 'ALL' | 'DISPARO' | 'FALTA' | 'PÉRDIDA' | 'RECUPERO';
 type PeriodFilter = 'ALL' | 1 | 2 | 3 | 4;
+
+const EntryAnalysisCard: React.FC<{
+  title: string;
+  homeTotal: number;
+  awayTotal: number;
+  icon?: string;
+  children: React.ReactNode;
+}> = ({ title, homeTotal, awayTotal, icon, children }) => (
+  <div className="bg-surface/50 p-5 rounded-[28px] border border-surfaceVariant shadow-sm flex flex-col gap-4">
+    <div className="flex justify-between items-center border-b border-surfaceVariant pb-3">
+      <div className="flex items-center gap-2">
+        {icon && <span className="text-xs">{icon}</span>}
+        <h4 className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">{title}</h4>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-xl font-black text-dark">{homeTotal}</span>
+        <span className="text-[10px] font-bold text-onSurfaceVariant/40">/</span>
+        <span className="text-xl font-black text-dark">{awayTotal}</span>
+      </div>
+    </div>
+    <div className="flex-1 flex flex-col gap-6 py-2">
+      {children}
+    </div>
+  </div>
+);
+
+const SectorRectangle: React.FC<{
+  label: string;
+  teamColor: string;
+  stats: Record<string, number>;
+  sectors: string[];
+  borderPosition?: 'top' | 'bottom';
+}> = ({ label, teamColor, stats, sectors, borderPosition }) => {
+  const values = sectors.map(s => stats[s] || 0);
+  const maxVal = values.length > 0 ? Math.max(...values) : -1;
+  const isMax = (val: number) => val > 0 && val === maxVal;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-tighter opacity-70">{label}</p>
+      <div className={`w-full overflow-hidden flex flex-col ${borderPosition === 'top' ? 'flex-col-reverse' : 'flex-col'}`}>
+        <div className="w-full h-12 bg-surfaceVariant/5 rounded-xl border border-surfaceVariant flex overflow-hidden">
+          {sectors.map((sect) => {
+            const val = stats[sect] || 0;
+            const active = isMax(val);
+            return (
+              <div
+                key={sect}
+                className={`flex-1 border-r last:border-r-0 border-surfaceVariant/20 flex flex-col items-center justify-center transition-all ${active ? 'bg-primary/10' : ''
+                  }`}
+              >
+                <span className={`text-[10px] font-black ${active ? 'text-primary' : 'text-dark/40'}`}>
+                  {val}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        {borderPosition && (
+          <div className={`w-full flex justify-center ${borderPosition === 'top' ? 'mb-1' : 'mt-1'}`}>
+            <div
+              className="w-12 h-1 rounded-full shadow-sm"
+              style={{ backgroundColor: teamColor }}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const LiveGameView: React.FC<{
   role: UserRole,
@@ -44,7 +115,6 @@ const LiveGameView: React.FC<{
   const [activeView, setActiveView] = useState<'field' | 'list' | 'heatmap' | 'stats'>('field');
   const [eventFilter, setEventFilter] = useState<ActionFilter>('ALL');
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('ALL');
-  const [ripples, setRipples] = useState<{ id: number, x: number, y: number }[]>([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [period, setPeriod] = useState(1);
   const [showPeriodMenu, setShowPeriodMenu] = useState(false);
@@ -64,9 +134,9 @@ const LiveGameView: React.FC<{
   const [isLandscape, setIsLandscape] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [showActionListCentral, setShowActionListCentral] = useState(false);
 
   const timerRef = useRef<number | null>(null);
-  const lastClickTime = useRef<number>(0);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -111,6 +181,52 @@ const LiveGameView: React.FC<{
       setFoulMinutes('');
     }
   }, [showPopup]);
+
+  // Analytics for area/23 entries
+  const { statsArea, stats23 } = React.useMemo(() => {
+    const statsArea = {
+      home: { 'Extremo Derecho': 0, 'Centro Derecha': 0, 'Centro': 0, 'Centro Izquierda': 0, 'Extremo Izquierdo': 0 },
+      away: { 'Extremo Derecho': 0, 'Centro Derecha': 0, 'Centro': 0, 'Centro Izquierda': 0, 'Extremo Izquierdo': 0 }
+    };
+    const stats23 = {
+      home: { 'Derecha': 0, 'Centro': 0, 'Izquierda': 0 },
+      away: { 'Derecha': 0, 'Centro': 0, 'Izquierda': 0 }
+    };
+
+    if (!game?.events) return { statsArea, stats23 };
+
+    const periodEvents = game.events.filter(e => {
+      if (periodFilter === 'ALL') return true;
+      return e.gameTime.startsWith(`${periodFilter}Q`);
+    });
+
+    periodEvents.forEach(e => {
+      const type = (e.type || "").toLowerCase();
+      const details = (e.details || "").toLowerCase();
+
+      if (type.includes('ingreso')) {
+        const isHomeEntry = !type.includes('rival');
+
+        if (type.includes('área')) {
+          ['Extremo Derecho', 'Centro Derecha', 'Centro', 'Centro Izquierda', 'Extremo Izquierdo'].forEach(sect => {
+            if (details.includes(sect.toLowerCase())) {
+              if (isHomeEntry) statsArea.home[sect as keyof typeof statsArea.home]++;
+              else statsArea.away[sect as keyof typeof statsArea.away]++;
+            }
+          });
+        } else if (type.includes('23')) {
+          ['Derecha', 'Centro', 'Izquierda'].forEach(lane => {
+            if (details.includes(lane.toLowerCase())) {
+              if (isHomeEntry) stats23.home[lane as keyof typeof stats23.home]++;
+              else stats23.away[lane as keyof typeof stats23.away]++;
+            }
+          });
+        }
+      }
+    });
+
+    return { statsArea, stats23 };
+  }, [game?.events, periodFilter]);
 
   if (!game) return <div className="p-8 text-center text-onSurfaceVariant font-bold">Cargando datos...</div>;
 
@@ -171,84 +287,19 @@ const LiveGameView: React.FC<{
     setTimeout(() => setSnackbar(prev => ({ ...prev, visible: false })), 2500);
   };
 
-  const handleFieldClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isRunning) {
-      if (possession === Possession.NONE) {
-        setSnackbar({ message: "Inicia el cronómetro para registrar acciones", visible: true });
-        setTimeout(() => setSnackbar(prev => ({ ...prev, visible: false })), 2000);
-      }
-      return;
-    }
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const vx = ((e.clientX - rect.left) / rect.width) * 100;
-    const vy = ((e.clientY - rect.top) / rect.height) * 100;
-
-    // Transformación de coordenadas basada en la vista
-    let x = vx;
-    let y = vy;
-
-    if (isLandscape) {
-      // En modo horizontal nativo (sin rotación CSS):
-      // Click Izquierda (vx=0) -> Arriba (y=0)
-      // Click Derecha (vx=100) -> Abajo (y=100)
-      // Click Superior (vy=0) -> Derecha (x=100)
-      // Click Inferior (vy=100) -> Izquierda (x=0)
-      x = 100 - vy;
-      y = vx;
-    }
-
-    if (isFlipped) {
-      // Espejado Arriba-Abajo (y opcionalmente Izquierda-Derecha para coherencia)
-      x = 100 - x;
-      y = 100 - y;
-    }
-
-    const rid = Date.now();
-    setRipples(prev => [...prev, { id: rid, x: e.clientX - rect.left, y: e.clientY - rect.top }]);
-    setTimeout(() => setRipples(prev => prev.filter(r => r.id !== rid)), 600);
-
-    const now = Date.now();
-    const isDouble = now - lastClickTime.current < 300;
-    lastClickTime.current = now;
-
-    if (isDouble) {
-      if (navigator.vibrate) navigator.vibrate(200);
-      registerEvent('FALTA / PÉRDIDA', Possession.AWAY, x, y, "Cometida", game.teamHome.id);
+  const handlePitchAction = (type: string, nextPoss: Possession, x: number, y: number, details?: string) => {
+    if (type === 'Falta Cometida') {
       setShowPopup({ x, y, type: 'FOUL' });
-      return;
+    } else if (type === 'DISPARO') {
+      const targetGoal = y < 50 ? 'TOP' : 'BOTTOM';
+      setShowPopup({ x, y, type: 'SHOT', targetGoal });
+      setAtajadoSelected(false);
     }
+    registerEvent(type, nextPoss, x, y, details, game.teamHome.id);
+  };
 
-    if (navigator.vibrate) navigator.vibrate(50);
-
-    const isInTopGoal = y <= 8 && x >= 42 && x <= 58;
-    const isInBottomGoal = y >= 92 && x >= 42 && x <= 58;
-
-    if (isInTopGoal) {
-      if (possession !== Possession.HOME) {
-        setSnackbar({ message: "Solo puedes disparar al arco rival con la posesión del balón", visible: true });
-        setTimeout(() => setSnackbar(prev => ({ ...prev, visible: false })), 2000);
-        return;
-      }
-      registerEvent('DISPARO', Possession.NONE, x, y, "Remate", game.teamHome.id);
-      setShowPopup({ x, y, type: 'SHOT', targetGoal: 'TOP' });
-      return;
-    }
-    if (isInBottomGoal) {
-      if (possession !== Possession.AWAY) {
-        setSnackbar({ message: "Solo el rival puede disparar en tu arco propio", visible: true });
-        setTimeout(() => setSnackbar(prev => ({ ...prev, visible: false })), 2000);
-        return;
-      }
-      registerEvent('DISPARO', Possession.NONE, x, y, "Remate", game.teamAway.id);
-      setShowPopup({ x, y, type: 'SHOT', targetGoal: 'BOTTOM' });
-      return;
-    }
-
-    const type = possession === Possession.HOME ? 'PÉRDIDA' : 'RECUPERO';
-    const newPoss = possession === Possession.HOME ? Possession.AWAY : Possession.HOME;
-
-    registerEvent(type, newPoss, x, y, undefined, game.teamHome.id);
+  const handleManualMenu = (x: number, y: number) => {
+    setShowPopup({ x, y, type: 'FOUL' });
   };
 
   const registerEvent = (type: string, nextPoss: Possession, x: number, y: number, details?: string, forcedTeamId?: string, scoringTeam?: Possession, audioData?: string) => {
@@ -314,7 +365,11 @@ const LiveGameView: React.FC<{
 
     setGame(updatedGame);
     if (finalNewPoss !== Possession.NONE) setPossession(finalNewPoss);
-    setShowPopup(null);
+
+    // Solo cerrar el popup si no es una acción que requiere submenú inmediato
+    if (type !== 'DISPARO' && type !== 'Falta Cometida') {
+      setShowPopup(null);
+    }
 
     // Si es una nota de voz, iniciar transcripción
     if (type === 'NOTA VOZ' && audioData) {
@@ -695,7 +750,10 @@ const LiveGameView: React.FC<{
   const isIn23Zone = (y: number) => y < 23 || y > 77;
 
   return (
-    <div className="h-screen w-full flex flex-col bg-surface overflow-hidden select-none transition-all duration-500">
+    <div
+      className="h-screen w-full flex flex-col bg-surface overflow-hidden select-none transition-all duration-500"
+      style={{ overscrollBehavior: 'none' }}
+    >
 
       {snackbar.visible && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[1000] bg-brandDark text-white px-6 py-3 rounded-full shadow-2xl animate-in slide-in-from-bottom duration-300 border border-primary/20 flex items-center gap-3">
@@ -922,39 +980,39 @@ const LiveGameView: React.FC<{
           <div className="w-6 h-0.5 bg-black" />
           <div className="w-4 h-0.5 bg-black self-start ml-1" />
         </button>
-        <div className="flex-1 flex justify-center items-center gap-2 md:gap-4 overflow-hidden">
+        <div className="flex-1 flex justify-center items-center gap-2 md:gap-6 overflow-hidden">
+          {/* Home Team Score Block */}
           <button
             onClick={() => selectPossession(Possession.HOME)}
-            className={`hidden sm:block text-[10px] md:text-xs font-black uppercase truncate max-w-[80px] md:max-w-[120px] text-right transition-opacity ${possession === Possession.HOME ? 'text-primary opacity-100' : 'text-onSurfaceVariant opacity-30'}`}
+            className={`px-4 md:px-6 py-2 rounded-2xl flex items-center gap-3 border transition-all duration-500 shadow-md ${possession === Possession.HOME
+              ? 'scale-110 z-10 opacity-100 shadow-xl border-white/20'
+              : 'scale-95 opacity-50 border-transparent'
+              } ${!isRunning && possession === Possession.NONE && seconds === 0 ? 'animate-pulse border-white/40' : ''}`}
+            style={{
+              backgroundColor: game.teamHome.primaryColor || '#6d5dfc',
+              color: game.teamHome.secondaryColor || '#ffffff'
+            }}
           >
-            {game.teamHome.name}
-          </button>
-
-          <button
-            onClick={() => selectPossession(Possession.HOME)}
-            className={`px-3 md:px-5 py-1.5 rounded-xl flex flex-col items-center min-w-[50px] md:min-w-[80px] border transition-all duration-300 ${possession === Possession.HOME ? 'ring-4 ring-secondary border-transparent scale-105 shadow-xl' : 'border-surfaceVariant shadow-inner opacity-40'} ${!isRunning && possession === Possession.NONE && seconds === 0 ? 'animate-pulse' : ''}`}
-            style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc', color: game.teamHome.secondaryColor || '#ffffff' }}
-          >
-            <span className="text-xl md:text-3xl font-black">{game.scoreHome}</span>
-            {possession === Possession.HOME && <span className="text-[6px] font-black uppercase mt-0.5 tracking-tighter">POSESIÓN</span>}
+            <span className="hidden sm:block text-[10px] md:text-sm font-black uppercase tracking-wider">{game.teamHome.name}</span>
+            <span className="text-2xl md:text-4xl font-black leading-none">{game.scoreHome}</span>
           </button>
 
           <NSeparator />
 
+          {/* Away Team Score Block */}
           <button
             onClick={() => selectPossession(Possession.AWAY)}
-            className={`px-3 md:px-5 py-1.5 rounded-xl flex flex-col items-center min-w-[50px] md:min-w-[80px] border transition-all duration-300 ${possession === Possession.AWAY ? 'ring-4 ring-secondary border-transparent scale-105 shadow-xl' : 'border-surfaceVariant shadow-inner opacity-40'} ${!isRunning && possession === Possession.NONE && seconds === 0 ? 'animate-pulse' : ''}`}
-            style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444', color: game.teamAway.secondaryColor || '#ffffff' }}
+            className={`px-4 md:px-6 py-2 rounded-2xl flex items-center flex-row-reverse gap-3 border transition-all duration-500 shadow-md ${possession === Possession.AWAY
+              ? 'scale-110 z-10 opacity-100 shadow-xl border-white/20'
+              : 'scale-95 opacity-50 border-transparent'
+              } ${!isRunning && possession === Possession.NONE && seconds === 0 ? 'animate-pulse border-white/40' : ''}`}
+            style={{
+              backgroundColor: game.teamAway.primaryColor || '#ef4444',
+              color: game.teamAway.secondaryColor || '#ffffff'
+            }}
           >
-            <span className="text-xl md:text-3xl font-black">{game.scoreAway}</span>
-            {possession === Possession.AWAY && <span className="text-[6px] font-black uppercase mt-0.5 tracking-tighter">POSESIÓN</span>}
-          </button>
-
-          <button
-            onClick={() => selectPossession(Possession.AWAY)}
-            className={`hidden sm:block text-[10px] md:text-xs font-black uppercase truncate max-w-[80px] md:max-w-[120px] transition-opacity ${possession === Possession.AWAY ? 'text-primary opacity-100' : 'text-onSurfaceVariant opacity-30'}`}
-          >
-            {game.teamAway.name}
+            <span className="hidden sm:block text-[10px] md:text-sm font-black uppercase tracking-wider">{game.teamAway.name}</span>
+            <span className="text-2xl md:text-4xl font-black leading-none">{game.scoreAway}</span>
           </button>
         </div>
 
@@ -994,54 +1052,53 @@ const LiveGameView: React.FC<{
 
       <main className="flex-1 flex overflow-hidden bg-surface">
         {!isLandscape && (
-          <aside className="hidden lg:flex w-[320px] flex-col p-5 bg-white border-r border-surfaceVariant">
-            <div className="flex flex-col h-full overflow-hidden">
-              <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest mb-4 border-b border-surfaceVariant pb-2 italic">Listado de Acciones</h3>
-              <FilterChips />
-              <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar no-scrollbar">
-                {filteredEvents.map((e) => (
-                  <div key={e.id} className="bg-surface/50 border border-surfaceVariant p-3 rounded-2xl flex flex-col gap-2 group hover:bg-white transition-all shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 overflow-hidden">
-                        <span className="text-primary font-black text-[9px] bg-primary/5 px-1.5 py-0.5 rounded shrink-0">{e.gameTime}</span>
-                        <div className="min-w-0 flex items-center gap-2">
-                          {(e.type.includes('DISPARO') || e.type.includes('GOL') || e.type.includes('FALTA')) && (
-                            <span
-                              className="text-[9px] font-black px-1.5 py-0.5 rounded border border-current shrink-0 min-w-[18px] text-center"
-                              style={{
-                                color: (e.teamId === game.teamHome.id || e.scoringTeam === Possession.HOME) ? (game.teamHome.primaryColor || '#6d5dfc') : (game.teamAway.primaryColor || '#ef4444'),
-                                borderColor: (e.teamId === game.teamHome.id || e.scoringTeam === Possession.HOME) ? (game.teamHome.primaryColor || '#6d5dfc') : (game.teamAway.primaryColor || '#ef4444'),
-                                backgroundColor: (e.teamId === game.teamHome.id || e.scoringTeam === Possession.HOME) ? `${game.teamHome.primaryColor || '#6d5dfc'}11` : `${game.teamAway.primaryColor || '#ef4444'}11`
-                              }}
-                            >
-                              {((e.teamId === game.teamHome.id && !e.type.includes('GOL')) || (e.scoringTeam === Possession.HOME)) ? 'L' : 'V'}
-                            </span>
-                          )}
-                          <p className="text-dark text-[11px] font-bold truncate uppercase">{e.type}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => setEventToEdit(e)} className="text-onSurfaceVariant hover:text-primary p-1">✏️</button>
-                        <button onClick={() => deleteEvent(e.id)} className="text-onSurfaceVariant hover:text-red-500 p-1">✕</button>
-                      </div>
-                    </div>
-                    {e.isTranscribing ? (
-                      <div className="flex items-center gap-2 py-2">
-                        <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                        <span className="text-[10px] font-bold text-primary animate-pulse">Transcribiendo...</span>
-                      </div>
-                    ) : e.type === 'NOTA VOZ' && e.transcription ? (
-                      <div className="bg-primary/5 p-2 rounded-lg border border-primary/10">
-                        <p className="text-[10px] text-dark italic leading-tight">{e.transcription}</p>
-                      </div>
-                    ) : e.type === 'NOTA TEXTO' ? (
-                      <p className="text-[10px] text-dark bg-white/50 p-2 rounded-lg border border-surfaceVariant italic">{e.details}</p>
-                    ) : (
-                      <p className="text-[8px] text-onSurfaceVariant truncate uppercase font-black">{e.details || `COORD ${e.x},${e.y}`}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
+          <aside className="hidden lg:flex w-[320px] flex-col p-5 bg-white border-r border-surfaceVariant overflow-y-auto no-scrollbar">
+            <div className="flex flex-col gap-6 pb-10">
+              <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest border-b border-surfaceVariant pb-2 italic">Análisis en Tiempo Real</h3>
+
+              <EntryAnalysisCard
+                title="Ingresos al Área"
+                icon="📥"
+                homeTotal={Object.values(statsArea.home).reduce((a: number, b: number) => a + b, 0)}
+                awayTotal={Object.values(statsArea.away).reduce((a: number, b: number) => a + b, 0)}
+              >
+                <SectorRectangle
+                  label="Ingresos al área rival"
+                  teamColor={game.teamAway.primaryColor || '#ef4444'}
+                  stats={statsArea.home}
+                  sectors={['Extremo Izquierdo', 'Centro Izquierda', 'Centro', 'Centro Derecha', 'Extremo Derecho']}
+                  borderPosition="top"
+                />
+                <SectorRectangle
+                  label="Ingresos del rival a mi área"
+                  teamColor={game.teamHome.primaryColor || '#6d5dfc'}
+                  stats={statsArea.away}
+                  sectors={['Extremo Izquierdo', 'Centro Izquierda', 'Centro', 'Centro Derecha', 'Extremo Derecho']}
+                  borderPosition="bottom"
+                />
+              </EntryAnalysisCard>
+
+              <EntryAnalysisCard
+                title="Ingresos a 23 Yardas"
+                icon="2️⃣3️⃣"
+                homeTotal={Object.values(stats23.home).reduce((a: number, b: number) => a + b, 0)}
+                awayTotal={Object.values(stats23.away).reduce((a: number, b: number) => a + b, 0)}
+              >
+                <SectorRectangle
+                  label="Ingresos a 23 yardas rival"
+                  teamColor={game.teamAway.primaryColor || '#ef4444'}
+                  stats={stats23.home}
+                  sectors={['Izquierda', 'Centro', 'Derecha']}
+                  borderPosition="top"
+                />
+                <SectorRectangle
+                  label="Ingresos del rival a mis 23 yardas"
+                  teamColor={game.teamHome.primaryColor || '#6d5dfc'}
+                  stats={stats23.away}
+                  sectors={['Izquierda', 'Centro', 'Derecha']}
+                  borderPosition="bottom"
+                />
+              </EntryAnalysisCard>
             </div>
           </aside>
         )}
@@ -1289,62 +1346,17 @@ const LiveGameView: React.FC<{
                   </div>
                 </div>
               ) : (
-                <div
-                  className="w-full h-full bg-emerald-700 border-2 border-white/40 rounded-[32px] relative cursor-crosshair overflow-hidden shadow-lg"
-                  onClick={handleFieldClick}
-                >
-                  {/* Arcos Verticales */}
-                  {!isLandscape && (
-                    <>
-                      <div
-                        className="absolute top-0 left-[42%] w-[16%] h-[8%] border-b-2 border-x-2 border-white/50 rounded-b-xl z-20 transition-all hover:scale-x-110 origin-top hover:bg-white/10"
-                        title="Arco Superior"
-                        style={{ backgroundColor: `${isFlipped ? game.teamHome.primaryColor : game.teamAway.primaryColor}44` }}
-                      />
-                      <div
-                        className="absolute bottom-0 left-[42%] w-[16%] h-[8%] border-t-2 border-x-2 border-white/50 rounded-t-xl z-20 transition-all hover:scale-x-110 origin-bottom hover:bg-white/10"
-                        title="Arco Inferior"
-                        style={{ backgroundColor: `${isFlipped ? game.teamAway.primaryColor : game.teamHome.primaryColor}44` }}
-                      />
-                    </>
-                  )}
-
-                  {/* Arcos Horizontales */}
-                  {isLandscape && (
-                    <>
-                      <div
-                        className="absolute left-0 top-[42%] w-[4%] h-[16%] border-r-2 border-y-2 border-white/50 rounded-r-xl z-20 transition-all hover:scale-y-110 origin-left hover:bg-white/10"
-                        title="Arco Izquierdo (Superior)"
-                        style={{ backgroundColor: `${isFlipped ? game.teamHome.primaryColor : game.teamAway.primaryColor}44` }}
-                      />
-                      <div
-                        className="absolute right-0 top-[42%] w-[4%] h-[16%] border-l-2 border-y-2 border-white/50 rounded-l-xl z-20 transition-all hover:scale-y-110 origin-right hover:bg-white/10"
-                        title="Arco Derecho (Inferior)"
-                        style={{ backgroundColor: `${isFlipped ? game.teamAway.primaryColor : game.teamHome.primaryColor}44` }}
-                      />
-                    </>
-                  )}
-
-                  {/* Líneas de Campo */}
-                  {!isLandscape ? (
-                    <>
-                      <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-white/30 -translate-y-1/2" />
-                      <div className="absolute top-[23%] left-0 right-0 h-px border-t border-dashed border-white/20" />
-                      <div className="absolute bottom-[23%] left-0 right-0 h-px border-t border-dashed border-white/20" />
-                      <div className="absolute top-0 left-1/2 -translate-x-1/2 border-4 border-white/10 rounded-full -translate-y-1/2" style={{ width: '53%', height: '32%' }} />
-                      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 border-4 border-white/10 rounded-full translate-y-1/2" style={{ width: '53%', height: '32%' }} />
-                    </>
-                  ) : (
-                    <>
-                      <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white/30 -translate-x-1/2" />
-                      <div className="absolute left-[23%] top-0 bottom-0 w-px border-l border-dashed border-white/20" />
-                      <div className="absolute right-[23%] top-0 bottom-0 w-px border-l border-dashed border-white/20" />
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 border-4 border-white/10 rounded-full -translate-x-1/2" style={{ height: '53%', width: '32%' }} />
-                      <div className="absolute right-0 top-1/2 -translate-y-1/2 border-4 border-white/10 rounded-full translate-x-1/2" style={{ height: '53%', width: '32%' }} />
-                    </>
-                  )}
-
-                  {ripples.map(r => <div key={r.id} className="ripple" style={{ left: r.x, top: r.y, width: '24px', height: '24px', marginLeft: '-12px', marginTop: '-12px' }} />)}
+                <>
+                  <PitchMap
+                    possession={possession}
+                    isRunning={isRunning}
+                    isLandscape={isLandscape}
+                    isFlipped={isFlipped}
+                    teamHome={game?.teamHome}
+                    teamAway={game?.teamAway}
+                    onAction={handlePitchAction}
+                    onManualMenu={handleManualMenu}
+                  />
 
                   {showPopup && (
                     <div
@@ -1454,7 +1466,6 @@ const LiveGameView: React.FC<{
                     </div>
                   )}
 
-                  {/* Overlay de Ayuda Posesión */}
                   {!isRunning && possession === Possession.NONE && seconds === 0 && (
                     <div className="absolute inset-0 bg-brandDark/40 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500 z-50">
                       <div
@@ -1467,7 +1478,7 @@ const LiveGameView: React.FC<{
                       </div>
                     </div>
                   )}
-                </div>
+                </>
               )}
             </div>
           </div>
@@ -1596,7 +1607,7 @@ const LiveGameView: React.FC<{
             </aside>
           )
         }
-      </main>
+      </main >
 
       <footer className="h-20 md:h-24 bg-white flex flex-wrap items-center justify-between px-4 md:px-10 shrink-0 border-t border-surfaceVariant shadow-lg relative z-[200] gap-2">
         <div className="relative">
@@ -1614,9 +1625,9 @@ const LiveGameView: React.FC<{
 
         <div className="flex flex-1 items-center justify-around md:justify-center md:gap-16">
           <div className="flex items-center gap-4 md:gap-8">
-            <button className={`${!isLandscape ? 'lg:hidden' : ''} text-2xl transition-all ${activeView === 'list' ? 'text-primary scale-110 drop-shadow-md' : 'text-onSurfaceVariant/30'}`} onClick={() => setActiveView(activeView === 'list' ? 'field' : 'list')}>📋</button>
+            <button className={`text-2xl transition-all ${activeView === 'list' ? 'text-primary scale-110 drop-shadow-md' : 'text-onSurfaceVariant/30'}`} onClick={() => setActiveView(activeView === 'list' ? 'field' : 'list')}>📋</button>
             <button className={`text-3xl transition-all ${activeView === 'heatmap' ? 'text-primary scale-125 drop-shadow-md' : 'text-onSurfaceVariant/30'}`} onClick={() => setActiveView(activeView === 'heatmap' ? 'field' : 'heatmap')}>🔥</button>
-            <button className={`${!isLandscape ? 'lg:hidden' : ''} text-2xl transition-all ${activeView === 'stats' ? 'text-primary scale-110 drop-shadow-md' : 'text-onSurfaceVariant/30'}`} onClick={() => setActiveView(activeView === 'stats' ? 'field' : 'stats')}>📊</button>
+            <button className={`text-2xl transition-all ${activeView === 'stats' ? 'text-primary scale-110 drop-shadow-md' : 'text-onSurfaceVariant/30'}`} onClick={() => setActiveView(activeView === 'stats' ? 'field' : 'stats')}>📊</button>
           </div>
 
           {!isLandscape && (
@@ -1642,7 +1653,7 @@ const LiveGameView: React.FC<{
           )}
         </button>
       </footer>
-    </div>
+    </div >
   );
 };
 
