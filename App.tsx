@@ -12,6 +12,8 @@ import LiveGameView from './views/LiveGameView';
 import SummaryView from './views/SummaryView';
 import MatchHistory from './views/MatchHistory';
 import GlobalStatsDashboard from './views/GlobalStatsDashboard';
+import SquadView from './views/SquadView';
+
 
 const AppContent: React.FC = () => {
   const [state, setState] = useState<AppState>(dbService.loadState());
@@ -123,7 +125,12 @@ const AppContent: React.FC = () => {
           state.currentUser ? <SummaryView /> : <Navigate to="/" />
         } />
 
+        <Route path="/squad" element={
+          state.currentUser ? <SquadView matches={state.matches} /> : <Navigate to="/" />
+        } />
+
         <Route path="*" element={<Navigate to="/" />} />
+
       </Routes>
     </div>
   );

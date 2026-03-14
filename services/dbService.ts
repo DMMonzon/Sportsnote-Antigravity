@@ -14,8 +14,12 @@ export const dbService = {
       return {
         currentUser: null,
         matches: [],
-        activeGameId: null
+        activeGameId: null,
+        tacticalSchemes: [],
+        players: []
       };
+
+
     }
     const state = JSON.parse(data);
 
@@ -27,6 +31,8 @@ export const dbService = {
 
     // Asegurar estructura básica si falta algo
     if (!state.matches) state.matches = [];
+    if (!state.players) state.players = [];
+
 
     return state;
   },

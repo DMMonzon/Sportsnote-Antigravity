@@ -40,7 +40,7 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ matches, onCreateFromTempla
                         <span className="text-primary font-black">←</span>
                     </button>
                     <img
-                        src="/assets/logoLargoSN.svg"
+                        src="./assets/logoLargoSN.svg"
                         alt="Sportsnote Logo"
                         className="h-8 md:h-9 w-auto"
                     />

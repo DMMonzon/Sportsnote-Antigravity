@@ -11,6 +11,76 @@ import {
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
+const EntryAnalysisCard: React.FC<{
+  title: string;
+  homeTotal: number;
+  awayTotal: number;
+  icon?: string;
+  children: React.ReactNode;
+}> = ({ title, homeTotal, awayTotal, icon, children }) => (
+  <div className="bg-surface/50 p-5 rounded-[28px] border border-surfaceVariant shadow-sm flex flex-col gap-4">
+    <div className="flex justify-between items-center border-b border-surfaceVariant pb-3">
+      <div className="flex items-center gap-2">
+        {icon && <span className="text-xs">{icon}</span>}
+        <h4 className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">{title}</h4>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-xl font-black text-dark">{homeTotal}</span>
+        <span className="text-[10px] font-bold text-onSurfaceVariant/40">/</span>
+        <span className="text-xl font-black text-dark">{awayTotal}</span>
+      </div>
+    </div>
+    <div className="flex-1 flex flex-col gap-6 py-2">
+      {children}
+    </div>
+  </div>
+);
+
+const SectorRectangle: React.FC<{
+  label: string;
+  teamColor: string;
+  stats: Record<string, number>;
+  sectors: string[];
+  borderPosition?: 'top' | 'bottom';
+}> = ({ label, teamColor, stats, sectors, borderPosition }) => {
+  const values = sectors.map(s => stats[s] || 0);
+  const maxVal = values.length > 0 ? Math.max(...values) : -1;
+  const isMax = (val: number) => val > 0 && val === maxVal;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-tighter opacity-70">{label}</p>
+      <div className={`w-full overflow-hidden flex flex-col ${borderPosition === 'top' ? 'flex-col-reverse' : 'flex-col'}`}>
+        <div className="w-full h-12 bg-surfaceVariant/5 rounded-xl border border-surfaceVariant flex overflow-hidden">
+          {sectors.map((sect) => {
+            const val = stats[sect] || 0;
+            const active = isMax(val);
+            return (
+              <div
+                key={sect}
+                className={`flex-1 border-r last:border-r-0 border-surfaceVariant/20 flex flex-col items-center justify-center transition-all ${active ? 'bg-primary/10' : ''
+                  }`}
+              >
+                <span className={`text-[10px] font-black ${active ? 'text-primary' : 'text-dark/40'}`}>
+                  {val}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        {borderPosition && (
+          <div className={`w-full flex justify-center ${borderPosition === 'top' ? 'mb-1' : 'mt-1'}`}>
+            <div
+              className="w-12 h-1 rounded-full shadow-sm"
+              style={{ backgroundColor: teamColor }}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const SummaryView: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -51,6 +121,51 @@ const SummaryView: React.FC = () => {
       return { name: p, pases: parseFloat(avg.toFixed(1)) };
     });
   }, [game]);
+
+  const { statsArea, stats23 } = React.useMemo(() => {
+    const statsArea = {
+      home: { 'Extremo Derecho': 0, 'Centro Derecha': 0, 'Centro': 0, 'Centro Izquierda': 0, 'Extremo Izquierdo': 0 },
+      away: { 'Extremo Derecho': 0, 'Centro Derecha': 0, 'Centro': 0, 'Centro Izquierda': 0, 'Extremo Izquierdo': 0 }
+    };
+    const stats23 = {
+      home: { 'Derecha': 0, 'Centro': 0, 'Izquierda': 0 },
+      away: { 'Derecha': 0, 'Centro': 0, 'Izquierda': 0 }
+    };
+
+    if (!game?.events) return { statsArea, stats23 };
+
+    const periodEvents = game.events.filter(e => {
+      if (periodFilter === 'ALL') return true;
+      return e.gameTime.startsWith(`${periodFilter}Q`);
+    });
+
+    periodEvents.forEach(e => {
+      const type = (e.type || "").toLowerCase();
+      const details = (e.details || "").toLowerCase();
+
+      if (type.includes('ingreso')) {
+        const isHomeEntry = !type.includes('rival');
+
+        if (type.includes('área')) {
+          ['Extremo Derecho', 'Centro Derecha', 'Centro', 'Centro Izquierda', 'Extremo Izquierdo'].forEach(sect => {
+            if (details.includes(sect.toLowerCase())) {
+              if (isHomeEntry) statsArea.home[sect as keyof typeof statsArea.home]++;
+              else statsArea.away[sect as keyof typeof statsArea.away]++;
+            }
+          });
+        } else if (type.includes('23')) {
+          ['Derecha', 'Centro', 'Izquierda'].forEach(lane => {
+            if (details.includes(lane.toLowerCase())) {
+              if (isHomeEntry) stats23.home[lane as keyof typeof stats23.home]++;
+              else stats23.away[lane as keyof typeof stats23.away]++;
+            }
+          });
+        }
+      }
+    });
+
+    return { statsArea, stats23 };
+  }, [game?.events, periodFilter]);
 
   if (!game) return (
     <div className="flex-1 flex items-center justify-center bg-surface">
@@ -123,6 +238,21 @@ const SummaryView: React.FC = () => {
     link.click();
   };
 
+  const handleCopySummary = async () => {
+    try {
+      const summaryText = `Resumen: ${game.teamHome.name} ${game.scoreHome} - ${game.scoreAway} ${game.teamAway.name}\n` +
+        `Remates: ${getDetailedStat(['DISPARO'], game.teamHome.id).total} - ${getDetailedStat(['DISPARO'], game.teamAway.id).total}\n` +
+        `ID de Partido: ${game.id}\n\n` +
+        `Data completa exportada desde SportsNote APP.`;
+      
+      await navigator.clipboard.writeText(summaryText);
+      alert('Resumen copiado al portapapeles con éxito.');
+    } catch (err) {
+      console.error('Error al copiar al portapapeles:', err);
+      alert('No se pudo copiar el resumen. Verifica los permisos de tu navegador.');
+    }
+  };
+
   const homeShots = getDetailedStat(['DISPARO'], game.teamHome.id);
   const awayShots = getDetailedStat(['DISPARO'], game.teamAway.id);
 
@@ -133,7 +263,7 @@ const SummaryView: React.FC = () => {
           <button onClick={() => navigate('/dashboard')} className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-surfaceVariant shadow-sm hover:scale-110 transition-transform">
             <span className="text-primary font-black">←</span>
           </button>
-          <img src="/assets/logoLargoSN.svg" alt="Sportsnote Logo" className="h-8 md:h-9 w-auto" />
+          <img src="./assets/logoLargoSN.svg" alt="Sportsnote Logo" className="h-8 md:h-9 w-auto" />
         </div>
       </header>
 
@@ -224,20 +354,60 @@ const SummaryView: React.FC = () => {
             </div>
           </section>
 
-          <section data-html2canvas-ignore className="bg-white p-6 rounded-[32px] shadow-sm border border-surfaceVariant">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-              <h3 className="text-xs font-black uppercase text-onSurfaceVariant flex items-center gap-2">Distribución Táctica (Heatmap) <div className="h-px w-12 bg-surfaceVariant"></div></h3>
-              <div className="flex flex-wrap gap-2">
-                <select value={actionFilter} onChange={(e) => setActionFilter(e.target.value as any)} className="text-[10px] font-black uppercase bg-surface border border-surfaceVariant rounded-lg px-2 py-1">
-                  <option value="ALL">Todas las acciones</option><option value="DISPARO">Remates</option><option value="FALTA">Faltas</option><option value="PÉRDIDA">Pérdidas</option><option value="RECUPERO">Recuperos</option>
-                </select>
-                <select value={periodFilter} onChange={(e) => setPeriodFilter(e.target.value === 'ALL' ? 'ALL' : parseInt(e.target.value) as any)} className="text-[10px] font-black uppercase bg-surface border border-surfaceVariant rounded-lg px-2 py-1">
-                  <option value="ALL">Todo el partido</option><option value="1">1Q</option><option value="2">2Q</option><option value="3">3Q</option><option value="4">4Q</option>
-                </select>
-              </div>
+          <section className="bg-white p-6 rounded-[32px] shadow-sm border border-surfaceVariant">
+            <h3 className="text-xs font-black uppercase text-onSurfaceVariant mb-6 flex items-center gap-2 italic">Ingresos y Accesos Ofensivos <div className="h-px flex-1 bg-surfaceVariant/50"></div></h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <EntryAnalysisCard
+                title="Ingresos al Área"
+                icon="📥"
+                homeTotal={Object.values(statsArea.home).reduce((a: number, b: number) => a + b, 0)}
+                awayTotal={Object.values(statsArea.away).reduce((a: number, b: number) => a + b, 0)}
+              >
+                <SectorRectangle
+                  label="Ingresos al área rival"
+                  teamColor={game.teamAway.primaryColor || '#ef4444'}
+                  stats={statsArea.home}
+                  sectors={['Extremo Izquierdo', 'Centro Izquierda', 'Centro', 'Centro Derecha', 'Extremo Derecho']}
+                  borderPosition="top"
+                />
+                <SectorRectangle
+                  label="Ingresos del rival a mi área"
+                  teamColor={game.teamHome.primaryColor || '#6d5dfc'}
+                  stats={statsArea.away}
+                  sectors={['Extremo Izquierdo', 'Centro Izquierda', 'Centro', 'Centro Derecha', 'Extremo Derecho']}
+                  borderPosition="bottom"
+                />
+              </EntryAnalysisCard>
+
+              <EntryAnalysisCard
+                title="Ingresos a 23 Yardas"
+                icon="2️⃣3️⃣"
+                homeTotal={Object.values(stats23.home).reduce((a: number, b: number) => a + b, 0)}
+                awayTotal={Object.values(stats23.away).reduce((a: number, b: number) => a + b, 0)}
+              >
+                <SectorRectangle
+                  label="Ingresos a 23 yardas rival"
+                  teamColor={game.teamAway.primaryColor || '#ef4444'}
+                  stats={stats23.home}
+                  sectors={['Izquierda', 'Centro', 'Derecha']}
+                  borderPosition="top"
+                />
+                <SectorRectangle
+                  label="Ingresos del rival a mis 23 yardas"
+                  teamColor={game.teamHome.primaryColor || '#6d5dfc'}
+                  stats={stats23.away}
+                  sectors={['Izquierda', 'Centro', 'Derecha']}
+                  borderPosition="bottom"
+                />
+              </EntryAnalysisCard>
             </div>
-            <GameField showHeatmap events={filteredEvents} />
           </section>
+
+          <section className="bg-white p-6 rounded-[32px] shadow-sm border border-surfaceVariant">
+            <h3 className="text-xs font-black uppercase text-onSurfaceVariant mb-6 italic">Distribución Táctica</h3>
+            <GameField events={filteredEvents} />
+          </section>
+
 
           <section className="bg-white p-6 rounded-[32px] shadow-sm border border-surfaceVariant">
             <h3 className="text-xs font-black uppercase text-onSurfaceVariant mb-6 italic">Fluctuación de Pases por Período</h3>
@@ -258,6 +428,7 @@ const SummaryView: React.FC = () => {
         <div className="flex flex-col gap-4">
           <div className="flex gap-3">
             <Button variant="outline" className="flex-1 bg-white border-surfaceVariant h-14" onClick={handleDownloadPDF} disabled={isGeneratingPDF}>{isGeneratingPDF ? '⏳ GENERANDO...' : '💾 PDF REPORT'}</Button>
+            <Button variant="outline" className="flex-1 bg-white border-primary/20 text-primary h-14" onClick={handleCopySummary}>📋 COPIAR RESUMEN</Button>
             <Button variant="outline" className="flex-1 bg-white border-surfaceVariant h-14" onClick={downloadCSV}>📊 DATA CSV</Button>
           </div>
           <Button className="w-full h-14 rounded-[24px] shadow-lg shadow-primary/20 font-black uppercase tracking-widest" onClick={() => navigate('/dashboard')}>🏠 REGRESAR AL DASHBOARD</Button>

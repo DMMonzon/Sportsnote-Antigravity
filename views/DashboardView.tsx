@@ -1,7 +1,20 @@
 import React, { useMemo } from 'react';
-import { UserRole, Game } from '../types';
+import { UserRole, Game, TacticalScheme, Player } from '../types';
+
+
+import { dbService } from '../services/dbService';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
+
+const TacticIcon = ({ className = "w-6 h-6" }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <path d="M4 4L8 8M8 4L4 8" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" />
+    <path d="M16 16L20 20M20 16L16 20" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" />
+    <path d="M6 19C6 19 7 13 15 13" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" />
+    <path d="M13 10L16 13L13 16" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" />
+    <circle cx="6" cy="19" r="2" fill="white" stroke="#94a3b8" strokeWidth="2" />
+  </svg>
+);
 
 interface ActionCardProps {
   title: string;
@@ -80,6 +93,12 @@ interface DashboardViewProps {
 const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }) => {
   const navigate = useNavigate();
   const [showRecycleModal, setShowRecycleModal] = React.useState<Game | null>(null);
+  const [showTacticsModal, setShowTacticsModal] = React.useState(false);
+  const [tactics, setTactics] = React.useState<TacticalScheme[]>(() => dbService.loadState().tacticalSchemes || []);
+
+  const [newTactic, setNewTactic] = React.useState({ name: '', description: '', objective: '' });
+
+
 
   const statsData = useMemo(() => {
     const allChains = matches.flatMap(g => g.passChains);
@@ -119,14 +138,48 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
     }
   };
 
+  const handleToggleFavorite = (game: Game) => {
+    const updatedGame = { ...game, isFavorite: !game.isFavorite };
+    dbService.updateGame(updatedGame);
+    // Since we're not using Redux or context right now for Dashboard `matches` prop, 
+    // it's passed from App.tsx state. A true update requires dispatching to App, but
+    // since dbService immediately sets localStorage, clicking the star might not visually 
+    // update until refresh, or we need to trigger a re-render. 
+    // The most robust way without prop drilling setMatches is location reload.
+    window.location.reload();
+  };
+
+  const handleAddTactic = () => {
+    if (!newTactic.name) return;
+    const tactic: TacticalScheme = {
+      id: Math.random().toString(36).substr(2, 9),
+      ...newTactic
+    };
+    const updatedTactics = [...tactics, tactic];
+    setTactics(updatedTactics);
+    const state = dbService.loadState();
+    state.tacticalSchemes = updatedTactics;
+    dbService.saveState(state);
+    setNewTactic({ name: '', description: '', objective: '' });
+  };
+
+  const handleDeleteTactic = (id: string) => {
+    const updatedTactics = tactics.filter(t => t.id !== id);
+    setTactics(updatedTactics);
+    const state = dbService.loadState();
+    state.tacticalSchemes = updatedTactics;
+    dbService.saveState(state);
+  };
+
+
   return (
     <div className="min-h-screen w-full flex flex-col bg-surface overflow-y-auto no-scrollbar pb-16 relative">
-      <header className="sticky top-0 z-50 flex justify-between items-center px-6 py-3 bg-white/80 backdrop-blur-xl border-b border-surfaceVariant shrink-0">
-        <div className="flex items-center">
+      <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-surfaceVariant px-6 py-4 flex justify-between items-center transition-all duration-300">
+        <div className="flex items-center justify-center flex-1 md:flex-initial">
           <img
-            src="/assets/logoLargoSN.svg"
+            src="./assets/logoLargoSN.svg"
             alt="Sportsnote Logo"
-            className="h-8 md:h-9 w-auto"
+            className="h-10 md:h-12 w-auto animate-in fade-in zoom-in duration-500"
           />
         </div>
 
@@ -163,18 +216,36 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
           >
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-5 flex flex-col justify-between">
               <div>
-                <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-3 italic">Últimos 5 Juegos</p>
+                <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-3 italic">Últimos 3 Juegos</p>
                 <div className="space-y-2 mb-4">
-                  {matches.slice(-5).reverse().map((g, i) => (
-                    <div key={g.id} className="flex items-center justify-between bg-white/5 p-2 rounded-xl text-[10px] text-white font-bold">
-                      <div className="flex flex-col truncate w-32">
-                        <span className="truncate">vs {g.teamAway.name}</span>
-                        <span className="text-[7px] text-white/40 uppercase tracking-tighter">{new Date(g.createdAt).toLocaleDateString()}</span>
+                  {matches.slice(-3).reverse().map((g, i) => (
+                    <div key={g.id} className="group/item relative flex items-center justify-between bg-black/20 hover:bg-black/40 border border-white/5 p-1.5 rounded-xl text-[10px] text-white font-bold transition-all overflow-hidden">
+
+                      {/* Left: Score & Teams Layout */}
+                      <div className="flex items-center gap-2 truncate flex-1 min-w-0 pr-2">
+                        <span className="text-[8px] font-black text-white/60 uppercase tracking-widest shrink-0 w-8 text-center">
+                          {new Date(g.createdAt).toLocaleDateString([], { month: '2-digit', day: '2-digit' })}
+                        </span>
+
+                        <div className="flex items-center justify-between gap-1.5 flex-1 min-w-0 bg-white/10 px-2 py-1.5 rounded-lg border border-white/5">
+                          <span className="truncate text-right flex-1 text-white">{g.teamHome.name}</span>
+                          <span className="text-[10px] font-black text-white px-2 py-0.5 rounded-md leading-none shrink-0 bg-black/40 shadow-inner">
+                            {g.scoreHome} - {g.scoreAway}
+                          </span>
+                          <span className="truncate text-left flex-1 text-white">{g.teamAway.name}</span>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => navigate(`/summary/${g.id}`)} className="hover:scale-125 transition-transform" title="Stats">📊</button>
-                        <button onClick={() => handleShare(g)} className="hover:scale-125 transition-transform" title="Share">📤</button>
-                        <button onClick={() => setShowRecycleModal(g)} className="hover:scale-125 transition-transform" title="Recycle">♻️</button>
+
+                      {/* Right: Actions Container */}
+                      <div className="flex gap-1 shrink-0 h-full items-center px-1 border-l border-white/10 pl-2 ml-1">
+
+                        {/* Hover-only Action buttons */}
+                        <div className="flex gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity duration-200">
+                          <button onClick={() => navigate(`/summary/${g.id}`)} className="hover:scale-125 transition-transform px-1 text-white/80 hover:text-white text-lg" title="Stats">📊</button>
+                          <button onClick={() => handleShare(g)} className="hover:scale-125 transition-transform px-1 text-white/80 hover:text-white text-lg" title="Share">📤</button>
+                          <button onClick={() => setShowRecycleModal(g)} className="hover:scale-125 transition-transform px-1 text-white/80 hover:text-white text-lg" title="Recycle">♻️</button>
+                          <button onClick={() => handleToggleFavorite(g)} className={`hover:scale-125 transition-transform px-1 py-1 text-lg ${g.isFavorite ? 'text-yellow-400 opacity-100' : 'text-white/30 hover:opacity-100 opacity-40'}`} title="Favorite">{g.isFavorite ? '⭐' : '☆'}</button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -189,12 +260,22 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
                 <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-3 italic">Agenda Próxima</p>
                 <div className="space-y-2 mb-4">
                   {[{ r: 'Lions Club', d: '24/05' }, { r: 'Tigres HC', d: '28/05' }].map((g, i) => (
-                    <div key={i} className="flex items-center justify-between bg-white/5 p-2 rounded-xl text-[10px] text-white font-bold">
-                      <span className="truncate w-24">vs {g.r}</span>
-                      <span className="opacity-60">{g.d}</span>
-                      <div className="flex gap-2">
-                        <button className="hover:scale-110">✏️</button>
-                        <button className="hover:scale-110 text-red-300 font-black">✕</button>
+                    <div key={i} className="group/agenda relative flex items-center justify-between bg-black/20 hover:bg-black/40 border border-white/5 p-1.5 rounded-xl text-[10px] text-white font-bold transition-all overflow-hidden">
+                      <div className="flex items-center gap-2 truncate flex-1 min-w-0 pr-2">
+                        <span className="text-[8px] font-black text-white/60 uppercase tracking-widest shrink-0 w-8 text-center">
+                          {g.d}
+                        </span>
+
+                        <div className="flex items-center gap-2 flex-1 min-w-0 bg-white/10 px-3 py-1.5 rounded-lg border border-white/5">
+                          <span className="truncate flex-1 text-white uppercase tracking-tighter">vs {g.r}</span>
+                          <span className="text-[8px] font-black text-white/50 px-2 py-0.5 rounded-md leading-none shrink-0 bg-black/40 shadow-inner">
+                            PENDIENTE
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-1.5 opacity-0 group-hover/agenda:opacity-100 transition-opacity duration-200 shrink-0 h-full items-center px-2">
+                        <button className="hover:scale-125 transition-transform text-lg" title="Editar">✏️</button>
+                        <button className="hover:scale-125 transition-transform text-red-400 font-black text-base" title="Eliminar">✕</button>
                       </div>
                     </div>
                   ))}
@@ -208,37 +289,55 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
           {/* TARJETA 2: GESTIÓN DE EQUIPO */}
           <ActionCard
             title="Gestión de Equipo"
-            subtitle="18 jugadores"
+            subtitle={`${dbService.loadState().players?.length || 0} jugadores`}
             description="Administra los perfiles de tus jugadores, gestiona dorsales y revisa la disponibilidad de tu plantilla en tiempo real."
             ctaText="gestionar mi plantel"
             colorClass="bg-emerald-800 shadow-emerald-900/40"
-            onClick={() => { }}
+            onClick={() => navigate('/squad')}
             icon={<span className="text-2xl">👥</span>}
+
             bgIcon={<svg fill="currentColor" viewBox="0 0 24 24" className="w-full h-full"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg>}
           >
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 flex flex-col justify-between">
               <div>
                 <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-2">Jugadores Registrados</p>
                 <div className="flex items-baseline gap-2">
-                  <h4 className="text-4xl font-black text-white leading-none">18</h4>
+                  <h4 className="text-4xl font-black text-white leading-none">{dbService.loadState().players?.length || 0}</h4>
                   <span className="text-[10px] font-bold text-white/40 uppercase">Activos</span>
                 </div>
-                <p className="text-[10px] font-bold text-white/70 uppercase mt-3 italic">Último ingreso: M. Gómez</p>
+                <p className="text-[10px] font-bold text-white/70 uppercase mt-3 italic">
+                  Personalizar mis jugadores
+                </p>
               </div>
-              <button className="text-[9px] font-black text-white uppercase tracking-tighter hover:underline mt-4 text-left opacity-80">ingresar nuevo jugador</button>
+              <button
+                onClick={() => navigate('/squad')}
+                className="text-[9px] font-black text-white uppercase tracking-tighter hover:underline mt-4 text-left opacity-80"
+              >
+                ingresar nuevo jugador
+              </button>
+
             </div>
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 flex flex-col justify-between">
               <div>
-                <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-2">Dorsales Utilizados</p>
+                <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-2">Tácticas Especiales</p>
                 <div className="flex items-baseline gap-2">
-                  <h4 className="text-4xl font-black text-white leading-none">15</h4>
-                  <span className="text-[10px] font-bold text-white/40 uppercase">Grabados</span>
+                  <h4 className="text-4xl font-black text-white leading-none">
+                    {tactics.length}
+                  </h4>
+                  <span className="text-[10px] font-bold text-white/40 uppercase">Esquemas</span>
                 </div>
-                <p className="text-[10px] font-bold text-white/70 uppercase mt-3 italic">Último grabado: #10 (Capitán)</p>
+                <p className="text-[10px] font-bold text-white/70 uppercase mt-3 italic">Personaliza tu estrategia</p>
               </div>
-              <button className="text-[9px] font-black text-white uppercase tracking-tighter hover:underline mt-4 text-left opacity-80">gestionar dorsales</button>
+              <button
+                onClick={() => setShowTacticsModal(true)}
+                className="text-[9px] font-black text-white uppercase tracking-tighter hover:underline mt-4 text-left opacity-80"
+              >
+                ver tácticas especiales
+              </button>
             </div>
           </ActionCard>
+
+
 
           {/* TARJETA 3: ESTADÍSTICAS PRO */}
           <ActionCard
@@ -348,7 +447,90 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
           </div>
         </div>
       )}
+
+      {showTacticsModal && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-brandDark/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-2xl rounded-[40px] p-8 shadow-2xl flex flex-col animate-in zoom-in duration-300 border border-surfaceVariant max-h-[90vh] overflow-hidden">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-sm font-black text-onSurfaceVariant uppercase tracking-[4px]">Gestión de Tácticas Especiales</h3>
+              <button onClick={() => setShowTacticsModal(false)} className="text-xl">✕</button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 overflow-y-auto no-scrollbar pr-2">
+              <div className="flex flex-col gap-4">
+                <p className="text-[10px] font-black text-primary uppercase tracking-widest italic border-b border-primary/10 pb-2">Nueva Formación</p>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-[9px] font-black text-dark uppercase tracking-widest block mb-1">Nombre de la Táctica</label>
+                    <input
+                      type="text"
+                      value={newTactic.name}
+                      onChange={e => setNewTactic({ ...newTactic, name: e.target.value })}
+                      className="w-full bg-surface border border-surfaceVariant rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-primary"
+                      placeholder="Ej: Presión Alta 3-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-black text-dark uppercase tracking-widest block mb-1">Descripción</label>
+                    <textarea
+                      value={newTactic.description}
+                      onChange={e => setNewTactic({ ...newTactic, description: e.target.value })}
+                      className="w-full bg-surface border border-surfaceVariant rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-primary h-20 resize-none"
+                      placeholder="Detalles del movimiento..."
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-black text-dark uppercase tracking-widest block mb-1">Objetivo Esperado</label>
+                    <input
+                      type="text"
+                      value={newTactic.objective}
+                      onChange={e => setNewTactic({ ...newTactic, objective: e.target.value })}
+                      className="w-full bg-surface border border-surfaceVariant rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-primary"
+                      placeholder="Ej: Recuperar en 23 yardas"
+                    />
+                  </div>
+                  <button
+                    onClick={handleAddTactic}
+                    className="w-full bg-primary text-white font-black py-4 rounded-xl active:scale-95 text-[10px] uppercase tracking-widest shadow-lg shadow-primary/20 transition-all"
+                  >
+                    AGREGAR FORMACIÓN
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-4">
+                <p className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest italic border-b border-surfaceVariant pb-2">Mis Tácticas Guardadas</p>
+                <div className="space-y-3">
+                  {tactics.map(t => (
+                    <div key={t.id} className="bg-surface/50 border border-surfaceVariant p-4 rounded-2xl flex justify-between items-start group">
+                      <div className="flex flex-col gap-1 pr-6">
+                        <span className="text-[11px] font-black text-dark uppercase leading-tight">{t.name}</span>
+                        <span className="text-[9px] font-bold text-onSurfaceVariant/60 italic">{t.objective}</span>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteTactic(t.id)}
+                        className="text-red-400 p-2 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  {tactics.length === 0 && (
+                    <div className="text-center py-10 opacity-30 flex flex-col items-center">
+                      <TacticIcon className="w-12 h-12 mb-2" />
+                      <p className="text-[10px] font-black uppercase tracking-widest">Sin tácticas registradas</p>
+                    </div>
+                  )}
+
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
+
   );
 };
 

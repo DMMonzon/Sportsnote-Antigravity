@@ -20,7 +20,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
     <div className="flex-1 flex flex-col items-center justify-center p-8 bg-surface">
       <div className="w-full max-w-sm flex flex-col items-center">
         <img
-          src="/assets/logoLargoSN.svg"
+          src="./assets/logoLargoSN.svg"
           alt="Sportsnote Logo"
           className="w-64 md:w-80 h-auto mb-10 drop-shadow-2xl"
         />
@@ -29,35 +29,6 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
         </p>
 
         <div className="w-full space-y-8">
-          <div className="flex flex-col gap-3">
-            <label className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-[3px] ml-1">Seleccionar Rol</label>
-            <div className="grid grid-cols-1 gap-3">
-              <button
-                onClick={() => setSelectedRole(UserRole.COACH)}
-                className={`flex items-center gap-4 p-5 rounded-[28px] border-2 transition-all duration-300 ${selectedRole === UserRole.COACH
-                    ? 'border-primary bg-primary/5 shadow-lg shadow-primary/10'
-                    : 'border-surfaceVariant hover:border-primary/30 opacity-60'
-                  }`}
-              >
-                <span className="text-3xl">📋</span>
-                <div className="text-left">
-                  <div className="contrail-font text-onSurface font-bold text-base leading-none">Entrenador</div>
-                  <div className="lato-font text-onSurfaceVariant text-[10px] normal-case font-medium mt-1">Modo Profesional Activo</div>
-                </div>
-              </button>
-
-              <button
-                disabled
-                className="flex items-center gap-4 p-5 rounded-[28px] border-2 border-surfaceVariant opacity-20 cursor-not-allowed grayscale"
-              >
-                <span className="text-3xl">🎙️</span>
-                <div className="text-left">
-                  <div className="contrail-font text-onSurface font-bold text-base leading-none">Periodista</div>
-                  <div className="lato-font text-onSurfaceVariant text-[10px] normal-case font-medium mt-1">Próximamente...</div>
-                </div>
-              </button>
-            </div>
-          </div>
 
           <Button
             variant="primary"

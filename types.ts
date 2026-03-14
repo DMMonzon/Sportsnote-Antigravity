@@ -21,7 +21,9 @@ export interface Player {
   id: string;
   name: string;
   number: number;
+  comments?: string;
 }
+
 
 export interface Team {
   id: string;
@@ -31,6 +33,14 @@ export interface Team {
   primaryColor?: string;
   secondaryColor?: string;
 }
+
+export interface TacticalScheme {
+  id: string;
+  name: string;
+  description: string;
+  objective: string;
+}
+
 
 export interface GameEvent {
   id: string;
@@ -49,7 +59,9 @@ export interface GameEvent {
   transcription?: string; // Texto transcrito por IA
   isTranscribing?: boolean; // Estado de carga de la transcripción
   scoringTeam?: Possession; // Equipo que anotó (para goles)
+  tacticId?: string; // ID de la táctica activa durante el evento
 }
+
 
 export interface Game {
   id: string;
@@ -64,7 +76,10 @@ export interface Game {
   createdAt: number;
   passChains: number[];
   role?: UserRole;
+  activeTacticId?: string;
+  isFavorite?: boolean;
 }
+
 
 export interface AppState {
   currentUser: {
@@ -75,4 +90,8 @@ export interface AppState {
   } | null;
   matches: Game[];
   activeGameId?: string | null;
+  tacticalSchemes: TacticalScheme[];
+  players: Player[];
 }
+
+

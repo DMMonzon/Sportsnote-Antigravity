@@ -49,9 +49,11 @@ export const PitchMap: React.FC<PitchMapProps> = ({
         const lane = x < 33.3 ? 'Izquierda' : x < 66.6 ? 'Centro' : 'Derecha';
         const centerY = isTop ? 0 : 100;
 
-        // Hockey Area is a semi-circle of 14.63m. 
-        // In 0-100 units: Radius Y = 16, Radius X = 26.6
-        const isArea = Math.pow(x - 50, 2) / Math.pow(26.6, 2) + Math.pow(y - centerY, 2) / Math.pow(16, 2) <= 1;
+        // Hockey Area is a semi-circle of 14.63m radius from the posts + 3.66m goal width.
+        // In 0-100 units (representing 55m width x 91.4m length): 
+        // Radius Y = 16% (14.63 / 91.4)
+        // Radius X (approx for ellipse) = 30% ( (14.63 + 3.66/2) / 55 )
+        const isArea = Math.pow(x - 50, 2) / Math.pow(30, 2) + Math.pow(y - centerY, 2) / Math.pow(16, 2) <= 1;
 
         if (isArea) {
             const dy = isTop ? y : 100 - y;
@@ -68,7 +70,8 @@ export const PitchMap: React.FC<PitchMapProps> = ({
             return `Área ${isTop ? 'Rival' : 'Propia'} ${fanSector}`;
         }
 
-        if (y < 23 || y > 77) {
+        // 23m line is actually located at 22.9m / 91.4m = 25%
+        if (y < 25 || y > 75) {
             return `23 yardas ${sideSuffix} ${lane}`;
         }
 
@@ -144,18 +147,15 @@ export const PitchMap: React.FC<PitchMapProps> = ({
         const { x, y } = coords;
         const sector = getSector(x, y);
 
-        // Detect tap in Goal area for Shots
-        // Goal Width is 20% (40 to 60), Height is 5% visual, 10% hit-box for comfort
+        // Detect tap specifically on the GOAL (Arco) for Shots
+        // Goal Width is 20% (40 to 60), Height is 5% visual, ~8% hit-box for comfort
         // Restriction: Only clickable if the team with possession is attacking that goal.
-        const isTopGoal = y <= 10;
-        const isBottomGoal = y >= 90;
-        const isGoalX = x >= 40 && x <= 60;
+        const isTopGoal = y <= 8 && x >= 40 && x <= 60;
+        const isBottomGoal = y >= 92 && x >= 40 && x <= 60;
 
         let isGoalTap = false;
-        if (isGoalX) {
-            if (possession === Possession.HOME && isTopGoal) isGoalTap = true;
-            if (possession === Possession.AWAY && isBottomGoal) isGoalTap = true;
-        }
+        if (possession === Possession.HOME && isTopGoal) isGoalTap = true;
+        if (possession === Possession.AWAY && isBottomGoal) isGoalTap = true;
 
         if (isGoalTap) {
             addGlow(vx, vy, 'green');
@@ -175,7 +175,7 @@ export const PitchMap: React.FC<PitchMapProps> = ({
                 onAction('PÉRDIDA', Possession.AWAY, x, y, `Sector: ${sector}`);
             } else if (possession === Possession.AWAY) {
                 // RIVAL ENTRY
-                if (y > 77) {
+                if (y > 75) {
                     const type = sector.includes('Área') ? 'Ingreso Rival en área' : 'Ingreso rival en 23';
                     addGlow(vx, vy, 'red');
                     onAction(type, Possession.AWAY, x, y, `Sector: ${sector}`);
@@ -187,7 +187,7 @@ export const PitchMap: React.FC<PitchMapProps> = ({
                 // Single Tap
                 if (possession === Possession.HOME) {
                     // ENTRY
-                    if (y < 23) {
+                    if (y < 25) {
                         const type = sector.includes('Área') ? 'Ingreso en área' : 'Ingreso en 23';
                         addGlow(vx, vy, 'green');
                         onAction(type, Possession.HOME, x, y, `Sector: ${sector}`);
@@ -234,28 +234,28 @@ export const PitchMap: React.FC<PitchMapProps> = ({
                     {isLandscape ? (
                         <>
                             <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white/60" />
-                            <div className="absolute left-[23%] top-0 bottom-0 w-px border-l-2 border-dashed border-white/40" />
-                            <div className="absolute right-[23%] top-0 bottom-0 w-px border-r-2 border-dashed border-white/40" />
+                            <div className="absolute left-[25%] top-0 bottom-0 w-px border-l-2 border-dashed border-white/40" />
+                            <div className="absolute right-[25%] top-0 bottom-0 w-px border-r-2 border-dashed border-white/40" />
 
                             {/* D-Areas Hockey Style */}
                             {/* Top/Away Circle */}
-                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[32%] h-[53.2%] border-2 border-white/60 rounded-full -translate-x-1/2" />
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[32%] h-[60%] border-2 border-white/60 rounded-full -translate-x-1/2" />
 
                             {/* Bottom/Home Circle */}
-                            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[32%] h-[53.2%] border-2 border-white/60 rounded-full translate-x-1/2" />
+                            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[32%] h-[60%] border-2 border-white/60 rounded-full translate-x-1/2" />
                         </>
                     ) : (
                         <>
                             <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-white/60" />
-                            <div className="absolute top-[23%] left-0 right-0 h-px border-t-2 border-dashed border-white/40" />
-                            <div className="absolute bottom-[23%] left-0 right-0 h-px border-b-2 border-dashed border-white/40" />
+                            <div className="absolute top-[25%] left-0 right-0 h-px border-t-2 border-dashed border-white/40" />
+                            <div className="absolute bottom-[25%] left-0 right-0 h-px border-b-2 border-dashed border-white/40" />
 
                             {/* D-Areas Hockey Style */}
                             {/* Top/Away Circle */}
-                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[53.2%] h-[32%] border-2 border-white/60 rounded-full -translate-y-1/2" />
+                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60%] h-[32%] border-2 border-white/60 rounded-full -translate-y-1/2" />
 
                             {/* Bottom/Home Circle */}
-                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[53.2%] h-[32%] border-2 border-white/60 rounded-full translate-y-1/2" />
+                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[60%] h-[32%] border-2 border-white/60 rounded-full translate-y-1/2" />
                         </>
                     )}
 

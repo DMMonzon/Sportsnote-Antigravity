@@ -1,9 +1,11 @@
-const CACHE_NAME = 'sportsnote-v3'; // Nueva versión para forzar limpieza profunda
+const CACHE_NAME = 'sportsnote-v4'; // Nueva versión para forzar limpieza profunda
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/index.tsx', // Aseguramos el script principal
+  '/assets/logo-sportsnote-v2.png',
+  '/assets/logoLargoSN.svg',
   'https://cdn.tailwindcss.com',
   'https://fonts.googleapis.com/css2?family=Contrail+One&family=Roboto:wght@300;400;500;700&display=swap'
 ];

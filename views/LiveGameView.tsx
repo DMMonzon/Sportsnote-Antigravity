@@ -2,20 +2,34 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { telemetryService, TelemetryEvent } from '../services/telemetryService';
-import { UserRole, Game, GameEvent, Possession } from '../types';
+import { UserRole, Game, GameEvent, Possession, TacticalScheme } from '../types';
+
 import { dbService } from '../services/dbService';
 import { aiService } from '../services/aiService';
+import { StorageService } from '../services/StorageService';
 import { PitchMap } from '../components/PitchMap';
 
 const NSeparator = () => (
   <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center shrink-0">
     <img
-      src="/assets/logo-sportsnote-v2.png"
+      src="./assets/logo-sportsnote-v2.png"
       alt="Sportsnote Logo"
       className="w-full h-full object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.1)]"
     />
   </div>
 );
+
+const TacticIcon = ({ active }: { active: boolean }) => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={`transition-all ${active ? 'text-primary scale-125' : 'text-onSurfaceVariant/40'}`}>
+    <path d="M4 4L8 8M8 4L4 8" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" />
+    <path d="M16 16L20 20M20 16L16 20" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" />
+    <path d="M6 19C6 19 7 13 15 13" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" />
+    <path d="M13 10L16 13L13 16" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" />
+    <circle cx="6" cy="19" r="2" fill="white" stroke="#94a3b8" strokeWidth="2" />
+  </svg>
+);
+
+
 
 type ActionFilter = 'ALL' | 'DISPARO' | 'FALTA' | 'PÉRDIDA' | 'RECUPERO';
 type PeriodFilter = 'ALL' | 1 | 2 | 3 | 4;
@@ -112,7 +126,8 @@ const LiveGameView: React.FC<{
   const [goalType, setGoalType] = useState<'Individual' | 'Colectiva' | 'Penal' | 'Corto' | null>(null);
   const [pendingGoalAction, setPendingGoalAction] = useState<{ scoreUpdate: { home: number, away: number }, nextPoss: Possession } | null>(null);
 
-  const [activeView, setActiveView] = useState<'field' | 'list' | 'heatmap' | 'stats'>('field');
+  const [activeView, setActiveView] = useState<'field' | 'list' | 'tactics' | 'stats'>('field');
+
   const [eventFilter, setEventFilter] = useState<ActionFilter>('ALL');
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('ALL');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -129,6 +144,10 @@ const LiveGameView: React.FC<{
   const [localPossessionTime, setLocalPossessionTime] = useState(0);
   const [awayPossessionTime, setAwayPossessionTime] = useState(0);
   const [foulCardType, setFoulCardType] = useState<'NONE' | 'VERDE' | 'AMARILLA' | 'ROJA'>('NONE');
+  const [tacticalSchemes, setTacticalSchemes] = useState<TacticalScheme[]>([]);
+  const [activeTacticId, setActiveTacticId] = useState<string | null>(null);
+  const [expandedTacticId, setExpandedTacticId] = useState<string | null>(null);
+
 
   // Estados de orientación de la cancha
   const [isLandscape, setIsLandscape] = useState(false);
@@ -143,10 +162,48 @@ const LiveGameView: React.FC<{
 
   useEffect(() => {
     if (id) {
-      const data = dbService.getGame(id);
-      if (data) setGame(data);
+      const activeGame = StorageService.getActiveGame();
+      
+      if (activeGame && activeGame.game.id === id) {
+        // Resume game fully
+        setGame(activeGame.game);
+        setSeconds(activeGame.seconds);
+        setPeriod(activeGame.period);
+        setPossession(activeGame.possession);
+        setLocalPossessionTime(activeGame.localPossessionTime);
+        setAwayPossessionTime(activeGame.awayPossessionTime);
+        setPassCount(activeGame.passCount);
+        setIsRunning(activeGame.isRunning);
+        if (activeGame.game.activeTacticId) setActiveTacticId(activeGame.game.activeTacticId);
+      } else {
+        // Load fresh from DB if not active locally
+        const data = dbService.getGame(id);
+        if (data) {
+          setGame(data);
+          if (data.activeTacticId) setActiveTacticId(data.activeTacticId);
+        }
+      }
+
+      const state = dbService.loadState();
+      setTacticalSchemes(state.tacticalSchemes || []);
     }
   }, [id]);
+
+  // Autosave current match to StorageService in real-time
+  useEffect(() => {
+    if (game && id) {
+      StorageService.saveActiveGame({
+        game,
+        seconds,
+        period,
+        possession,
+        localPossessionTime,
+        awayPossessionTime,
+        passCount,
+        isRunning
+      });
+    }
+  }, [game, seconds, period, possession, localPossessionTime, awayPossessionTime, passCount, isRunning, id]);
 
   useEffect(() => {
     if (game) dbService.updateGame(game);
@@ -344,8 +401,10 @@ const LiveGameView: React.FC<{
       lane: sector.lane,
       details: finalDetails,
       audioData: audioData,
-      scoringTeam: scoringTeam
+      scoringTeam: scoringTeam,
+      tacticId: activeTacticId || undefined
     };
+
 
     let updatedScoreHome = game.scoreHome;
     let updatedScoreAway = game.scoreAway;
@@ -360,8 +419,10 @@ const LiveGameView: React.FC<{
       scoreHome: updatedScoreHome,
       scoreAway: updatedScoreAway,
       events: [...game.events, event],
-      passChains: updatedPassChains
+      passChains: updatedPassChains,
+      activeTacticId: activeTacticId || undefined
     };
+
 
     setGame(updatedGame);
     if (finalNewPoss !== Possession.NONE) setPossession(finalNewPoss);
@@ -580,13 +641,22 @@ const LiveGameView: React.FC<{
     setShowNoteModal(false);
   };
 
+  const deleteAction = () => {
+    if (game && game.events.length > 0) {
+      const updatedEvents = [...game.events];
+      updatedEvents.pop();
+      setGame({ ...game, events: updatedEvents });
+    }
+  };
+
+  const handleAnnulGameConfirm = () => {
+    setShowExitConfirm(false);
+    StorageService.clearActiveGame();
+    onAnnulGame();
+    navigate('/dashboard');
+  };
+
   const handleFinishGame = () => {
-    if (!game) return;
-    onExitGame();
-    telemetryService.logEvent(TelemetryEvent.FINISH_GAME, {
-      gameId: game.id,
-      score: `${game.scoreHome}-${game.scoreAway}`
-    });
     navigate(`/summary/${game.id}`);
   };
 
@@ -694,14 +764,14 @@ const LiveGameView: React.FC<{
               <div className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${isMaxHalf(data.own) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-white/40 border-surfaceVariant/30'}`}>
                 <span className={`${isMaxHalf(data.own) ? style.accent : 'text-blue-500'} text-[10px]`}>↓</span>
                 <div className="flex flex-col">
-                  <span className={`text-[8px] font-bold uppercase ${isMaxHalf(data.own) ? style.text : 'text-onSurfaceVariant opacity-60'} leading-none`}>Propio</span>
+                  <span className={`text-[8px] font-bold uppercase ${isMaxHalf(data.own) ? style.text : 'text-onSurfaceVariant opacity-60'} leading-none`}>En Campo Propio</span>
                   <span className="text-[11px] font-black leading-none text-dark">{data.own}</span>
                 </div>
               </div>
               <div className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${isMaxHalf(data.rival) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-white/40 border-surfaceVariant/30'}`}>
                 <span className={`${isMaxHalf(data.rival) ? style.accent : 'text-orange-500'} text-[10px]`}>↑</span>
                 <div className="flex flex-col">
-                  <span className={`text-[8px] font-bold uppercase ${isMaxHalf(data.rival) ? style.text : 'text-onSurfaceVariant opacity-60'} leading-none`}>Rival</span>
+                  <span className={`text-[8px] font-bold uppercase ${isMaxHalf(data.rival) ? style.text : 'text-onSurfaceVariant opacity-60'} leading-none`}>En Campo Rival</span>
                   <span className="text-[11px] font-black leading-none text-dark">{data.rival}</span>
                 </div>
               </div>
@@ -709,15 +779,15 @@ const LiveGameView: React.FC<{
 
             <div className="grid grid-cols-3 gap-1.5 pt-1">
               <div className={`flex flex-col items-center p-1.5 rounded-xl border transition-all ${isMaxLane(data.left) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-white/40 border-surfaceVariant/30'}`}>
-                <span className={`text-[7px] font-black uppercase mb-0.5 ${isMaxLane(data.left) ? style.text : 'text-onSurfaceVariant'}`}>Izq</span>
+                <span className={`text-[7px] font-black uppercase mb-0.5 ${isMaxLane(data.left) ? style.text : 'text-onSurfaceVariant opacity-60'}`}>Izquierda</span>
                 <span className="text-[10px] font-black text-dark">{data.left}</span>
               </div>
               <div className={`flex flex-col items-center p-1.5 rounded-xl border transition-all ${isMaxLane(data.center) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-white/40 border-surfaceVariant/30'}`}>
-                <span className={`text-[7px] font-black uppercase mb-0.5 ${isMaxLane(data.center) ? style.text : 'text-onSurfaceVariant'}`}>Ctr</span>
+                <span className={`text-[7px] font-black uppercase mb-0.5 ${isMaxLane(data.center) ? style.text : 'text-onSurfaceVariant opacity-60'}`}>Centro</span>
                 <span className="text-[10px] font-black text-dark">{data.center}</span>
               </div>
               <div className={`flex flex-col items-center p-1.5 rounded-xl border transition-all ${isMaxLane(data.right) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-white/40 border-surfaceVariant/30'}`}>
-                <span className={`text-[7px] font-black uppercase mb-0.5 ${isMaxLane(data.right) ? style.text : 'text-onSurfaceVariant'}`}>Der</span>
+                <span className={`text-[7px] font-black uppercase mb-0.5 ${isMaxLane(data.right) ? style.text : 'text-onSurfaceVariant opacity-60'}`}>Derecha</span>
                 <span className="text-[10px] font-black text-dark">{data.right}</span>
               </div>
             </div>
@@ -1131,38 +1201,101 @@ const LiveGameView: React.FC<{
 
           <div className="flex-1 relative overflow-hidden flex items-center justify-center bg-surfaceVariant/10">
             <div className={`relative ${isLandscape ? 'w-[92%] h-[92%]' : 'w-full h-full'}`}>
-              {activeView === 'heatmap' ? (
+              {activeView === 'tactics' ? (
                 <div className="w-full h-full bg-white rounded-[32px] border-2 border-surfaceVariant flex flex-col p-6 animate-in slide-in-from-bottom duration-300 overflow-hidden shadow-xl">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-sm font-black text-dark uppercase tracking-widest">Mapa de Calor</h3>
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-sm font-black text-dark uppercase tracking-widest">Administrador de Tácticas</h3>
                     <button onClick={() => setActiveView('field')} className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/5 px-4 py-2 rounded-full">Cerrar</button>
                   </div>
 
-                  <FilterChips />
+                  <div className="flex-1 overflow-y-auto space-y-4 no-scrollbar pb-4">
+                    {tacticalSchemes.map((t) => {
+                      const isActive = activeTacticId === t.id;
+                      const isExpanded = expandedTacticId === t.id;
 
-                  <div className="flex-1 relative overflow-hidden rounded-[24px]">
-                    <div className="absolute inset-0 bg-emerald-900">
-                      <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-white/40 -translate-y-1/2" />
-                    </div>
-                    <div className="absolute inset-0">
-                      {game.events.filter(e => {
-                        const actionMatch = eventFilter === 'ALL' || e.type.includes(eventFilter);
-                        const periodMatch = periodFilter === 'ALL' || e.gameTime.startsWith(`${periodFilter}Q`);
-                        return actionMatch && periodMatch;
-                      }).map((e, i) => (
+                      // Calibrar estadísticas para esta táctica
+                      const tacticEvents = game.events.filter(e => e.tacticId === t.id);
+                      const ingresosPropios = tacticEvents.filter(e => e.type.toLowerCase().includes('ingreso') && !e.type.toLowerCase().includes('rival')).length;
+                      const ingresosRivales = tacticEvents.filter(e => e.type.toLowerCase().includes('ingreso rival')).length;
+                      const recuperos = tacticEvents.filter(e => e.type.toLowerCase().includes('recupero')).length;
+
+                      return (
                         <div
-                          key={i}
-                          className={`absolute w-16 h-16 rounded-full blur-2xl opacity-90 mix-blend-screen transition-all ${e.type.includes('GOL') ? 'bg-secondary' :
-                            e.type.includes('DISPARO') ? 'bg-white' :
-                              e.type.includes('PÉRDIDA') ? 'bg-orange-400' :
-                                e.type.includes('FALTA') ? 'bg-red-500' : 'bg-primary'
+                          key={t.id}
+                          className={`border-2 rounded-[28px] transition-all duration-300 overflow-hidden ${isActive ? 'border-[#00fe00] bg-[#00fe00]/5 shadow-lg shadow-[#00fe00]/10' : 'border-surfaceVariant bg-surface/30'
                             }`}
-                          style={{ left: `${e.x}%`, top: `${e.y}%`, transform: 'translate(-50%, -50%)' }}
-                        />
-                      ))}
-                    </div>
+                        >
+                          <div className="p-5 flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="text-[11px] font-black text-dark uppercase">{t.name}</h4>
+                                {isActive && <span className="w-2 h-2 bg-[#00fe00] rounded-full animate-ping"></span>}
+                              </div>
+                              <p className="text-[9px] font-bold text-onSurfaceVariant/60 italic">{t.objective}</p>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={() => setExpandedTacticId(isExpanded ? null : t.id)}
+                                className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                              >
+                                🔽
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  if (isActive) {
+                                    setActiveTacticId(null);
+                                  } else {
+                                    setActiveTacticId(t.id);
+                                    setActiveView('field');
+                                  }
+                                }}
+                                className={`px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${isActive
+                                  ? 'bg-red-500 text-white shadow-md'
+                                  : 'bg-primary text-white shadow-lg shadow-primary/20 hover:scale-105 active:scale-95'
+                                  }`}
+                              >
+                                {isActive ? 'Finalizar Táctica' : `Activar ${t.name.split(' ')[0]}`}
+                              </button>
+                            </div>
+                          </div>
+
+                          {isExpanded && (
+                            <div className="px-5 pb-5 pt-2 border-t border-surfaceVariant/10 grid grid-cols-3 gap-3 animate-in slide-in-from-top duration-300">
+                              <div className="bg-white/40 p-3 rounded-2xl border border-surfaceVariant/30 flex flex-col items-center">
+                                <span className="text-[7px] font-black uppercase text-onSurfaceVariant mb-1">Ing. Propios</span>
+                                <span className="text-sm font-black text-dark">{ingresosPropios}</span>
+                              </div>
+                              <div className="bg-white/40 p-3 rounded-2xl border border-surfaceVariant/30 flex flex-col items-center">
+                                <span className="text-[7px] font-black uppercase text-onSurfaceVariant mb-1">Ing. Rivales</span>
+                                <span className="text-sm font-black text-dark">{ingresosRivales}</span>
+                              </div>
+                              <div className="bg-white/40 p-3 rounded-2xl border border-surfaceVariant/30 flex flex-col items-center">
+                                <span className="text-[7px] font-black uppercase text-onSurfaceVariant mb-1">Recuperos</span>
+                                <span className="text-sm font-black text-dark">{recuperos}</span>
+                              </div>
+                              <div className="col-span-3 mt-1">
+                                <p className="text-[8px] font-bold text-onSurfaceVariant/50 leading-relaxed uppercase">{t.description}</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {tacticalSchemes.length === 0 && (
+                      <div className="flex flex-col items-center justify-center py-20 opacity-30 text-center">
+                        <div className="mb-4 scale-150">
+                          <TacticIcon active={false} />
+                        </div>
+                        <p className="text-[11px] font-black uppercase tracking-[3px]">Sin tácticas configuradas</p>
+                        <p className="text-[9px] font-bold mt-2">Configura tus formaciones en el Dashboard</p>
+                      </div>
+                    )}
+
                   </div>
                 </div>
+
               ) : activeView === 'list' ? (
                 <div className="w-full h-full bg-white rounded-[32px] border-2 border-surfaceVariant flex flex-col p-6 animate-in slide-in-from-bottom duration-300 overflow-hidden shadow-xl">
                   <div className="flex justify-between items-center mb-4">
@@ -1310,6 +1443,52 @@ const LiveGameView: React.FC<{
                       <StatDetailCard title="Recuperos 🛡️" types={['RECUPERO']} colorClass="text-emerald-600" />
                       <StatDetailCard title="Faltas ⚠️" types={['FALTA']} colorClass="text-red-600" />
                       <StatDetailCard title="Remates 🥅" types={['DISPARO']} colorClass="text-slate-700" />
+
+                      {/* Ingresos al Área */}
+                      <EntryAnalysisCard
+                        title="Ingresos al Área"
+                        icon="📥"
+                        homeTotal={Object.values(statsArea.home).reduce((a: number, b: number) => a + b, 0)}
+                        awayTotal={Object.values(statsArea.away).reduce((a: number, b: number) => a + b, 0)}
+                      >
+                        <SectorRectangle
+                          label="Ingresos al área rival"
+                          teamColor={game.teamAway.primaryColor || '#ef4444'}
+                          stats={statsArea.home}
+                          sectors={['Extremo Izquierdo', 'Centro Izquierda', 'Centro', 'Centro Derecha', 'Extremo Derecho']}
+                          borderPosition="top"
+                        />
+                        <SectorRectangle
+                          label="Ingresos del rival a mi área"
+                          teamColor={game.teamHome.primaryColor || '#6d5dfc'}
+                          stats={statsArea.away}
+                          sectors={['Extremo Izquierdo', 'Centro Izquierda', 'Centro', 'Centro Derecha', 'Extremo Derecho']}
+                          borderPosition="bottom"
+                        />
+                      </EntryAnalysisCard>
+
+                      {/* Ingresos a 23 Yardas */}
+                      <EntryAnalysisCard
+                        title="Ingresos a 23 Yardas"
+                        icon="2️⃣3️⃣"
+                        homeTotal={Object.values(stats23.home).reduce((a: number, b: number) => a + b, 0)}
+                        awayTotal={Object.values(stats23.away).reduce((a: number, b: number) => a + b, 0)}
+                      >
+                        <SectorRectangle
+                          label="Ingresos a 23 yardas rival"
+                          teamColor={game.teamAway.primaryColor || '#ef4444'}
+                          stats={stats23.home}
+                          sectors={['Izquierda', 'Centro', 'Derecha']}
+                          borderPosition="top"
+                        />
+                        <SectorRectangle
+                          label="Ingresos del rival a mis 23 yardas"
+                          teamColor={game.teamHome.primaryColor || '#6d5dfc'}
+                          stats={stats23.away}
+                          sectors={['Izquierda', 'Centro', 'Derecha']}
+                          borderPosition="bottom"
+                        />
+                      </EntryAnalysisCard>
                     </div>
 
                     <div className="mt-8 mb-6">
@@ -1626,9 +1805,19 @@ const LiveGameView: React.FC<{
         <div className="flex flex-1 items-center justify-around md:justify-center md:gap-16">
           <div className="flex items-center gap-4 md:gap-8">
             <button className={`text-2xl transition-all ${activeView === 'list' ? 'text-primary scale-110 drop-shadow-md' : 'text-onSurfaceVariant/30'}`} onClick={() => setActiveView(activeView === 'list' ? 'field' : 'list')}>📋</button>
-            <button className={`text-3xl transition-all ${activeView === 'heatmap' ? 'text-primary scale-125 drop-shadow-md' : 'text-onSurfaceVariant/30'}`} onClick={() => setActiveView(activeView === 'heatmap' ? 'field' : 'heatmap')}>🔥</button>
-            <button className={`text-2xl transition-all ${activeView === 'stats' ? 'text-primary scale-110 drop-shadow-md' : 'text-onSurfaceVariant/30'}`} onClick={() => setActiveView(activeView === 'stats' ? 'field' : 'stats')}>📊</button>
+            <div className="relative">
+              <button onClick={() => setActiveView(activeView === 'tactics' ? 'field' : 'tactics')}>
+                <TacticIcon active={activeView === 'tactics'} />
+              </button>
+              {activeTacticId && activeView !== 'tactics' && (
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-[#00fe00] rounded-full animate-ping border-2 border-white"></span>
+              )}
+            </div>
+            <button className={`text-2xl transition-all ${activeView === 'stats' ? 'text-primary scale-110 drop-shadow-md' : 'text-onSurfaceVariant/30'} ${!isLandscape ? 'lg:hidden' : ''}`} onClick={() => setActiveView(activeView === 'stats' ? 'field' : 'stats')}>📊</button>
           </div>
+
+
+
 
           {!isLandscape && (
             <div className="flex items-center gap-4 md:gap-8">
