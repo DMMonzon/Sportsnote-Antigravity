@@ -1,0 +1,52 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Función para verificar si el usuario está autenticado en Google Auth
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Función que verifica de forma segura (en backend) si el email del usuario
+    // existe en la colección de authorized_users. 
+    // Esto previene que alguien llame a la API manualmente usando un token válido de Google.
+    function isAuthorizedUser() {
+      return isSignedIn() && exists(/databases/$(database)/documents/authorized_users/$(request.auth.token.email));
+    }
+
+    // Regla para la lista de usuarios autorizados
+    // El frontend necesita leer esta colección para comprobar el rol/acceso
+    match /authorized_users/{userEmail} {
+      allow read: if isSignedIn();
+      allow write: if false; // Solo tú puedes editarlos desde la consola de Firebase
+    }
+
+    // Regla para los partidos (Matches / Games)
+    match /matches/{matchId} {
+      // Permitimos la creación si el usuario figura en authorized_users
+      allow create: if isAuthorizedUser();
+      
+      // Permitimos lectura y modificación SOLO si el usuario es el creador del documento.
+      // Aceptamos tanto userId como ownerId por compatibilidad con el código actual y pasado.
+      allow read, update, delete: if isAuthorizedUser() && 
+        (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.ownerId);
+    }
+    
+    // Regla para los equipos
+    match /teams/{teamId} {
+      allow create: if isAuthorizedUser();
+      allow read, update, delete: if isAuthorizedUser() && request.auth.uid == resource.data.ownerId;
+    }
+    
+    // Regla equivalente para las tácticas (TacticalSchemes)
+    match /tactics/{tacticId} {
+      allow create: if isAuthorizedUser();
+      allow read, update, delete: if isAuthorizedUser() && request.auth.uid == resource.data.ownerId;
+    }
+    
+    // Bloqueo global: Niega el acceso a cualquier otra colección desconocida
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

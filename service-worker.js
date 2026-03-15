@@ -47,3 +47,20 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
+// Implement Background Sync
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'sportsnote-sync') {
+    event.waitUntil(processSyncQueue());
+  }
+});
+
+// Since SW can't directly read localStorage, we require our App
+// to handle the actual queue processing when it comes back online.
+// So we use postMessage to tell all clients to process their queues.
+async function processSyncQueue() {
+  const clientsList = await clients.matchAll();
+  for (const client of clientsList) {
+    client.postMessage({ type: 'PROCESS_SYNC_QUEUE' });
+  }
+}

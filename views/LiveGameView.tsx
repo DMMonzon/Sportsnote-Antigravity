@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { telemetryService, TelemetryEvent } from '../services/telemetryService';
 import { UserRole, Game, GameEvent, Possession, TacticalScheme } from '../types';
 
-import { dbService } from '../services/dbService';
+import { PersistenceManager } from '../services/PersistenceManager';
 import { aiService } from '../services/aiService';
 import { StorageService } from '../services/StorageService';
 import { PitchMap } from '../components/PitchMap';
@@ -177,14 +177,15 @@ const LiveGameView: React.FC<{
         if (activeGame.game.activeTacticId) setActiveTacticId(activeGame.game.activeTacticId);
       } else {
         // Load fresh from DB if not active locally
-        const data = dbService.getGame(id);
+        const data = PersistenceManager.getGame(id);
         if (data) {
           setGame(data);
           if (data.activeTacticId) setActiveTacticId(data.activeTacticId);
         }
       }
 
-      const state = dbService.loadState();
+      // Cargar tácticas
+      const state = PersistenceManager.loadStateLocal();
       setTacticalSchemes(state.tacticalSchemes || []);
     }
   }, [id]);
@@ -206,7 +207,7 @@ const LiveGameView: React.FC<{
   }, [game, seconds, period, possession, localPossessionTime, awayPossessionTime, passCount, isRunning, id]);
 
   useEffect(() => {
-    if (game) dbService.updateGame(game);
+    if (game) PersistenceManager.updateGame(game);
   }, [game]);
 
   useEffect(() => {
@@ -657,7 +658,12 @@ const LiveGameView: React.FC<{
   };
 
   const handleFinishGame = () => {
-    navigate(`/summary/${game.id}`);
+    if (window.confirm('¿Estás seguro de finalizar el partido?')) {
+      if (id) {
+         PersistenceManager.forceSyncGame(id);
+      }
+      navigate(`/summary/${game.id}`);
+    }
   };
 
   const playAudio = (base64: string) => {

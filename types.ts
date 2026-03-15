@@ -39,6 +39,7 @@ export interface TacticalScheme {
   name: string;
   description: string;
   objective: string;
+  ownerId?: string;
 }
 
 
@@ -78,12 +79,16 @@ export interface Game {
   role?: UserRole;
   activeTacticId?: string;
   isFavorite?: boolean;
+  ownerId?: string;
+  userId?: string;
 }
 
 
 export interface AppState {
   currentUser: {
     id: string;
+    uid: string;
+    email: string;
     role: UserRole;
     name: string;
     avatar?: string;

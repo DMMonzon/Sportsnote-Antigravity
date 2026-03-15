@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Game, UserRole, GameEvent } from '../types';
-import { dbService } from '../services/dbService';
+import { PersistenceManager } from '../services/PersistenceManager';
 import { Button } from '../components/Button';
 import { GameField } from '../components/GameField';
 import {
@@ -93,7 +93,7 @@ const SummaryView: React.FC = () => {
 
   useEffect(() => {
     if (id) {
-      const data = dbService.getGame(id);
+      const data = PersistenceManager.getGame(id);
       if (data) setGame(data);
     }
   }, [id]);

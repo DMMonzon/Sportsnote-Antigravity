@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Player, Game } from '../types';
-import { dbService } from '../services/dbService';
+import { PersistenceManager } from '../services/PersistenceManager';
 
 interface SquadViewProps {
     matches: Game[];
@@ -9,7 +9,7 @@ interface SquadViewProps {
 
 const SquadView: React.FC<SquadViewProps> = ({ matches }) => {
     const navigate = useNavigate();
-    const [squad, setSquad] = useState<Player[]>(() => dbService.loadState().players || []);
+    const [squad, setSquad] = useState<Player[]>(() => PersistenceManager.loadStateLocal().players || []);
     const [newPlayer, setNewPlayer] = useState({ id: '', name: '', number: '', comments: '' });
     const [isEditing, setIsEditing] = useState(false);
 
@@ -57,20 +57,22 @@ const SquadView: React.FC<SquadViewProps> = ({ matches }) => {
         }
 
         setSquad(updatedSquad);
-        const state = dbService.loadState();
+        const state = PersistenceManager.loadStateLocal();
         state.players = updatedSquad;
-        dbService.saveState(state);
+        PersistenceManager.saveStateLocal(state);
         resetForm();
     };
 
     const handleDeletePlayer = () => {
         if (!newPlayer.id) return;
-        const updatedSquad = squad.filter(p => p.id !== newPlayer.id);
-        setSquad(updatedSquad);
-        const state = dbService.loadState();
-        state.players = updatedSquad;
-        dbService.saveState(state);
-        resetForm();
+        if (window.confirm('¿Seguro que deseas eliminar este jugador?')) {
+            const updatedSquad = squad.filter(p => p.id !== newPlayer.id);
+            setSquad(updatedSquad);
+            const state = PersistenceManager.loadStateLocal();
+            state.players = updatedSquad;
+            PersistenceManager.saveStateLocal(state);
+            resetForm();
+        }
     };
 
     const resetForm = () => {

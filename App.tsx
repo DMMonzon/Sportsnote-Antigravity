@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AppState, UserRole, Game } from './types';
-import { dbService } from './services/dbService';
+import { PersistenceManager } from './services/PersistenceManager';
 
 // Views
 import LoginView from './views/LoginView';
@@ -16,13 +16,13 @@ import SquadView from './views/SquadView';
 
 
 const AppContent: React.FC = () => {
-  const [state, setState] = useState<AppState>(dbService.loadState());
+  const [state, setState] = useState<AppState>(PersistenceManager.loadStateLocal());
   const navigate = useNavigate();
   const location = useLocation();
 
   // Guardar estado automáticamente en cada cambio
   useEffect(() => {
-    dbService.saveState(state);
+    PersistenceManager.saveStateLocal(state);
   }, [state]);
 
   // Lógica de recuperación automática al iniciar
@@ -34,28 +34,37 @@ const AppContent: React.FC = () => {
     }
   }, []);
 
-  const handleLogin = (role: UserRole) => {
+  const handleLogin = (user: { id: string, uid: string, email: string, role: UserRole, name: string, avatar?: string }) => {
     const newState = {
       ...state,
-      currentUser: { id: 'local_user', name: 'Usuario Principal', role }
+      currentUser: user
     };
     setState(newState);
+    
+    // Hydrate data from cloud upon successful login
+    PersistenceManager.hydrateFromCloud(user.uid);
+
     navigate('/dashboard');
   };
 
   const handleLogout = () => {
-    setState({ ...state, currentUser: null, activeGameId: null });
+    PersistenceManager.clearLocalData();
+    setState({ ...state, currentUser: null, activeGameId: null, matches: [], tacticalSchemes: [], players: [] });
     navigate('/');
   };
 
   const createGame = (game: Game) => {
+    const newGame = {
+      ...game,
+      userId: state.currentUser?.uid // Guardado como userId para /matches
+    };
     const newState = {
       ...state,
-      matches: [...state.matches, game],
-      activeGameId: game.id
+      matches: [...state.matches, newGame],
+      activeGameId: newGame.id
     };
     setState(newState);
-    navigate(`/live/${game.id}`);
+    navigate(`/live/${newGame.id}`);
   };
 
   const closeActiveGame = () => {
@@ -145,3 +154,25 @@ const App: React.FC = () => {
 };
 
 export default App;
+
+// Listen for service worker messages to process sync queue
+if ('navigator' in window && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'PROCESS_SYNC_QUEUE') {
+      PersistenceManager.processSyncQueue();
+    }
+  });
+
+  // Also try to process queue whenever regaining online status
+  window.addEventListener('online', () => {
+    PersistenceManager.processSyncQueue();
+  });
+  
+  // Custom event when cloud hydration finishes updating local state
+  window.addEventListener('local-state-hydrated', () => {
+    // A quick way to refresh the state in App if hydrated from cloud while app is running
+    // Usually handled by useEffect in a more complex setup, but this forces a page reload 
+    // or we can just hope state changes are caught.
+    window.location.reload(); 
+  });
+}

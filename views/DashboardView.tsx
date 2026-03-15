@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { UserRole, Game, TacticalScheme, Player } from '../types';
 
 
-import { dbService } from '../services/dbService';
+import { PersistenceManager } from '../services/PersistenceManager';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
 
@@ -82,6 +82,8 @@ const ActionCard: React.FC<ActionCardProps> = ({ title, subtitle, description, c
 interface DashboardViewProps {
   user: {
     id: string;
+    uid: string;
+    email: string;
     role: UserRole;
     name: string;
     avatar?: string;
@@ -94,7 +96,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
   const navigate = useNavigate();
   const [showRecycleModal, setShowRecycleModal] = React.useState<Game | null>(null);
   const [showTacticsModal, setShowTacticsModal] = React.useState(false);
-  const [tactics, setTactics] = React.useState<TacticalScheme[]>(() => dbService.loadState().tacticalSchemes || []);
+  const [tactics, setTactics] = React.useState<TacticalScheme[]>(() => PersistenceManager.loadStateLocal().tacticalSchemes || []);
 
   const [newTactic, setNewTactic] = React.useState({ name: '', description: '', objective: '' });
 
@@ -140,10 +142,10 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
 
   const handleToggleFavorite = (game: Game) => {
     const updatedGame = { ...game, isFavorite: !game.isFavorite };
-    dbService.updateGame(updatedGame);
+    PersistenceManager.updateGame(updatedGame);
     // Since we're not using Redux or context right now for Dashboard `matches` prop, 
     // it's passed from App.tsx state. A true update requires dispatching to App, but
-    // since dbService immediately sets localStorage, clicking the star might not visually 
+    // since PersistenceManager immediately sets localStorage, clicking the star might not visually 
     // update until refresh, or we need to trigger a re-render. 
     // The most robust way without prop drilling setMatches is location reload.
     window.location.reload();
@@ -153,22 +155,19 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
     if (!newTactic.name) return;
     const tactic: TacticalScheme = {
       id: Math.random().toString(36).substr(2, 9),
+      ownerId: user.uid,
       ...newTactic
     };
     const updatedTactics = [...tactics, tactic];
     setTactics(updatedTactics);
-    const state = dbService.loadState();
-    state.tacticalSchemes = updatedTactics;
-    dbService.saveState(state);
+    PersistenceManager.updateTactics(updatedTactics);
     setNewTactic({ name: '', description: '', objective: '' });
   };
 
   const handleDeleteTactic = (id: string) => {
     const updatedTactics = tactics.filter(t => t.id !== id);
     setTactics(updatedTactics);
-    const state = dbService.loadState();
-    state.tacticalSchemes = updatedTactics;
-    dbService.saveState(state);
+    PersistenceManager.updateTactics(updatedTactics);
   };
 
 
@@ -289,7 +288,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
           {/* TARJETA 2: GESTIÓN DE EQUIPO */}
           <ActionCard
             title="Gestión de Equipo"
-            subtitle={`${dbService.loadState().players?.length || 0} jugadores`}
+            subtitle={`${PersistenceManager.loadStateLocal().players?.length || 0} jugadores`}
             description="Administra los perfiles de tus jugadores, gestiona dorsales y revisa la disponibilidad de tu plantilla en tiempo real."
             ctaText="gestionar mi plantel"
             colorClass="bg-emerald-800 shadow-emerald-900/40"
@@ -302,7 +301,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
               <div>
                 <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-2">Jugadores Registrados</p>
                 <div className="flex items-baseline gap-2">
-                  <h4 className="text-4xl font-black text-white leading-none">{dbService.loadState().players?.length || 0}</h4>
+                  <h4 className="text-4xl font-black text-white leading-none">{PersistenceManager.loadStateLocal().players?.length || 0}</h4>
                   <span className="text-[10px] font-bold text-white/40 uppercase">Activos</span>
                 </div>
                 <p className="text-[10px] font-bold text-white/70 uppercase mt-3 italic">
