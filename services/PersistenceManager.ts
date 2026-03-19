@@ -115,6 +115,11 @@ export const PersistenceManager = {
     localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
   },
 
+  getSyncQueueLength: (): number => {
+    const q = PersistenceManager.getSyncQueue();
+    return q.length;
+  },
+
   queueForSync: async (payload: SyncPayload) => {
     const queue = PersistenceManager.getSyncQueue();
     queue.push(payload);
@@ -204,7 +209,6 @@ export const PersistenceManager = {
   },
 
   // --- Initial Load Hydration (Firestore -> Local) ---
-  // Call this on app start to fetch latest cloud data if online
   hydrateFromCloud: async (userId: string) => {
     if (!navigator.onLine || !userId) return;
 
@@ -213,66 +217,77 @@ export const PersistenceManager = {
       const state = PersistenceManager.loadStateLocal();
       let stateChanged = false;
 
-      // Fetch Games - Secure query checking BOTH userId (new) and ownerId (legacy) arrays.
-      // Firebase natively only allows one equality check per field, but we request userId primarily based on rules
+      // Only pull if current user matches or local is empty (isolation safety)
+      if (state.currentUser && state.currentUser.uid !== userId) {
+        console.warn('Hydration skipped: Local user mismatch. Clearing local cache first.');
+        PersistenceManager.clearLocalData();
+        return;
+      }
+
       const matchesRef = collection(db, 'matches');
+      // Fetch both new and legacy records
       const qMatches = query(matchesRef, where('userId', '==', userId));
-      const matchesSnap = await getDocs(qMatches);
-      
-      // Also fetch legacy documents using ownerId
       const qMatchesLegacy = query(matchesRef, where('ownerId', '==', userId));
-      const matchesLegacySnap = await getDocs(qMatchesLegacy);
+      
+      const [matchesSnap, matchesLegacySnap] = await Promise.all([
+        getDocs(qMatches),
+        getDocs(qMatchesLegacy)
+      ]);
 
       const cloudMatches: Game[] = [];
       const seenMatchIds = new Set<string>();
       
-      matchesSnap.forEach(doc => {
-         const data = doc.data() as Game;
-         if(!seenMatchIds.has(data.id)) { cloudMatches.push(data); seenMatchIds.add(data.id); }
-      });
-      matchesLegacySnap.forEach(doc => {
-         const data = doc.data() as Game;
-         if(!seenMatchIds.has(data.id)) { cloudMatches.push(data); seenMatchIds.add(data.id); }
-      });
+      const processSnap = (snap: any) => {
+        snap.forEach((doc: any) => {
+          const data = doc.data() as Game;
+          if(!seenMatchIds.has(data.id)) { 
+            cloudMatches.push(data); 
+            seenMatchIds.add(data.id); 
+          }
+        });
+      };
 
-      // We implement a very basic "Cloud Wins" or "Merge" strategy here.
-      // For simplicity, we merge arrays focusing on IDs. If cloud has it, we update local unless local is newer.
-      // Note: A robust implementation compares timestamps. Here we ensure offline data isn't wiped if sync is pending by processing queue first.
-      await PersistenceManager.processSyncQueue(); // Ensure local changes are pushed before pulling
+      processSnap(matchesSnap);
+      processSnap(matchesLegacySnap);
 
-      // After queue is empty, we can safely pull. (If queue failed, we should perhaps skip pull to avoid overwrite, but assume basic for now).
+      await PersistenceManager.processSyncQueue();
       const finalQueue = PersistenceManager.getSyncQueue();
+
       if (finalQueue.length === 0) {
-          // Identify games to add/update
-          const localMatchIds = new Set(state.matches.map(m => m.id));
+        if (cloudMatches.length > 0) {
+          // Merge logic: Favor cloud but keep unique local ones (if any)
+          const localMatches = state.matches || [];
+          const localIds = new Set(localMatches.map(m => m.id));
           
-          // Re-build matches array favoring cloud for existing, keeping local that cloud doesn't have (rare but possible if deleted in cloud? Usually we don't delete yet)
-          // Actually, let's just use cloud data directly if queue is empty to be fully in sync.
-          if (cloudMatches.length > 0) {
-              state.matches = cloudMatches;
-              stateChanged = true;
-          }
+          const mergedMatches = [...cloudMatches];
+          localMatches.forEach(lm => {
+            if (!seenMatchIds.has(lm.id)) {
+              mergedMatches.push(lm);
+            }
+          });
 
-          // Fetch Tactics
-          const tacticsRef = collection(db, 'tactics');
-          const qTactics = query(tacticsRef, where('ownerId', '==', userId));
-          const tacticsSnap = await getDocs(qTactics);
+          state.matches = mergedMatches;
+          stateChanged = true;
+        }
 
-          const cloudTactics: TacticalScheme[] = [];
-          tacticsSnap.forEach(doc => cloudTactics.push(doc.data() as TacticalScheme));
+        // Fetch Tactics
+        const tacticsRef = collection(db, 'tactics');
+        const qTactics = query(tacticsRef, where('ownerId', '==', userId));
+        const tacticsSnap = await getDocs(qTactics);
 
-          if (cloudTactics.length > 0) {
-               state.tacticalSchemes = cloudTactics;
-               stateChanged = true;
-          }
+        const cloudTactics: TacticalScheme[] = [];
+        tacticsSnap.forEach(doc => cloudTactics.push(doc.data() as TacticalScheme));
 
-          if (stateChanged) {
-              PersistenceManager.saveStateLocal(state);
-              console.log('Local state hydrated from cloud.');
-              window.dispatchEvent(new Event('local-state-hydrated')); // Notify React
-          }
+        if (cloudTactics.length > 0) {
+          state.tacticalSchemes = cloudTactics;
+          stateChanged = true;
+        }
+
+        if (stateChanged) {
+          PersistenceManager.saveStateLocal(state);
+          window.dispatchEvent(new Event('local-state-hydrated'));
+        }
       }
-
     } catch (e) {
       console.error("Error hydrating from cloud:", e);
     }

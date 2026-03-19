@@ -354,6 +354,7 @@ const SummaryView: React.FC = () => {
             </div>
           </section>
 
+
           <section className="bg-white p-6 rounded-[32px] shadow-sm border border-surfaceVariant">
             <h3 className="text-xs font-black uppercase text-onSurfaceVariant mb-6 flex items-center gap-2 italic">Ingresos y Accesos Ofensivos <div className="h-px flex-1 bg-surfaceVariant/50"></div></h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -403,10 +404,6 @@ const SummaryView: React.FC = () => {
             </div>
           </section>
 
-          <section className="bg-white p-6 rounded-[32px] shadow-sm border border-surfaceVariant">
-            <h3 className="text-xs font-black uppercase text-onSurfaceVariant mb-6 italic">Distribución Táctica</h3>
-            <GameField events={filteredEvents} />
-          </section>
 
 
           <section className="bg-white p-6 rounded-[32px] shadow-sm border border-surfaceVariant">

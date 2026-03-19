@@ -109,6 +109,16 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
+
+        @keyframes foul-pulse {
+            0% { opacity: 0.2; transform: translate(-50%, -50%) scale(1); }
+            30% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.5); }
+            100% { opacity: 0.2; transform: translate(-50%, -50%) scale(1); }
+        }
+
+        .animate-foul-pulse {
+            animation: foul-pulse 0.8s ease-out;
+        }
     </style>
     <script type="importmap">
 {

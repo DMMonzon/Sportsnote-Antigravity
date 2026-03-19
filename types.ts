@@ -61,6 +61,7 @@ export interface GameEvent {
   isTranscribing?: boolean; // Estado de carga de la transcripción
   scoringTeam?: Possession; // Equipo que anotó (para goles)
   tacticId?: string; // ID de la táctica activa durante el evento
+  prevPossession?: Possession; // Posesión antes de este evento (para deshacer)
 }
 
 

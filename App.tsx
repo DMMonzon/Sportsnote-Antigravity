@@ -49,6 +49,8 @@ const AppContent: React.FC = () => {
 
   const handleLogout = () => {
     PersistenceManager.clearLocalData();
+    // Also clear the active game resume data specifically
+    localStorage.removeItem('sportsnote_current_game');
     setState({ ...state, currentUser: null, activeGameId: null, matches: [], tacticalSchemes: [], players: [] });
     navigate('/');
   };
@@ -58,6 +60,10 @@ const AppContent: React.FC = () => {
       ...game,
       userId: state.currentUser?.uid // Guardado como userId para /matches
     };
+    
+    // Ensure it is saved locally AND queued for sync immediately
+    PersistenceManager.createGame(newGame);
+
     const newState = {
       ...state,
       matches: [...state.matches, newGame],
