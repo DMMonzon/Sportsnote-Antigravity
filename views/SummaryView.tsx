@@ -117,8 +117,8 @@ const SummaryView: React.FC = () => {
           const match = e.details?.match(/\((\d+) pases\)/);
           return match ? parseInt(match[1]) : 0;
         });
-      const avg = periodPasses.length > 0 ? (periodPasses.reduce((a, b) => a + b, 0) / periodPasses.length) : 0;
-      return { name: p, pases: parseFloat(avg.toFixed(1)) };
+      const total = periodPasses.reduce((a, b) => a + b, 0);
+      return { name: p, pases: total };
     });
   }, [game]);
 

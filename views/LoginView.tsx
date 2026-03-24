@@ -52,7 +52,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
       });
 
     } catch (error: any) {
-      console.error(error);
+      console.error("Login Error:", error);
       if (error.code !== 'auth/popup-closed-by-user') {
         setErrorMsg('Error al iniciar sesión con Google.');
       }
