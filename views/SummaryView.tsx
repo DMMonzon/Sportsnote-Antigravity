@@ -42,7 +42,8 @@ const SectorRectangle: React.FC<{
   stats: Record<string, number>;
   sectors: string[];
   borderPosition?: 'top' | 'bottom';
-}> = ({ label, teamColor, stats, sectors, borderPosition }) => {
+  type?: 'area' | 'zone23';
+}> = ({ label, teamColor, stats, sectors, borderPosition, type }) => {
   const values = sectors.map(s => stats[s] || 0);
   const maxVal = values.length > 0 ? Math.max(...values) : -1;
   const isMax = (val: number) => val > 0 && val === maxVal;
@@ -51,15 +52,39 @@ const SectorRectangle: React.FC<{
     <div className="flex flex-col gap-2">
       <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-tighter opacity-70">{label}</p>
       <div className={`w-full overflow-hidden flex flex-col ${borderPosition === 'top' ? 'flex-col-reverse' : 'flex-col'}`}>
-        <div className="w-full h-12 bg-surfaceVariant/5 rounded-xl border border-surfaceVariant flex overflow-hidden">
-          {sectors.map((sect) => {
+        <div 
+          className={`w-full h-12 bg-surfaceVariant/5 border border-surfaceVariant flex overflow-hidden ${
+            type === 'zone23'
+              ? 'rounded-none'
+              : borderPosition === 'top' ? 'rounded-b-[40px] rounded-t-md' : 'rounded-t-[40px] rounded-b-md'
+          }`}
+          style={type === 'zone23' ? {
+            borderTopStyle: borderPosition === 'bottom' ? 'dashed' : undefined,
+            borderTopWidth: borderPosition === 'bottom' ? '2px' : undefined,
+            borderBottomStyle: borderPosition === 'top' ? 'dashed' : undefined,
+            borderBottomWidth: borderPosition === 'top' ? '2px' : undefined,
+          } : undefined}
+        >
+          {sectors.map((sect, index) => {
             const val = stats[sect] || 0;
             const active = isMax(val);
+            
+            // Determinar clases de curvas para las celdas de los extremos
+            let cellRoundedClass = '';
+            if (type !== 'zone23') {
+              if (borderPosition === 'top') {
+                if (index === 0) cellRoundedClass = 'rounded-bl-[40px]';
+                if (index === sectors.length - 1) cellRoundedClass = 'rounded-br-[40px]';
+              } else {
+                if (index === 0) cellRoundedClass = 'rounded-tl-[40px]';
+                if (index === sectors.length - 1) cellRoundedClass = 'rounded-tr-[40px]';
+              }
+            }
+
             return (
               <div
                 key={sect}
-                className={`flex-1 border-r last:border-r-0 border-surfaceVariant/20 flex flex-col items-center justify-center transition-all ${active ? 'bg-primary/10' : ''
-                  }`}
+                className={`flex-1 border-r last:border-r-0 border-surfaceVariant/20 flex flex-col items-center justify-center transition-all ${cellRoundedClass} ${active ? 'bg-primary/10' : ''}`}
               >
                 <span className={`text-[10px] font-black ${active ? 'text-primary' : 'text-dark/40'}`}>
                   {val}
@@ -68,14 +93,6 @@ const SectorRectangle: React.FC<{
             );
           })}
         </div>
-        {borderPosition && (
-          <div className={`w-full flex justify-center ${borderPosition === 'top' ? 'mb-1' : 'mt-1'}`}>
-            <div
-              className="w-12 h-1 rounded-full shadow-sm"
-              style={{ backgroundColor: teamColor }}
-            />
-          </div>
-        )}
       </div>
     </div>
   );
@@ -392,6 +409,7 @@ const SummaryView: React.FC = () => {
                   stats={stats23.home}
                   sectors={['Izquierda', 'Centro', 'Derecha']}
                   borderPosition="top"
+                  type="zone23"
                 />
                 <SectorRectangle
                   label="Ingresos del rival a mis 23 yardas"
@@ -399,6 +417,7 @@ const SummaryView: React.FC = () => {
                   stats={stats23.away}
                   sectors={['Izquierda', 'Centro', 'Derecha']}
                   borderPosition="bottom"
+                  type="zone23"
                 />
               </EntryAnalysisCard>
             </div>

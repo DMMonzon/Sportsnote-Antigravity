@@ -25,10 +25,11 @@ interface ActionCardProps {
   bgIcon: React.ReactNode;
   colorClass: string;
   onClick: () => void;
+  disabled?: boolean;
   children: React.ReactNode;
 }
 
-const ActionCard: React.FC<ActionCardProps> = ({ title, subtitle, description, ctaText, icon, bgIcon, colorClass, onClick, children }) => (
+const ActionCard: React.FC<ActionCardProps> = ({ title, subtitle, description, ctaText, icon, bgIcon, colorClass, onClick, disabled, children }) => (
   <div className={`relative overflow-hidden w-full rounded-[32px] p-5 md:p-6 lg:p-8 flex flex-col gap-4 lg:gap-6 transition-all shadow-2xl group ${colorClass}`}>
     {/* Decoración de fondo */}
     <div className="absolute -right-8 -bottom-8 w-64 h-64 text-white/5 group-hover:scale-110 group-hover:-rotate-12 transition-all duration-700 pointer-events-none">
@@ -64,10 +65,11 @@ const ActionCard: React.FC<ActionCardProps> = ({ title, subtitle, description, c
 
       {/* Bloque 3: Botón de Acción Principal */}
       <button
-        onClick={onClick}
-        className="w-full md:w-auto mt-2 md:mt-0 shrink-0 bg-white text-dark px-6 py-4 md:py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brandDark hover:text-white transition-all duration-300 shadow-xl active:scale-95 flex items-center justify-center gap-2"
+        onClick={disabled ? undefined : onClick}
+        disabled={disabled}
+        className={`w-full md:w-auto mt-2 md:mt-0 shrink-0 bg-white text-dark px-6 py-4 md:py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 shadow-xl flex items-center justify-center gap-2 ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-brandDark hover:text-white active:scale-95'}`}
       >
-        <span>{ctaText}</span>
+        <span>{ctaText} {disabled && '(PRÓXIMAMENTE)'}</span>
         <span className="text-lg">→</span>
       </button>
     </div>
@@ -206,7 +208,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
           <ActionCard
             title="Panel de Juegos"
             subtitle={`${matches.length} registrados`}
-            description="Control total sobre el registro de eventos tácticos, goles y faltas en tiempo real para análisis inmediato de rendimiento."
+            description="Controla el cronograma de tus juegos pasado y futuros, revisa sus estadísticas de manera individual y global, y realiza la comparación entre dos de ellos."
             ctaText="iniciar juego nuevo"
             colorClass="bg-primary shadow-primary/30"
             onClick={() => navigate('/new-game')}
@@ -293,6 +295,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
             ctaText="gestionar mi plantel"
             colorClass="bg-emerald-800 shadow-emerald-900/40"
             onClick={() => navigate('/squad')}
+            disabled={true}
             icon={<span className="text-2xl">👥</span>}
 
             bgIcon={<svg fill="currentColor" viewBox="0 0 24 24" className="w-full h-full"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg>}
@@ -309,10 +312,11 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
                 </p>
               </div>
               <button
-                onClick={() => navigate('/squad')}
-                className="text-[9px] font-black text-white uppercase tracking-tighter hover:underline mt-4 text-left opacity-80"
+                disabled
+                className="text-[9px] font-black text-white uppercase tracking-tighter mt-4 text-left opacity-50 cursor-not-allowed"
+                title="Función disponible próximamente"
               >
-                ingresar nuevo jugador
+                gestionar mi plantel (próximamente)
               </button>
 
             </div>

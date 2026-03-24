@@ -8,7 +8,7 @@ import { PersistenceManager } from '../services/PersistenceManager';
 import { aiService } from '../services/aiService';
 import { StorageService } from '../services/StorageService';
 import { PitchMap } from '../components/PitchMap';
-
+import { db, auth, doc, setDoc } from '../services/firebase';
 const NSeparator = () => (
   <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center shrink-0">
     <img
@@ -188,52 +188,46 @@ const StatComparisonCard = ({ title, icon, homeData, awayData, allEvents, homeCo
         </div>
       </div>
       {isExpanded && (
-        <div className="flex flex-col gap-5 animate-in slide-in-from-top duration-300">
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: homeColor }}></div>
-              <span className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">Local</span>
-            </div>
-            <div className="grid grid-cols-4 gap-2">
-              <div className="flex flex-col">
-                <span className="text-[7px] font-black text-onSurfaceVariant/40 uppercase mb-0.5">Gol</span>
-                <span className="text-sm font-black text-dark">{homeOutcomes.gol}</span>
+        <div className="flex flex-col gap-3 animate-in slide-in-from-top duration-300">
+          <div className="flex items-center gap-3 py-1 border-b border-surfaceVariant/30">
+            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: homeColor }}></div>
+            <div className="grid grid-cols-4 flex-1 gap-1">
+              <div className="flex items-center gap-1">
+                <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Gol:</span>
+                <span className="text-[10px] font-black text-dark leading-none">{homeOutcomes.gol}</span>
               </div>
-              <div className="flex flex-col">
-                <span className="text-[7px] font-black text-onSurfaceVariant/40 uppercase mb-0.5">Ata</span>
-                <span className="text-sm font-black text-dark">{homeOutcomes.atajado}</span>
+              <div className="flex items-center gap-1">
+                <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Ata:</span>
+                <span className="text-[10px] font-black text-dark leading-none">{homeOutcomes.atajado}</span>
               </div>
-              <div className="flex flex-col">
-                <span className="text-[7px] font-black text-onSurfaceVariant/40 uppercase mb-0.5">Des</span>
-                <span className="text-sm font-black text-dark">{homeOutcomes.desviado}</span>
+              <div className="flex items-center gap-1">
+                <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Des:</span>
+                <span className="text-[10px] font-black text-dark leading-none">{homeOutcomes.desviado}</span>
               </div>
-              <div className="flex flex-col">
-                <span className="text-[7px] font-black text-onSurfaceVariant/40 uppercase mb-0.5">Pér</span>
-                <span className="text-sm font-black text-dark">{homeOutcomes.perdida}</span>
+              <div className="flex items-center gap-1">
+                <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Pér:</span>
+                <span className="text-[10px] font-black text-dark leading-none">{homeOutcomes.perdida}</span>
               </div>
             </div>
           </div>
-          <div className="flex flex-col gap-3 border-t border-surfaceVariant pt-4">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: awayColor }}></div>
-              <span className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">Visita</span>
-            </div>
-            <div className="grid grid-cols-4 gap-2">
-              <div className="flex flex-col">
-                <span className="text-[7px] font-black text-onSurfaceVariant/40 uppercase mb-0.5">Gol</span>
-                <span className="text-sm font-black text-dark">{awayOutcomes.gol}</span>
+          <div className="flex items-center gap-3 py-1">
+            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: awayColor }}></div>
+            <div className="grid grid-cols-4 flex-1 gap-1">
+              <div className="flex items-center gap-1">
+                <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Gol:</span>
+                <span className="text-[10px] font-black text-dark leading-none">{awayOutcomes.gol}</span>
               </div>
-              <div className="flex flex-col">
-                <span className="text-[7px] font-black text-onSurfaceVariant/40 uppercase mb-0.5">Ata</span>
-                <span className="text-sm font-black text-dark">{awayOutcomes.atajado}</span>
+              <div className="flex items-center gap-1">
+                <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Ata:</span>
+                <span className="text-[10px] font-black text-dark leading-none">{awayOutcomes.atajado}</span>
               </div>
-              <div className="flex flex-col">
-                <span className="text-[7px] font-black text-onSurfaceVariant/40 uppercase mb-0.5">Des</span>
-                <span className="text-sm font-black text-dark">{awayOutcomes.desviado}</span>
+              <div className="flex items-center gap-1">
+                <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Des:</span>
+                <span className="text-[10px] font-black text-dark leading-none">{awayOutcomes.desviado}</span>
               </div>
-              <div className="flex flex-col">
-                <span className="text-[7px] font-black text-onSurfaceVariant/40 uppercase mb-0.5">Pér</span>
-                <span className="text-sm font-black text-dark">{awayOutcomes.perdida}</span>
+              <div className="flex items-center gap-1">
+                <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Pér:</span>
+                <span className="text-[10px] font-black text-dark leading-none">{awayOutcomes.perdida}</span>
               </div>
             </div>
           </div>
@@ -249,7 +243,8 @@ const SectorRectangle: React.FC<{
   stats: Record<string, number>;
   sectors: string[];
   borderPosition?: 'top' | 'bottom';
-}> = ({ label, teamColor, stats, sectors, borderPosition }) => {
+  type?: 'area' | 'zone23';
+}> = ({ label, teamColor, stats, sectors, borderPosition, type }) => {
   const values = sectors.map(s => stats[s] || 0);
   const maxVal = values.length > 0 ? Math.max(...values) : -1;
   const isMax = (val: number) => val > 0 && val === maxVal;
@@ -258,15 +253,39 @@ const SectorRectangle: React.FC<{
     <div className="flex flex-col gap-2">
       <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-tighter opacity-70">{label}</p>
       <div className={`w-full overflow-hidden flex flex-col ${borderPosition === 'top' ? 'flex-col-reverse' : 'flex-col'}`}>
-        <div className="w-full h-12 bg-surfaceVariant/5 rounded-xl border border-surfaceVariant flex overflow-hidden">
-          {sectors.map((sect) => {
+        <div 
+          className={`w-full h-12 bg-surfaceVariant/5 border border-surfaceVariant flex overflow-hidden ${
+            type === 'zone23'
+              ? 'rounded-none'
+              : borderPosition === 'top' ? 'rounded-b-[40px] rounded-t-md' : 'rounded-t-[40px] rounded-b-md'
+          }`}
+          style={type === 'zone23' ? {
+            borderTopStyle: borderPosition === 'bottom' ? 'dashed' : undefined,
+            borderTopWidth: borderPosition === 'bottom' ? '2px' : undefined,
+            borderBottomStyle: borderPosition === 'top' ? 'dashed' : undefined,
+            borderBottomWidth: borderPosition === 'top' ? '2px' : undefined,
+          } : undefined}
+        >
+          {sectors.map((sect, index) => {
             const val = stats[sect] || 0;
             const active = isMax(val);
+            
+            // Determinar clases de curvas para las celdas de los extremos
+            let cellRoundedClass = '';
+            if (type !== 'zone23') {
+              if (borderPosition === 'top') {
+                if (index === 0) cellRoundedClass = 'rounded-bl-[40px]';
+                if (index === sectors.length - 1) cellRoundedClass = 'rounded-br-[40px]';
+              } else {
+                if (index === 0) cellRoundedClass = 'rounded-tl-[40px]';
+                if (index === sectors.length - 1) cellRoundedClass = 'rounded-tr-[40px]';
+              }
+            }
+
             return (
               <div
                 key={sect}
-                className={`flex-1 border-r last:border-r-0 border-surfaceVariant/20 flex flex-col items-center justify-center transition-all ${active ? 'bg-primary/10' : ''
-                  }`}
+                className={`flex-1 border-r last:border-r-0 border-surfaceVariant/20 flex flex-col items-center justify-center transition-all ${cellRoundedClass} ${active ? 'bg-primary/10' : ''}`}
               >
                 <span className={`text-[10px] font-black ${active ? 'text-primary' : 'text-dark/40'}`}>
                   {val}
@@ -275,14 +294,6 @@ const SectorRectangle: React.FC<{
             );
           })}
         </div>
-        {borderPosition && (
-          <div className={`w-full flex justify-center ${borderPosition === 'top' ? 'mb-1' : 'mt-1'}`}>
-            <div
-              className="w-12 h-1 rounded-full shadow-sm"
-              style={{ backgroundColor: teamColor }}
-            />
-          </div>
-        )}
       </div>
     </div>
   );
@@ -328,9 +339,11 @@ const LiveGameView: React.FC<{
   const [localPossessionTime, setLocalPossessionTime] = useState(0);
   const [awayPossessionTime, setAwayPossessionTime] = useState(0);
   const [foulCardType, setFoulCardType] = useState<'NONE' | 'VERDE' | 'AMARILLA' | 'ROJA'>('NONE');
-  const [tacticalSchemes, setTacticalSchemes] = useState<TacticalScheme[]>([]);
+  const [tacticalSchemes, setTacticalSchemes] = useState<TacticalScheme[]>(() => PersistenceManager.loadStateLocal().tacticalSchemes || []);
   const [activeTacticId, setActiveTacticId] = useState<string | null>(null);
   const [expandedTacticId, setExpandedTacticId] = useState<string | null>(null);
+  const [showNewTacticForm, setShowNewTacticForm] = useState(false);
+  const [newTactic, setNewTactic] = useState({ name: '', description: '', objective: '' });
 
 
   // Estados de orientación de la cancha
@@ -669,6 +682,26 @@ const LiveGameView: React.FC<{
     }
   };
 
+  const handleAddTactic = (activate: boolean = false) => {
+    if (!newTactic.name || !game?.ownerId) return;
+    const tactic: TacticalScheme = {
+      id: Math.random().toString(36).substr(2, 9),
+      ownerId: game.ownerId,
+      ...newTactic
+    };
+    const updatedTactics = [...tacticalSchemes, tactic];
+    setTacticalSchemes(updatedTactics);
+    PersistenceManager.updateTactics(updatedTactics);
+    
+    if (activate) {
+      setActiveTacticId(tactic.id);
+      setActiveView('field');
+    }
+    
+    setNewTactic({ name: '', description: '', objective: '' });
+    setShowNewTacticForm(false);
+  };
+
   const updateEventStatus = (eventId: string, isTranscribing: boolean, details?: string) => {
     setGame(prev => {
       if (!prev) return prev;
@@ -912,10 +945,23 @@ const LiveGameView: React.FC<{
     navigate('/dashboard');
   };
 
-  const handleFinishGame = () => {
+  const handleFinishGame = async () => {
     if (window.confirm('¿Estás seguro de finalizar el partido?')) {
       if (id) {
          PersistenceManager.forceSyncGame(id);
+         
+         try {
+           if (auth.currentUser && game) {
+             const userId = auth.currentUser.uid;
+             const gameData = { ...game, userId };
+             await setDoc(doc(db, 'matches', id), gameData, { merge: true });
+             console.log('Partido guardado en Firebase');
+           } else {
+             console.error('No se pudo guardar: Usuario o partido no válido');
+           }
+         } catch (error) {
+           console.error('Error al guardar el partido en Firebase:', error);
+         }
       }
       StorageService.clearActiveGame();
       onExitGame();
@@ -1370,6 +1416,7 @@ const LiveGameView: React.FC<{
                   stats={stats23.home}
                   sectors={['Izquierda', 'Centro', 'Derecha']}
                   borderPosition="top"
+                  type="zone23"
                 />
                 <SectorRectangle
                   label="Ingresos del rival a mis 23 yardas"
@@ -1377,6 +1424,7 @@ const LiveGameView: React.FC<{
                   stats={stats23.away}
                   sectors={['Izquierda', 'Centro', 'Derecha']}
                   borderPosition="bottom"
+                  type="zone23"
                 />
               </EntryAnalysisCard>
 
@@ -1492,10 +1540,72 @@ const LiveGameView: React.FC<{
                 <div className="w-full h-full bg-white rounded-[32px] border-2 border-surfaceVariant flex flex-col p-6 animate-in slide-in-from-bottom duration-300 overflow-hidden shadow-xl">
                   <div className="flex justify-between items-center mb-6">
                     <h3 className="text-sm font-black text-dark uppercase tracking-widest">Administrador de Tácticas</h3>
-                    <button onClick={() => setActiveView('field')} className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/5 px-4 py-2 rounded-full">Cerrar</button>
+                    <div className="flex items-center gap-3">
+                      <button 
+                        onClick={() => setShowNewTacticForm(!showNewTacticForm)} 
+                        className={`text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-full transition-all flex items-center gap-1 ${showNewTacticForm ? 'bg-surface text-onSurfaceVariant' : 'bg-primary text-white shadow-md hover:scale-105'}`}
+                      >
+                        {showNewTacticForm ? 'Cancelar' : <><span className="text-lg leading-none">+</span> Crear Nueva Táctica</>}
+                      </button>
+                      <button onClick={() => setActiveView('field')} className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/5 px-4 py-2 rounded-full hover:bg-primary/10 transition-colors">Cerrar</button>
+                    </div>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto space-y-4 no-scrollbar pb-4">
+                  <div className="flex-1 overflow-y-auto space-y-4 no-scrollbar pb-4 pr-2">
+                    {showNewTacticForm && (
+                      <div className="border border-primary/30 bg-primary/5 rounded-[28px] p-5 mb-4 animate-in slide-in-from-top duration-300 shadow-inner">
+                        <p className="text-[10px] font-black text-primary uppercase tracking-widest italic border-b border-primary/20 pb-2 mb-4">Nueva Formación</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="col-span-1 md:col-span-2">
+                            <label className="text-[9px] font-black text-dark uppercase tracking-widest block mb-1">Nombre de la Táctica</label>
+                            <input
+                              type="text"
+                              value={newTactic.name}
+                              onChange={e => setNewTactic({ ...newTactic, name: e.target.value })}
+                              className="w-full bg-white border border-primary/20 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-primary shadow-sm"
+                              placeholder="Ej: Presión Alta 3-1"
+                            />
+                          </div>
+                          <div className="col-span-1">
+                            <label className="text-[9px] font-black text-dark uppercase tracking-widest block mb-1">Objetivo Esperado</label>
+                            <input
+                              type="text"
+                              value={newTactic.objective}
+                              onChange={e => setNewTactic({ ...newTactic, objective: e.target.value })}
+                              className="w-full bg-white border border-primary/20 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-primary shadow-sm"
+                              placeholder="Ej: Recuperar en 23 yardas"
+                            />
+                          </div>
+                          <div className="col-span-1">
+                            <label className="text-[9px] font-black text-dark uppercase tracking-widest block mb-1">Descripción (Opcional)</label>
+                            <input
+                              type="text"
+                              value={newTactic.description}
+                              onChange={e => setNewTactic({ ...newTactic, description: e.target.value })}
+                              className="w-full bg-white border border-primary/20 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-primary shadow-sm"
+                              placeholder="Detalles del movimiento..."
+                            />
+                          </div>
+                          <div className="col-span-1 md:col-span-2 mt-2 flex gap-3">
+                            <button
+                              onClick={() => handleAddTactic(false)}
+                              disabled={!newTactic.name}
+                              className="flex-1 bg-surfaceVariant/20 text-onSurfaceVariant font-black py-3.5 rounded-xl active:scale-95 text-[10px] uppercase tracking-widest border border-surfaceVariant transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              GUARDAR
+                            </button>
+                            <button
+                              onClick={() => handleAddTactic(true)}
+                              disabled={!newTactic.name}
+                              className="flex-[2] bg-primary text-white font-black py-3.5 rounded-xl active:scale-95 text-[10px] uppercase tracking-widest shadow-lg shadow-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              GUARDAR Y ACTIVAR TÁCTICA
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {tacticalSchemes.map((t) => {
                       const isActive = activeTacticId === t.id;
                       const isExpanded = expandedTacticId === t.id;
@@ -1660,12 +1770,15 @@ const LiveGameView: React.FC<{
                           <span className="text-xs">⏱️</span>
                           <h4 className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">Posesión</h4>
                         </div>
-                        <button 
-                          onClick={() => setPossessionExpanded(!possessionExpanded)}
-                          className={`w-6 h-6 flex items-center justify-center rounded-full bg-surfaceVariant/10 transition-transform duration-300 ${possessionExpanded ? 'rotate-180' : ''}`}
-                        >
-                          <span className="text-[10px]">▼</span>
-                        </button>
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-black text-dark">{localPct}% / {awayPct}%</span>
+                          <button 
+                            onClick={() => setPossessionExpanded(!possessionExpanded)}
+                            className={`w-6 h-6 flex items-center justify-center rounded-full bg-surfaceVariant/10 transition-transform duration-300 ${possessionExpanded ? 'rotate-180' : ''}`}
+                          >
+                            <span className="text-[10px]">▼</span>
+                          </button>
+                        </div>
                       </div>
                       
                       {possessionExpanded && (
@@ -1855,6 +1968,7 @@ const LiveGameView: React.FC<{
                           stats={stats23.home}
                           sectors={['Izquierda', 'Centro', 'Derecha']}
                           borderPosition="top"
+                          type="zone23"
                         />
                         <SectorRectangle
                           label="Ingresos del rival a mis 23 yardas"
@@ -1862,6 +1976,7 @@ const LiveGameView: React.FC<{
                           stats={stats23.away}
                           sectors={['Izquierda', 'Centro', 'Derecha']}
                           borderPosition="bottom"
+                          type="zone23"
                         />
                       </EntryAnalysisCard>
 
@@ -2086,12 +2201,15 @@ const LiveGameView: React.FC<{
                       <span className="text-[10px]">⏱️</span>
                       <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest leading-none">Posesión</p>
                     </div>
-                    <button 
-                      onClick={() => setPossessionSidebarExpanded(!possessionSidebarExpanded)}
-                      className={`w-5 h-5 flex items-center justify-center rounded-full bg-surfaceVariant/10 transition-transform duration-300 ${possessionSidebarExpanded ? 'rotate-180' : ''}`}
-                    >
-                      <span className="text-[8px]">▼</span>
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-black text-dark">{localPct}% / {awayPct}%</span>
+                      <button 
+                        onClick={() => setPossessionSidebarExpanded(!possessionSidebarExpanded)}
+                        className={`w-5 h-5 flex items-center justify-center rounded-full bg-surfaceVariant/10 transition-transform duration-300 ${possessionSidebarExpanded ? 'rotate-180' : ''}`}
+                      >
+                        <span className="text-[8px]">▼</span>
+                      </button>
+                    </div>
                   </div>
 
                   {possessionSidebarExpanded && (
