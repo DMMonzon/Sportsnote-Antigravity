@@ -42,7 +42,7 @@ const EntryAnalysisCard: React.FC<{
   children: React.ReactNode;
 }> = ({ title, homeTotal, awayTotal, icon, children }) => {
   const [isExpanded, setIsExpanded] = useState(true);
-  
+
   return (
     <div className="bg-surface/50 p-5 rounded-[28px] border border-surfaceVariant shadow-sm flex flex-col gap-4">
       <div className="flex justify-between items-center border-b border-surfaceVariant pb-3">
@@ -52,7 +52,7 @@ const EntryAnalysisCard: React.FC<{
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xl font-black text-dark">{homeTotal}/{awayTotal}</span>
-          <button 
+          <button
             onClick={() => setIsExpanded(!isExpanded)}
             className={`w-6 h-6 flex items-center justify-center rounded-full bg-surfaceVariant/10 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
           >
@@ -99,7 +99,7 @@ const StatDetailCard = ({ title, data, colorClass, showDetails = true, compact =
         <div className="flex items-center gap-3">
           <span className={`${compact ? 'text-xl' : 'text-2xl'} font-black text-dark`}>{data.total}</span>
           {showDetails && (
-            <button 
+            <button
               onClick={() => setIsExpanded(!isExpanded)}
               className={`w-6 h-6 flex items-center justify-center rounded-full bg-surfaceVariant/10 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
             >
@@ -179,7 +179,7 @@ const StatComparisonCard = ({ title, icon, homeData, awayData, allEvents, homeCo
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xl font-black text-dark">{homeData.total}/{awayData.total}</span>
-          <button 
+          <button
             onClick={() => setIsExpanded(!isExpanded)}
             className={`w-6 h-6 flex items-center justify-center rounded-full bg-surfaceVariant/10 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
           >
@@ -253,12 +253,11 @@ const SectorRectangle: React.FC<{
     <div className="flex flex-col gap-2">
       <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-tighter opacity-70">{label}</p>
       <div className={`w-full overflow-hidden flex flex-col ${borderPosition === 'top' ? 'flex-col-reverse' : 'flex-col'}`}>
-        <div 
-          className={`w-full h-12 bg-surfaceVariant/5 border border-surfaceVariant flex overflow-hidden ${
-            type === 'zone23'
+        <div
+          className={`w-full h-12 bg-surfaceVariant/5 border border-surfaceVariant flex overflow-hidden ${type === 'zone23'
               ? 'rounded-none'
               : borderPosition === 'top' ? 'rounded-b-[40px] rounded-t-md' : 'rounded-t-[40px] rounded-b-md'
-          }`}
+            }`}
           style={type === 'zone23' ? {
             borderTopStyle: borderPosition === 'bottom' ? 'dashed' : undefined,
             borderTopWidth: borderPosition === 'bottom' ? '2px' : undefined,
@@ -269,7 +268,7 @@ const SectorRectangle: React.FC<{
           {sectors.map((sect, index) => {
             const val = stats[sect] || 0;
             const active = isMax(val);
-            
+
             // Determinar clases de curvas para las celdas de los extremos
             let cellRoundedClass = '';
             if (type !== 'zone23') {
@@ -374,7 +373,7 @@ const LiveGameView: React.FC<{
   useEffect(() => {
     if (id) {
       const activeGame = StorageService.getActiveGame();
-      
+
       if (activeGame && activeGame.game.id === id) {
         // Resume game fully
         setGame(activeGame.game);
@@ -561,18 +560,18 @@ const LiveGameView: React.FC<{
       // nextPoss is the attacking team side (swipe direction)
       const attacker = nextPoss;
       const defender = attacker === Possession.HOME ? Possession.AWAY : Possession.HOME;
-      
+
       // If defender currently has possession, they "lose" it
       const defenderHadPossession = possession === defender;
       const actionType = defenderHadPossession ? 'FALTA COMETIDA / PÉRDIDA' : 'FALTA COMETIDA';
-      
+
       // Register the foul for the defender
       registerEvent(actionType, attacker, x, y, `Falta en zona 23y / Área (Provoca C.Corto/Penal)`, defender === Possession.HOME ? game.teamHome.id : game.teamAway.id);
-      
+
       setShowPopup({ x, y, type: 'CORTO_PENAL' });
       return;
     }
-    
+
     if (type === 'Falta Cometida') {
       setShowPopup({ x, y, type: 'FOUL' });
     } else if (type === 'DISPARO') {
@@ -589,10 +588,10 @@ const LiveGameView: React.FC<{
 
   const registerEvent = (type: string, nextPoss: Possession, x: number, y: number, details?: string, forcedTeamId?: string, scoringTeam?: Possession, audioData?: string) => {
     const eventId = Math.random().toString(36).substr(2, 5);
-    
+
     setGame(prev => {
       if (!prev) return prev;
-      
+
       let finalDetails = details || "";
       let updatedPassChains = [...prev.passChains];
       const currentMax = prev.passChains.length > 0 ? Math.max(...prev.passChains) : 0;
@@ -692,12 +691,12 @@ const LiveGameView: React.FC<{
     const updatedTactics = [...tacticalSchemes, tactic];
     setTacticalSchemes(updatedTactics);
     PersistenceManager.updateTactics(updatedTactics);
-    
+
     if (activate) {
       setActiveTacticId(tactic.id);
       setActiveView('field');
     }
-    
+
     setNewTactic({ name: '', description: '', objective: '' });
     setShowNewTacticForm(false);
   };
@@ -761,7 +760,7 @@ const LiveGameView: React.FC<{
     });
 
     if (nextPoss !== undefined) setPossession(nextPoss);
-    
+
     // Clear lastSecondaryAction after it's been used to update an event (like when picking from menu)
     // unless the update was TO a secondary action
     if (newType.includes('CÓRNER CORTO') || newType.includes('PENAL')) {
@@ -791,7 +790,7 @@ const LiveGameView: React.FC<{
       'Corto': 'C. Corto'
     };
     const typeStr = goalType ? typeMap[goalType] : 'Tipo: No especificado';
-    
+
     let eventType = 'DISPARO (GOL)';
     if (lastSecondaryAction) {
       if (lastSecondaryAction.includes('CÓRNER CORTO')) eventType = 'GOL (Córner Corto)';
@@ -807,7 +806,7 @@ const LiveGameView: React.FC<{
 
   const skipGoalDetails = () => {
     if (!pendingGoalAction) return;
-    
+
     let eventType = 'DISPARO (GOL)';
     if (lastSecondaryAction) {
       if (lastSecondaryAction.includes('CÓRNER CORTO')) eventType = 'GOL (Córner Corto)';
@@ -846,7 +845,7 @@ const LiveGameView: React.FC<{
       events: game.events.filter(e => e.id !== eventId)
     };
     setGame(updatedGame);
-    
+
     // Reverse possession if available AND it's the last event
     const isLastEvent = game.events.length > 0 && eventId === game.events[game.events.length - 1].id;
     if (isLastEvent && eventToDelete.prevPossession) {
@@ -948,20 +947,20 @@ const LiveGameView: React.FC<{
   const handleFinishGame = async () => {
     if (window.confirm('¿Estás seguro de finalizar el partido?')) {
       if (id) {
-         PersistenceManager.forceSyncGame(id);
-         
-         try {
-           if (auth.currentUser && game) {
-             const userId = auth.currentUser.uid;
-             const gameData = { ...game, userId };
-             await setDoc(doc(db, 'matches', id), gameData, { merge: true });
-             console.log('Partido guardado en Firebase');
-           } else {
-             console.error('No se pudo guardar: Usuario o partido no válido');
-           }
-         } catch (error) {
-           console.error('Error al guardar el partido en Firebase:', error);
-         }
+        PersistenceManager.forceSyncGame(id);
+
+        try {
+          if (auth.currentUser && game) {
+            const userId = auth.currentUser.uid;
+            const gameData = { ...game, userId };
+            await setDoc(doc(db, 'matches', id), gameData, { merge: true });
+            console.log('Partido guardado en Firebase');
+          } else {
+            console.error('No se pudo guardar: Usuario o partido no válido');
+          }
+        } catch (error) {
+          console.error('Error al guardar el partido en Firebase:', error);
+        }
       }
       StorageService.clearActiveGame();
       onExitGame();
@@ -1351,14 +1350,13 @@ const LiveGameView: React.FC<{
           </div>
           <div className="bg-surface px-3 py-1.5 rounded-xl border border-surfaceVariant flex items-center gap-3">
             <div className="flex flex-col items-center gap-1.5 px-0.5 border-r border-surfaceVariant pr-2">
-              <div 
-                className={`w-2 h-2 rounded-full shadow-sm transition-all duration-500 ${
-                  !navigator.onLine 
-                    ? 'bg-red-500 animate-pulse' 
-                    : syncQueueLength > 0 
-                      ? 'bg-amber-400 animate-bounce' 
+              <div
+                className={`w-2 h-2 rounded-full shadow-sm transition-all duration-500 ${!navigator.onLine
+                    ? 'bg-red-500 animate-pulse'
+                    : syncQueueLength > 0
+                      ? 'bg-amber-400 animate-bounce'
                       : 'bg-emerald-500 shadow-emerald-500/50'
-                }`}
+                  }`}
                 title={!navigator.onLine ? 'Desconectado' : syncQueueLength > 0 ? 'Sincronizando...' : 'Sincronizado'}
               />
               <span className="text-[6px] font-black text-onSurfaceVariant/40 uppercase tracking-tighter leading-none">
@@ -1428,18 +1426,18 @@ const LiveGameView: React.FC<{
                 />
               </EntryAnalysisCard>
 
-              <StatComparisonCard 
-                title="Córners Cortos" 
-                icon="🏑" 
+              <StatComparisonCard
+                title="Córners Cortos"
+                icon="🏑"
                 homeData={getDetailedStat(['CÓRNER CORTO'], game.teamHome.id)}
                 awayData={getDetailedStat(['CÓRNER CORTO'], game.teamAway.id)}
                 allEvents={game.events}
                 homeColor={game.teamHome.primaryColor || '#6d5dfc'}
                 awayColor={game.teamAway.primaryColor || '#ef4444'}
               />
-              <StatComparisonCard 
-                title="Penales" 
-                icon="🎯" 
+              <StatComparisonCard
+                title="Penales"
+                icon="🎯"
                 homeData={getDetailedStat(['PENAL'], game.teamHome.id)}
                 awayData={getDetailedStat(['PENAL'], game.teamAway.id)}
                 allEvents={game.events}
@@ -1456,7 +1454,7 @@ const LiveGameView: React.FC<{
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-xl font-black text-dark">{landscapeShots.home}/{landscapeShots.away}</span>
-                    <button 
+                    <button
                       onClick={() => setShotsTotalSidebarExpanded(!shotsTotalSidebarExpanded)}
                       className={`w-5 h-5 flex items-center justify-center rounded-full bg-surfaceVariant/10 transition-transform duration-300 ${shotsTotalSidebarExpanded ? 'rotate-180' : ''}`}
                     >
@@ -1464,7 +1462,7 @@ const LiveGameView: React.FC<{
                     </button>
                   </div>
                 </div>
-                
+
                 {shotsTotalSidebarExpanded && (
                   <div className="flex flex-col gap-3 animate-in slide-in-from-top duration-300">
                     <div className="flex items-center gap-3 py-1 border-b border-surfaceVariant/30">
@@ -1541,8 +1539,8 @@ const LiveGameView: React.FC<{
                   <div className="flex justify-between items-center mb-6">
                     <h3 className="text-sm font-black text-dark uppercase tracking-widest">Administrador de Tácticas</h3>
                     <div className="flex items-center gap-3">
-                      <button 
-                        onClick={() => setShowNewTacticForm(!showNewTacticForm)} 
+                      <button
+                        onClick={() => setShowNewTacticForm(!showNewTacticForm)}
                         className={`text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-full transition-all flex items-center gap-1 ${showNewTacticForm ? 'bg-surface text-onSurfaceVariant' : 'bg-primary text-white shadow-md hover:scale-105'}`}
                       >
                         {showNewTacticForm ? 'Cancelar' : <><span className="text-lg leading-none">+</span> Crear Nueva Táctica</>}
@@ -1772,7 +1770,7 @@ const LiveGameView: React.FC<{
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="text-sm font-black text-dark">{localPct}% / {awayPct}%</span>
-                          <button 
+                          <button
                             onClick={() => setPossessionExpanded(!possessionExpanded)}
                             className={`w-6 h-6 flex items-center justify-center rounded-full bg-surfaceVariant/10 transition-transform duration-300 ${possessionExpanded ? 'rotate-180' : ''}`}
                           >
@@ -1780,7 +1778,7 @@ const LiveGameView: React.FC<{
                           </button>
                         </div>
                       </div>
-                      
+
                       {possessionExpanded && (
                         <div className="animate-in slide-in-from-top duration-300">
                           <div className="flex justify-between items-center mb-3">
@@ -1821,7 +1819,7 @@ const LiveGameView: React.FC<{
                           </div>
                           <div className="flex items-center gap-3">
                             <span className="text-xl font-black text-primary">{getStat(['DISPARO'])}</span>
-                            <button 
+                            <button
                               onClick={() => setShotsOwnExpanded(!shotsOwnExpanded)}
                               className={`w-6 h-6 flex items-center justify-center rounded-full bg-surfaceVariant/10 transition-transform duration-300 ${shotsOwnExpanded ? 'rotate-180' : ''}`}
                             >
@@ -1856,7 +1854,7 @@ const LiveGameView: React.FC<{
                           </div>
                           <div className="flex items-center gap-3">
                             <span className="text-xl font-black text-orange-600">{getStat(['DISPARO'], game.teamAway.id)}</span>
-                            <button 
+                            <button
                               onClick={() => setShotsRivalExpanded(!shotsRivalExpanded)}
                               className={`w-6 h-6 flex items-center justify-center rounded-full bg-surfaceVariant/10 transition-transform duration-300 ${shotsRivalExpanded ? 'rotate-180' : ''}`}
                             >
@@ -1891,7 +1889,7 @@ const LiveGameView: React.FC<{
                           </div>
                           <div className="flex items-center gap-3">
                             <span className="text-xl font-black text-dark">{landscapeShots.home}/{landscapeShots.away}</span>
-                            <button 
+                            <button
                               onClick={() => setShotsTotalSidebarExpanded(!shotsTotalSidebarExpanded)}
                               className={`w-6 h-6 flex items-center justify-center rounded-full bg-surfaceVariant/10 transition-transform duration-300 ${shotsTotalSidebarExpanded ? 'rotate-180' : ''}`}
                             >
@@ -1901,34 +1899,34 @@ const LiveGameView: React.FC<{
                         </div>
                         {shotsTotalSidebarExpanded && (
                           <div className="flex flex-col gap-4 animate-in slide-in-from-top duration-300">
-                             <div className="flex items-center justify-between py-1 border-b border-surfaceVariant/30">
-                               <div className="flex items-center gap-2">
-                                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
-                                 <span className="text-[9px] font-black text-onSurfaceVariant uppercase">Local</span>
-                               </div>
-                               <div className="flex gap-4">
-                                 <span className="text-[10px] font-black text-dark">G: {getStat(['GOL'], game.teamHome.id)}</span>
-                                 <span className="text-[10px] font-black text-dark">A: {getStat(['ATAJADO'], game.teamHome.id)}</span>
-                                 <span className="text-[10px] font-black text-dark">D: {getStat(['DESVIADO'], game.teamHome.id)}</span>
-                               </div>
-                             </div>
-                             <div className="flex items-center justify-between py-1">
-                               <div className="flex items-center gap-2">
-                                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
-                                 <span className="text-[9px] font-black text-onSurfaceVariant uppercase">Visita</span>
-                               </div>
-                               <div className="flex gap-4">
-                                 <span className="text-[10px] font-black text-dark">G: {getStat(['GOL'], game.teamAway.id)}</span>
-                                 <span className="text-[10px] font-black text-dark">A: {getStat(['ATAJADO'], game.teamAway.id)}</span>
-                                 <span className="text-[10px] font-black text-dark">D: {getStat(['DESVIADO'], game.teamAway.id)}</span>
-                               </div>
-                             </div>
+                            <div className="flex items-center justify-between py-1 border-b border-surfaceVariant/30">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
+                                <span className="text-[9px] font-black text-onSurfaceVariant uppercase">Local</span>
+                              </div>
+                              <div className="flex gap-4">
+                                <span className="text-[10px] font-black text-dark">G: {getStat(['GOL'], game.teamHome.id)}</span>
+                                <span className="text-[10px] font-black text-dark">A: {getStat(['ATAJADO'], game.teamHome.id)}</span>
+                                <span className="text-[10px] font-black text-dark">D: {getStat(['DESVIADO'], game.teamHome.id)}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between py-1">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
+                                <span className="text-[9px] font-black text-onSurfaceVariant uppercase">Visita</span>
+                              </div>
+                              <div className="flex gap-4">
+                                <span className="text-[10px] font-black text-dark">G: {getStat(['GOL'], game.teamAway.id)}</span>
+                                <span className="text-[10px] font-black text-dark">A: {getStat(['ATAJADO'], game.teamAway.id)}</span>
+                                <span className="text-[10px] font-black text-dark">D: {getStat(['DESVIADO'], game.teamAway.id)}</span>
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
 
                       <StatDetailCard title="Pérdidas 📉" data={getDetailedStat(['PÉRDIDA'])} colorClass="text-orange-600" />
-                      <StatDetailCard title="Recuperos 🛡️" data={getDetailedStat(['RECUPERO'])} colorClass="text-emerald-600" />
+                      <StatDetailCard title="Recuperos 📈" data={getDetailedStat(['RECUPERO'])} colorClass="text-emerald-600" />
                       <StatDetailCard title="Faltas ⚠️" data={getDetailedStat(['FALTA'])} colorClass="text-red-600" />
                       <StatDetailCard title="Remates 🥅" data={getDetailedStat(['DISPARO'])} colorClass="text-slate-700" />
 
@@ -1980,18 +1978,18 @@ const LiveGameView: React.FC<{
                         />
                       </EntryAnalysisCard>
 
-                      <StatComparisonCard 
-                        title="Córners Cortos" 
-                        icon="🏑" 
+                      <StatComparisonCard
+                        title="Córners Cortos"
+                        icon="🏑"
                         homeData={getDetailedStat(['CÓRNER CORTO'], game.teamHome.id)}
                         awayData={getDetailedStat(['CÓRNER CORTO'], game.teamAway.id)}
                         allEvents={game.events}
                         homeColor={game.teamHome.primaryColor || '#6d5dfc'}
                         awayColor={game.teamAway.primaryColor || '#ef4444'}
                       />
-                      <StatComparisonCard 
-                        title="Penales" 
-                        icon="🎯" 
+                      <StatComparisonCard
+                        title="Penales"
+                        icon="🎯"
                         homeData={getDetailedStat(['PENAL'], game.teamHome.id)}
                         awayData={getDetailedStat(['PENAL'], game.teamAway.id)}
                         allEvents={game.events}
@@ -2096,20 +2094,20 @@ const LiveGameView: React.FC<{
                             </div>
                           ) : (
                             <div className="grid grid-cols-1 gap-2">
-                                <div className="grid grid-cols-3 gap-2">
-                                  <button className="text-[10px] font-black text-onSurface py-3 rounded-xl bg-surface border border-surfaceVariant flex flex-col items-center justify-center gap-1.5" onClick={() => updateLastEvent('FALTA (VERDE) / PÉRDIDA', 'VERDE')}>
-                                    <span className="w-4 h-4 bg-green-500 rounded-sm"></span>
-                                    <span>VER</span>
-                                  </button>
-                                  <button className="text-[10px] font-black text-onSurface py-3 rounded-xl bg-surface border border-surfaceVariant flex flex-col items-center justify-center gap-1.5" onClick={() => setFoulCardType('AMARILLA')}>
-                                    <span className="w-4 h-4 bg-yellow-400 rounded-sm"></span>
-                                    <span>AMA</span>
-                                  </button>
-                                  <button className="text-[10px] font-black text-onSurface py-3 rounded-xl bg-surface border border-surfaceVariant flex flex-col items-center justify-center gap-1.5" onClick={() => updateLastEvent('FALTA (ROJA) / PÉRDIDA', 'ROJA')}>
-                                    <span className="w-4 h-4 bg-red-600 rounded-sm"></span>
-                                    <span>ROJ</span>
-                                  </button>
-                                </div>
+                              <div className="grid grid-cols-3 gap-2">
+                                <button className="text-[10px] font-black text-onSurface py-3 rounded-xl bg-surface border border-surfaceVariant flex flex-col items-center justify-center gap-1.5" onClick={() => updateLastEvent('FALTA (VERDE) / PÉRDIDA', 'VERDE')}>
+                                  <span className="w-4 h-4 bg-green-500 rounded-sm"></span>
+                                  <span>VER</span>
+                                </button>
+                                <button className="text-[10px] font-black text-onSurface py-3 rounded-xl bg-surface border border-surfaceVariant flex flex-col items-center justify-center gap-1.5" onClick={() => setFoulCardType('AMARILLA')}>
+                                  <span className="w-4 h-4 bg-yellow-400 rounded-sm"></span>
+                                  <span>AMA</span>
+                                </button>
+                                <button className="text-[10px] font-black text-onSurface py-3 rounded-xl bg-surface border border-surfaceVariant flex flex-col items-center justify-center gap-1.5" onClick={() => updateLastEvent('FALTA (ROJA) / PÉRDIDA', 'ROJA')}>
+                                  <span className="w-4 h-4 bg-red-600 rounded-sm"></span>
+                                  <span>ROJ</span>
+                                </button>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -2203,7 +2201,7 @@ const LiveGameView: React.FC<{
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-black text-dark">{localPct}% / {awayPct}%</span>
-                      <button 
+                      <button
                         onClick={() => setPossessionSidebarExpanded(!possessionSidebarExpanded)}
                         className={`w-5 h-5 flex items-center justify-center rounded-full bg-surfaceVariant/10 transition-transform duration-300 ${possessionSidebarExpanded ? 'rotate-180' : ''}`}
                       >
@@ -2297,8 +2295,8 @@ const LiveGameView: React.FC<{
 
           {!isLandscape && (
             <div className="flex items-center gap-4 md:gap-8">
-              <button 
-                disabled 
+              <button
+                disabled
                 className="w-11 h-11 rounded-full flex items-center justify-center transition-all shadow-sm border bg-surface border-surfaceVariant text-onSurfaceVariant/20 grayscale cursor-not-allowed opacity-50"
               >
                 🎤
