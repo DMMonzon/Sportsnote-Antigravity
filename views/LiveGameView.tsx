@@ -19,14 +19,19 @@ const NSeparator = () => (
   </div>
 );
 
-const TacticIcon = ({ active }: { active: boolean }) => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={`transition-all ${active ? 'text-primary scale-125' : 'text-onSurfaceVariant/40'}`}>
-    <path d="M4 4L8 8M8 4L4 8" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" />
-    <path d="M16 16L20 20M20 16L16 20" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" />
-    <path d="M6 19C6 19 7 13 15 13" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" />
-    <path d="M13 10L16 13L13 16" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" />
-    <circle cx="6" cy="19" r="2" fill="white" stroke="#94a3b8" strokeWidth="2" />
-  </svg>
+const TacticIcon = ({ active, animated = false }: { active: boolean, animated?: boolean }) => (
+  <div className="relative flex items-center justify-center">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={`transition-all ${active ? 'text-primary scale-110' : 'text-onSurfaceVariant/40'}`}>
+      <path d="M4 4L8 8M8 4L4 8" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M16 16L20 20M20 16L16 20" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M6 19C6 19 7 13 15 13" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M13 10L16 13L13 16" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" />
+      <circle cx="6" cy="19" r="2" fill="white" stroke="#94a3b8" strokeWidth="2" />
+    </svg>
+    {animated && (
+      <span className="absolute -bottom-1 left-1.2 w-4 h-1 bg-[#00fe00] rounded-full blur-[2px] animate-pulse shadow-[0_0_8px_#00fe00]"></span>
+    )}
+  </div>
 );
 
 
@@ -573,8 +578,22 @@ const LiveGameView: React.FC<{
     }
 
     if (type === 'Falta Cometida') {
+      // Determine the team committing the foul
+      // If nextPoss is same as current possession, the rival committed it
+      // If nextPoss is different, the team in possession committed it (loses possession)
+      const committingTeamPoss = nextPoss === possession 
+        ? (possession === Possession.HOME ? Possession.AWAY : Possession.HOME)
+        : possession;
+      
+      const committingTeamId = committingTeamPoss === Possession.HOME ? game.teamHome.id : game.teamAway.id;
+      
+      // Register event with the specific committing team
+      registerEvent(type, nextPoss, x, y, details, committingTeamId);
       setShowPopup({ x, y, type: 'FOUL' });
-    } else if (type === 'DISPARO') {
+      return;
+    }
+
+    if (type === 'DISPARO') {
       const targetGoal = y < 50 ? 'TOP' : 'BOTTOM';
       setShowPopup({ x, y, type: 'SHOT', targetGoal });
       setAtajadoSelected(false);
@@ -1620,39 +1639,50 @@ const LiveGameView: React.FC<{
                           className={`border-2 rounded-[28px] transition-all duration-300 overflow-hidden ${isActive ? 'border-[#00fe00] bg-[#00fe00]/5 shadow-lg shadow-[#00fe00]/10' : 'border-surfaceVariant bg-surface/30'
                             }`}
                         >
-                          <div className="p-5 flex items-center justify-between">
+                          <div className={`p-5 flex items-center justify-between border-b border-surfaceVariant/5 ${isActive ? 'bg-[#00fe00]/2' : ''}`}>
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <h4 className="text-[11px] font-black text-dark uppercase">{t.name}</h4>
-                                {isActive && <span className="w-2 h-2 bg-[#00fe00] rounded-full animate-ping"></span>}
+                                <h4 className={`text-[11px] font-black uppercase tracking-tight ${isActive ? 'text-dark' : 'text-onSurfaceVariant'}`}>{t.name}</h4>
+                                {isActive && (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 bg-[#00fe00] rounded-full animate-pulse shadow-[0_0_4px_#00fe00]"></span>
+                                    <span className="text-[7px] font-black text-[#00c000] uppercase tracking-widest">Activa</span>
+                                  </div>
+                                )}
                               </div>
-                              <p className="text-[9px] font-bold text-onSurfaceVariant/60 italic">{t.objective}</p>
+                              <p className="text-[9px] font-bold text-onSurfaceVariant/60 italic leading-tight">{t.objective}</p>
                             </div>
 
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-4">
                               <button
                                 onClick={() => setExpandedTacticId(isExpanded ? null : t.id)}
-                                className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-surfaceVariant/20 ${isExpanded ? 'rotate-180 text-primary' : 'text-onSurfaceVariant/40'}`}
                               >
                                 🔽
                               </button>
 
-                              <button
-                                onClick={() => {
-                                  if (isActive) {
-                                    setActiveTacticId(null);
-                                  } else {
-                                    setActiveTacticId(t.id);
-                                    setActiveView('field');
-                                  }
-                                }}
-                                className={`px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${isActive
-                                  ? 'bg-red-500 text-white shadow-md'
-                                  : 'bg-primary text-white shadow-lg shadow-primary/20 hover:scale-105 active:scale-95'
+                              {/* Switch de Actividad */}
+                              <div className="flex flex-col items-center gap-1">
+                                <button
+                                  onClick={() => {
+                                    if (isActive) {
+                                      setActiveTacticId(null);
+                                    } else {
+                                      setActiveTacticId(t.id);
+                                      setActiveView('field');
+                                    }
+                                  }}
+                                  className={`relative w-12 h-6 rounded-full transition-all duration-300 shadow-inner border ${isActive 
+                                    ? 'bg-[#00fe00] border-[#00e000] shadow-[#00fe00]/20' 
+                                    : 'bg-surfaceVariant/30 border-surfaceVariant'
                                   }`}
-                              >
-                                {isActive ? 'Finalizar Táctica' : `Activar ${t.name.split(' ')[0]}`}
-                              </button>
+                                >
+                                  <div className={`absolute top-0.5 h-4.5 w-4.5 rounded-full bg-white shadow-md transition-all duration-300 transform ${isActive ? 'left-[calc(100%-20px)] rotate-0' : 'left-0.5'}`} />
+                                </button>
+                                <span className={`text-[6px] font-black uppercase tracking-tighter ${isActive ? 'text-[#00c000]' : 'text-onSurfaceVariant/40'}`}>
+                                  {isActive ? 'ON' : 'OFF'}
+                                </span>
+                              </div>
                             </div>
                           </div>
 
@@ -2093,19 +2123,28 @@ const LiveGameView: React.FC<{
                               </button>
                             </div>
                           ) : (
-                            <div className="grid grid-cols-1 gap-2">
-                              <div className="grid grid-cols-3 gap-2">
-                                <button className="text-[10px] font-black text-onSurface py-3 rounded-xl bg-surface border border-surfaceVariant flex flex-col items-center justify-center gap-1.5" onClick={() => updateLastEvent('FALTA (VERDE) / PÉRDIDA', 'VERDE')}>
-                                  <span className="w-4 h-4 bg-green-500 rounded-sm"></span>
-                                  <span>VER</span>
+                            <div className="flex flex-col gap-3">
+                              <div className="grid grid-cols-2 gap-2">
+                                <button className="text-[10px] font-black text-onSurface py-3 rounded-xl bg-surface border border-surfaceVariant flex flex-col items-center justify-center gap-1.5 hover:bg-green-50 transition-colors" onClick={() => updateLastEvent('FALTA (VERDE)', 'VERDE')}>
+                                  <span className="w-5 h-7 bg-green-500 rounded-sm shadow-sm"></span>
+                                  <span>VERDE</span>
                                 </button>
-                                <button className="text-[10px] font-black text-onSurface py-3 rounded-xl bg-surface border border-surfaceVariant flex flex-col items-center justify-center gap-1.5" onClick={() => setFoulCardType('AMARILLA')}>
-                                  <span className="w-4 h-4 bg-yellow-400 rounded-sm"></span>
-                                  <span>AMA</span>
+                                <button className="text-[10px] font-black text-onSurface py-3 rounded-xl bg-surface border border-surfaceVariant flex flex-col items-center justify-center gap-1.5 hover:bg-yellow-50 transition-colors" onClick={() => setFoulCardType('AMARILLA')}>
+                                  <span className="w-5 h-7 bg-yellow-400 rounded-sm shadow-sm"></span>
+                                  <span>AMARILLA</span>
                                 </button>
-                                <button className="text-[10px] font-black text-onSurface py-3 rounded-xl bg-surface border border-surfaceVariant flex flex-col items-center justify-center gap-1.5" onClick={() => updateLastEvent('FALTA (ROJA) / PÉRDIDA', 'ROJA')}>
-                                  <span className="w-4 h-4 bg-red-600 rounded-sm"></span>
-                                  <span>ROJ</span>
+                                <button className="text-[10px] font-black text-onSurface py-3 rounded-xl bg-surface border border-surfaceVariant flex flex-col items-center justify-center gap-1.5 hover:bg-red-50 transition-colors" onClick={() => updateLastEvent('FALTA (ROJA)', 'ROJA')}>
+                                  <span className="w-5 h-7 bg-red-600 rounded-sm shadow-sm"></span>
+                                  <span>ROJA</span>
+                                </button>
+                                <button 
+                                  className="text-[10px] font-black text-onSurface py-3 rounded-xl bg-surface border border-surfaceVariant flex flex-col items-center justify-center gap-1.5 hover:bg-surfaceVariant/20 transition-colors" 
+                                  onClick={() => updateLastEvent('FALTA COMETIDA', 'Sin tarjeta')}
+                                >
+                                  <div className="w-5 h-7 border-2 border-dashed border-onSurfaceVariant/30 rounded-sm flex items-center justify-center">
+                                    <span className="text-[8px] text-onSurfaceVariant/40">✕</span>
+                                  </div>
+                                  <span>SIN TARJETA</span>
                                 </button>
                               </div>
                             </div>
@@ -2280,12 +2319,15 @@ const LiveGameView: React.FC<{
           <div className="flex items-center gap-4 md:gap-8">
             <button className={`text-2xl transition-all ${activeView === 'list' ? 'text-primary scale-110 drop-shadow-md' : 'text-onSurfaceVariant/30'}`} onClick={() => setActiveView(activeView === 'list' ? 'field' : 'list')}>📋</button>
             <div className="relative">
-              <button onClick={() => setActiveView(activeView === 'tactics' ? 'field' : 'tactics')}>
-                <TacticIcon active={activeView === 'tactics'} />
+              <button 
+                onClick={() => setActiveView(activeView === 'tactics' ? 'field' : 'tactics')}
+                className="relative group p-2 rounded-full transition-all active:scale-90"
+              >
+                <TacticIcon active={activeView === 'tactics' || !!activeTacticId} animated={!!activeTacticId} />
+                {activeTacticId && (
+                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-[#00fe00] rounded-full border-2 border-white shadow-[0_0_4px_#00fe00]"></span>
+                )}
               </button>
-              {activeTacticId && activeView !== 'tactics' && (
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-[#00fe00] rounded-full animate-ping border-2 border-white"></span>
-              )}
             </div>
             <button className={`text-2xl transition-all ${activeView === 'stats' ? 'text-primary scale-110 drop-shadow-md' : 'text-onSurfaceVariant/30'} ${!isLandscape ? 'lg:hidden' : ''}`} onClick={() => setActiveView(activeView === 'stats' ? 'field' : 'stats')}>📊</button>
           </div>

@@ -165,18 +165,21 @@ export const PitchMap: React.FC<PitchMapProps> = ({
             const dy_pitch = endC.y - startC.y;
             const angle = Math.atan2(dy, dx) * 180 / Math.PI;
             
-            const inTop23Start = startC.y < 25;
-            const inBottom23Start = startC.y > 75;
-            const in23Start = inTop23Start || inBottom23Start;
+            // Check if start position is in Area or 23y
+            const isTop = startC.y < 50;
+            const centerY = isTop ? 0 : 100;
+            const inAreaStart = Math.pow(startC.x - 50, 2) / Math.pow(30, 2) + Math.pow(startC.y - centerY, 2) / Math.pow(16, 2) <= 1;
+            const in23Start = startC.y < 25 || startC.y > 75;
+            const inTargetZone = inAreaStart || in23Start;
 
-            // If swipe STARTED inside 23 yards AND is towards a goal (significant dy_pitch)
-            if (in23Start && Math.abs(dy_pitch) > 1) {
+            // If swipe STARTED inside 23 yards/Area AND is towards a goal (significant dy_pitch)
+            if (inTargetZone && Math.abs(dy_pitch) > 1) {
                 // Determine which team is attacking the goal the swipe points to
                 const attackingTeam = dy_pitch < 0 ? Possession.HOME : Possession.AWAY;
                 const ownColor = attackingTeam === Possession.HOME ? (teamHome?.primaryColor || '#6d5dfc') : (teamAway?.primaryColor || '#ef4444');
-                addGlow(vx, vy, ownColor, false); // No arrow here
+                addGlow(startVx, startVy, ownColor, false);
                 triggerFoulAnimation(angle);
-                onAction('FALTA A FAVOR EN 23', attackingTeam, endC.x, endC.y, 'Deslizar hacia arco (zona 23y)');
+                onAction('FALTA A FAVOR EN 23', attackingTeam, startC.x, startC.y, 'Falta en zona de peligro');
                 return;
             }
 
@@ -185,15 +188,17 @@ export const PitchMap: React.FC<PitchMapProps> = ({
             
             if (isTowardsOwn) {
                 const oppColor = possession === Possession.HOME ? (teamAway?.primaryColor || '#ef4444') : (teamHome?.primaryColor || '#6d5dfc');
-                addGlow(vx, vy, oppColor, false); // No arrow here
+                addGlow(startVx, startVy, oppColor, false);
                 triggerFoulAnimation(angle);
                 const oppPoss = possession === Possession.HOME ? Possession.AWAY : Possession.HOME;
-                onAction('PÉRDIDA / FALTA PROPIA', oppPoss, endC.x, endC.y, 'Deslizar hacia arco propio');
+                // If focus is on cards for outside fouls, we send "Falta Cometida" to trigger the card modal
+                onAction('Falta Cometida', oppPoss, startC.x, startC.y, 'Deslizar hacia arco propio (Falta cometida)');
             } else if (isTowardsRival) {
                 const ownColor = possession === Possession.HOME ? (teamHome?.primaryColor || '#6d5dfc') : (teamAway?.primaryColor || '#ef4444');
-                addGlow(vx, vy, ownColor, false); // No arrow here
+                addGlow(startVx, startVy, ownColor, false);
                 triggerFoulAnimation(angle);
-                onAction('FALTA A FAVOR', possession, endC.x, endC.y, 'Deslizar hacia arco rival');
+                // Also trigger card modal for rival foul if outside 23
+                onAction('Falta Cometida', possession, startC.x, startC.y, 'Deslizar hacia arco rival (Falta a favor)');
             }
             return;
         }
