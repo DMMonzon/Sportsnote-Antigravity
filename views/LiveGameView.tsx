@@ -701,10 +701,11 @@ const LiveGameView: React.FC<{
   };
 
   const handleAddTactic = (activate: boolean = false) => {
-    if (!newTactic.name || !game?.ownerId) return;
+    const userId = game?.ownerId || game?.userId;
+    if (!newTactic.name || !userId) return;
     const tactic: TacticalScheme = {
       id: Math.random().toString(36).substr(2, 9),
-      ownerId: game.ownerId,
+      ownerId: userId,
       ...newTactic
     };
     const updatedTactics = [...tacticalSchemes, tactic];

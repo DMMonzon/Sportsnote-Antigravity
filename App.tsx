@@ -58,7 +58,8 @@ const AppContent: React.FC = () => {
   const createGame = (game: Game) => {
     const newGame = {
       ...game,
-      userId: state.currentUser?.uid // Guardado como userId para /matches
+      userId: state.currentUser?.uid, // Used for legacy sync
+      ownerId: state.currentUser?.uid // Used for tactics and ownership
     };
     
     // Ensure it is saved locally AND queued for sync immediately
