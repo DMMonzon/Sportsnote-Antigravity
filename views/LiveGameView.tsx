@@ -307,7 +307,7 @@ const LiveGameView: React.FC<{
   role: UserRole,
   tacticalSchemes: TacticalScheme[],
   onUpdateTactics: (tactics: TacticalScheme[]) => void,
-  onExitGame: () => void,
+  onExitGame: (game: Game) => void,
   onAnnulGame: () => void
 }> = ({ role, tacticalSchemes, onUpdateTactics, onExitGame, onAnnulGame }) => {
   const { id } = useParams();
@@ -981,7 +981,7 @@ const LiveGameView: React.FC<{
         }
       }
       StorageService.clearActiveGame();
-      onExitGame();
+      onExitGame(game);
       navigate(`/summary/${game.id}`);
     }
   };

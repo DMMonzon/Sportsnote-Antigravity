@@ -74,8 +74,18 @@ const AppContent: React.FC = () => {
     navigate(`/live/${newGame.id}`);
   };
 
-  const closeActiveGame = () => {
-    setState({ ...state, activeGameId: null });
+  const closeActiveGame = (finalGame?: Game) => {
+    setState(prev => {
+      let updatedMatches = prev.matches;
+      if (finalGame) {
+        updatedMatches = prev.matches.map(m => m.id === finalGame.id ? finalGame : m);
+      }
+      return {
+        ...prev,
+        matches: updatedMatches,
+        activeGameId: null
+      };
+    });
   };
 
   const handleAnnulGame = () => {
@@ -147,14 +157,14 @@ const AppContent: React.FC = () => {
               role={state.currentUser.role}
               tacticalSchemes={state.tacticalSchemes}
               onUpdateTactics={handleUpdateTactics}
-              onExitGame={closeActiveGame}
+              onExitGame={(game) => closeActiveGame(game)}
               onAnnulGame={handleAnnulGame}
             />
             : <Navigate to="/" />
         } />
 
         <Route path="/summary/:id" element={
-          state.currentUser ? <SummaryView /> : <Navigate to="/" />
+          state.currentUser ? <SummaryView allTactics={state.tacticalSchemes} /> : <Navigate to="/" />
         } />
 
         <Route path="/squad" element={

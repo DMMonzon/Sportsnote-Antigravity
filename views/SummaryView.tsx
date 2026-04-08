@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Game, UserRole, GameEvent } from '../types';
+import { Game, UserRole, GameEvent, TacticalScheme } from '../types';
 import { PersistenceManager } from '../services/PersistenceManager';
 import { Button } from '../components/Button';
 import { GameField } from '../components/GameField';
@@ -98,7 +98,11 @@ const SectorRectangle: React.FC<{
   );
 };
 
-const SummaryView: React.FC = () => {
+interface SummaryViewProps {
+  allTactics?: TacticalScheme[];
+}
+
+const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [game, setGame] = useState<Game | null>(null);
@@ -138,6 +142,41 @@ const SummaryView: React.FC = () => {
       return { name: p, pases: total };
     });
   }, [game]);
+
+  const usedTacticIds = useMemo(() => {
+    if (!game) return [];
+    const ids = new Set<string>();
+    game.events.forEach(e => {
+      if (e.tacticId) ids.add(e.tacticId);
+    });
+    return Array.from(ids);
+  }, [game]);
+
+  const getTacticStats = (tacticId: string) => {
+    if (!game) return null;
+    const tacticEvents = game.events.filter(e => e.tacticId === tacticId);
+    if (tacticEvents.length === 0) return null;
+
+    const stats = {
+      name: allTactics.find(t => t.id === tacticId)?.name || 'Táctica Desconocida',
+      home: { recuperos: 0, perdidas: 0, remates: 0, faltas: 0 },
+      away: { recuperos: 0, perdidas: 0, remates: 0, faltas: 0 }
+    };
+
+    tacticEvents.forEach(e => {
+      const isHome = e.teamId === game.teamHome.id;
+      const type = e.type.toUpperCase();
+      
+      const target = isHome ? stats.home : stats.away;
+
+      if (type.includes('RECUPERO')) target.recuperos++;
+      else if (type.includes('PÉRDIDA')) target.perdidas++;
+      else if (type.includes('DISPARO') || type.includes('GOL')) target.remates++;
+      else if (type.includes('FALTA')) target.faltas++;
+    });
+
+    return stats;
+  };
 
   const { statsArea, stats23 } = React.useMemo(() => {
     const statsArea = {
@@ -370,6 +409,48 @@ const SummaryView: React.FC = () => {
               })}
             </div>
           </section>
+
+          {usedTacticIds.length > 0 && (
+            <section className="bg-white p-6 rounded-[32px] shadow-sm border border-surfaceVariant">
+              <h3 className="text-xs font-black uppercase text-onSurfaceVariant mb-6 flex items-center gap-2 italic">Rendimiento por Táctica <div className="h-px flex-1 bg-surfaceVariant/50"></div></h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {usedTacticIds.map(tid => {
+                  const s = getTacticStats(tid);
+                  if (!s) return null;
+                  return (
+                    <div key={tid} className="bg-surface/50 p-6 rounded-[28px] border border-surfaceVariant shadow-sm">
+                      <div className="flex items-center gap-3 mb-5 border-b border-surfaceVariant/50 pb-3">
+                        <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-xs font-black">♟️</div>
+                        <h4 className="text-[10px] font-black text-dark uppercase tracking-widest">{s.name}</h4>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-3 text-center mb-1">
+                          <span className="text-[7px] font-black text-onSurfaceVariant/40 uppercase">Estadística</span>
+                          <span className="text-[7px] font-black text-primary uppercase">Local</span>
+                          <span className="text-[7px] font-black text-dark uppercase">Rival</span>
+                        </div>
+                        
+                        {[
+                          { label: 'Recuperos', home: s.home.recuperos, away: s.away.recuperos, color: 'text-emerald-600' },
+                          { label: 'Pérdidas', home: s.home.perdidas, away: s.away.perdidas, color: 'text-orange-600' },
+                          { label: 'Remates', home: s.home.remates, away: s.away.remates, color: 'text-blue-600' },
+                          { label: 'Faltas', home: s.home.faltas, away: s.away.faltas, color: 'text-red-600' }
+                        ].map(row => (
+                          <div key={row.label} className="bg-white/60 rounded-xl p-2.5 flex items-center border border-surfaceVariant/30">
+                            <span className="flex-1 text-[8px] font-black text-onSurfaceVariant uppercase">{row.label}</span>
+                            <span className={`w-12 text-center text-xs font-black ${row.color}`}>{row.home}</span>
+                            <span className="w-12 text-center text-xs font-black text-dark">{row.away}</span>
+                          </div>
+                        ))}
+                      </div>
+                      
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
 
 
           <section className="bg-white p-6 rounded-[32px] shadow-sm border border-surfaceVariant">
