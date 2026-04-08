@@ -305,9 +305,11 @@ const SectorRectangle: React.FC<{
 
 const LiveGameView: React.FC<{
   role: UserRole,
+  tacticalSchemes: TacticalScheme[],
+  onUpdateTactics: (tactics: TacticalScheme[]) => void,
   onExitGame: () => void,
   onAnnulGame: () => void
-}> = ({ role, onExitGame, onAnnulGame }) => {
+}> = ({ role, tacticalSchemes, onUpdateTactics, onExitGame, onAnnulGame }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [game, setGame] = useState<Game | null>(null);
@@ -343,7 +345,6 @@ const LiveGameView: React.FC<{
   const [localPossessionTime, setLocalPossessionTime] = useState(0);
   const [awayPossessionTime, setAwayPossessionTime] = useState(0);
   const [foulCardType, setFoulCardType] = useState<'NONE' | 'VERDE' | 'AMARILLA' | 'ROJA'>('NONE');
-  const [tacticalSchemes, setTacticalSchemes] = useState<TacticalScheme[]>(() => PersistenceManager.loadStateLocal().tacticalSchemes || []);
   const [activeTacticId, setActiveTacticId] = useState<string | null>(null);
   const [expandedTacticId, setExpandedTacticId] = useState<string | null>(null);
   const [showNewTacticForm, setShowNewTacticForm] = useState(false);
@@ -399,9 +400,7 @@ const LiveGameView: React.FC<{
         }
       }
 
-      // Cargar tácticas
-      const state = PersistenceManager.loadStateLocal();
-      setTacticalSchemes(state.tacticalSchemes || []);
+      // Cargar tácticas - now handled via props
     }
   }, [id]);
 
@@ -709,8 +708,7 @@ const LiveGameView: React.FC<{
       ...newTactic
     };
     const updatedTactics = [...tacticalSchemes, tactic];
-    setTacticalSchemes(updatedTactics);
-    PersistenceManager.updateTactics(updatedTactics);
+    onUpdateTactics(updatedTactics);
 
     if (activate) {
       setActiveTacticId(tactic.id);

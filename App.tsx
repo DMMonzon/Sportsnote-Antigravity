@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { AppState, UserRole, Game } from './types';
+import { AppState, UserRole, Game, TacticalScheme } from './types';
 import { PersistenceManager } from './services/PersistenceManager';
 
 // Views
@@ -86,6 +86,14 @@ const AppContent: React.FC = () => {
     }));
   };
 
+  const handleUpdateTactics = (tactics: TacticalScheme[]) => {
+    setState(prevState => ({
+      ...prevState,
+      tacticalSchemes: tactics
+    }));
+    PersistenceManager.updateTactics(tactics, state.currentUser?.uid);
+  };
+
   return (
     <div className="min-h-screen flex flex-col font-lato">
       <Routes>
@@ -99,7 +107,13 @@ const AppContent: React.FC = () => {
           state.currentUser ? (
             state.activeGameId
               ? <Navigate to={`/live/${state.activeGameId}`} replace />
-              : <DashboardView user={state.currentUser} matches={state.matches} onLogout={handleLogout} />
+              : <DashboardView 
+                  user={state.currentUser} 
+                  matches={state.matches} 
+                  tacticalSchemes={state.tacticalSchemes}
+                  onUpdateTactics={handleUpdateTactics}
+                  onLogout={handleLogout} 
+                />
           ) : <Navigate to="/" />
         } />
 
@@ -131,6 +145,8 @@ const AppContent: React.FC = () => {
           state.currentUser
             ? <LiveGameView
               role={state.currentUser.role}
+              tacticalSchemes={state.tacticalSchemes}
+              onUpdateTactics={handleUpdateTactics}
               onExitGame={closeActiveGame}
               onAnnulGame={handleAnnulGame}
             />

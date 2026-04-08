@@ -91,14 +91,15 @@ interface DashboardViewProps {
     avatar?: string;
   };
   matches: Game[];
+  tacticalSchemes: TacticalScheme[];
+  onUpdateTactics: (tactics: TacticalScheme[]) => void;
   onLogout: () => void;
 }
 
-const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }) => {
+const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, tacticalSchemes, onUpdateTactics, onLogout }) => {
   const navigate = useNavigate();
   const [showRecycleModal, setShowRecycleModal] = React.useState<Game | null>(null);
   const [showTacticsModal, setShowTacticsModal] = React.useState(false);
-  const [tactics, setTactics] = React.useState<TacticalScheme[]>(() => PersistenceManager.loadStateLocal().tacticalSchemes || []);
 
   const [newTactic, setNewTactic] = React.useState({ name: '', description: '', objective: '' });
 
@@ -160,16 +161,14 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
       ownerId: user.uid,
       ...newTactic
     };
-    const updatedTactics = [...tactics, tactic];
-    setTactics(updatedTactics);
-    PersistenceManager.updateTactics(updatedTactics);
+    const updatedTactics = [...tacticalSchemes, tactic];
+    onUpdateTactics(updatedTactics);
     setNewTactic({ name: '', description: '', objective: '' });
   };
 
   const handleDeleteTactic = (id: string) => {
-    const updatedTactics = tactics.filter(t => t.id !== id);
-    setTactics(updatedTactics);
-    PersistenceManager.updateTactics(updatedTactics);
+    const updatedTactics = tacticalSchemes.filter(t => t.id !== id);
+    onUpdateTactics(updatedTactics);
   };
 
 
@@ -325,7 +324,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
                 <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-2">Tácticas Especiales</p>
                 <div className="flex items-baseline gap-2">
                   <h4 className="text-4xl font-black text-white leading-none">
-                    {tactics.length}
+                    {tacticalSchemes.length}
                   </h4>
                   <span className="text-[10px] font-bold text-white/40 uppercase">Esquemas</span>
                 </div>
@@ -504,7 +503,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
               <div className="flex flex-col gap-4">
                 <p className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest italic border-b border-surfaceVariant pb-2">Mis Tácticas Guardadas</p>
                 <div className="space-y-3">
-                  {tactics.map(t => (
+                  {tacticalSchemes.map(t => (
                     <div key={t.id} className="bg-surface/50 border border-surfaceVariant p-4 rounded-2xl flex justify-between items-start group">
                       <div className="flex flex-col gap-1 pr-6">
                         <span className="text-[11px] font-black text-dark uppercase leading-tight">{t.name}</span>
@@ -518,7 +517,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
                       </button>
                     </div>
                   ))}
-                  {tactics.length === 0 && (
+                  {tacticalSchemes.length === 0 && (
                     <div className="text-center py-10 opacity-30 flex flex-col items-center">
                       <TacticIcon className="w-12 h-12 mb-2" />
                       <p className="text-[10px] font-black uppercase tracking-widest">Sin tácticas registradas</p>
