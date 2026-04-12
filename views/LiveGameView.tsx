@@ -480,12 +480,14 @@ const LiveGameView: React.FC<{
         const isHomeEntry = !type.includes('rival');
 
         if (type.includes('área')) {
-          ['Extremo Derecho', 'Centro Derecha', 'Centro', 'Centro Izquierda', 'Extremo Izquierdo'].forEach(sect => {
-            if (details.includes(sect.toLowerCase())) {
-              if (isHomeEntry) statsArea.home[sect as keyof typeof statsArea.home]++;
-              else statsArea.away[sect as keyof typeof statsArea.away]++;
-            }
-          });
+          // Usamos .find() con un orden específico para evitar colisiones de sub-strings (ej: 'Centro' dentro de 'Centro Derecha')
+          const areaSectors = ['Extremo Derecho', 'Centro Derecha', 'Centro Izquierda', 'Extremo Izquierdo', 'Centro'];
+          const matchedSector = areaSectors.find(sect => details.toLowerCase().includes(sect.toLowerCase()));
+          
+          if (matchedSector) {
+            if (isHomeEntry) statsArea.home[matchedSector as keyof typeof statsArea.home]++;
+            else statsArea.away[matchedSector as keyof typeof statsArea.away]++;
+          }
         } else if (type.includes('23')) {
           ['Derecha', 'Centro', 'Izquierda'].forEach(lane => {
             if (details.includes(lane.toLowerCase())) {

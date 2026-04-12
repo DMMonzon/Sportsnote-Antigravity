@@ -110,16 +110,17 @@ export const PitchMap: React.FC<PitchMapProps> = ({
 
             let fanSector = '';
             if (angle < 36) fanSector = 'Extremo Derecho';
-            else if (angle < 72) fanSector = 'Centro Derecha';
-            else if (angle < 108) fanSector = 'Centro';
-            else if (angle < 144) fanSector = 'Centro Izquierda';
+            else if (angle >= 36 && angle < 72) fanSector = 'Centro Derecha';
+            else if (angle >= 72 && angle < 108) fanSector = 'Centro';
+            else if (angle >= 108 && angle < 144) fanSector = 'Centro Izquierda';
             else fanSector = 'Extremo Izquierdo';
 
             return `Área ${isTop ? 'Rival' : 'Propia'} ${fanSector}`;
         }
 
         // 23m line (25 yard line) is at 22.9m / 91.4m = 25% height
-        if (y < 25 || y > 75) {
+        // Refined boundaries: Inclusive (<= 25 or >= 75) for 23y zones, Exclusive (> 25 and < 75) for transition.
+        if (y <= 25 || y >= 75) {
             return `23 yardas ${sideSuffix} ${lane}`;
         }
 
@@ -127,6 +128,8 @@ export const PitchMap: React.FC<PitchMapProps> = ({
     };
 
     const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
         if (!isRunning) return;
         isGestureActive.current = false;
         const rect = e.currentTarget.getBoundingClientRect();
@@ -144,6 +147,9 @@ export const PitchMap: React.FC<PitchMapProps> = ({
     };
 
     const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+
         if (!isRunning || !pointerStart.current) return;
         if (longPressTimer.current) clearTimeout(longPressTimer.current);
 
@@ -174,11 +180,10 @@ export const PitchMap: React.FC<PitchMapProps> = ({
             const dy_pitch = endC.y - startC.y;
             const angle = Math.atan2(dy, dx) * 180 / Math.PI;
             
-            // Check if start position is in Area or 23y
-            const isTop = startC.y < 50;
-            const centerY = isTop ? 0 : 100;
-            const inAreaStart = Math.pow((startC.x - 50) / (26.6 + 2.0), 2) + Math.pow((startC.y - centerY) / (16.0 + 1.2), 2) <= 1;
-            const in23Start = startC.y < 25 || startC.y > 75;
+            // Check if start position is in Area or 23y using the same logic as getSector
+            const startSector = getSector(startC.x, startC.y);
+            const inAreaStart = startSector.includes('Área');
+            const in23Start = startSector.includes('23 yardas');
             const inTargetZone = inAreaStart || in23Start;
 
             // If swipe STARTED inside 23 yards/Area AND is towards a goal (significant dy_pitch)
@@ -266,12 +271,17 @@ export const PitchMap: React.FC<PitchMapProps> = ({
                 // LOSS
                 addGlow(vx, vy, 'red');
                 onAction('PÉRDIDA', Possession.AWAY, x, y, `Sector: ${sector}`);
+                return;
             } else if (possession === Possession.AWAY) {
                 // RIVAL ENTRY
-                if (y > 75) {
-                    const type = sector.includes('Área') ? 'Ingreso Rival en área' : 'Ingreso rival en 23';
+                if (sector.includes('Área')) {
                     addGlow(vx, vy, 'red');
-                    onAction(type, Possession.AWAY, x, y, `Sector: ${sector}`);
+                    onAction('Ingreso Rival en área', Possession.AWAY, x, y, `Sector: ${sector}`);
+                    return;
+                } else if (sector.includes('23 yardas') && (y >= 75)) {
+                    addGlow(vx, vy, 'red');
+                    onAction('Ingreso rival en 23', Possession.AWAY, x, y, `Sector: ${sector}`);
+                    return;
                 }
             }
         } else {
@@ -279,16 +289,21 @@ export const PitchMap: React.FC<PitchMapProps> = ({
                 tapCount.current = 0;
                 // Single Tap
                 if (possession === Possession.HOME) {
-                    // ENTRY
-                    if (y < 25) {
-                        const type = sector.includes('Área') ? 'Ingreso en área' : 'Ingreso en 23';
+                    // ENTRY - Prioridad Área > 23 Yardas
+                    if (sector.includes('Área')) {
                         addGlow(vx, vy, 'green');
-                        onAction(type, Possession.HOME, x, y, `Sector: ${sector}`);
+                        onAction('Ingreso en área', Possession.HOME, x, y, `Sector: ${sector}`);
+                        return;
+                    } else if (sector.includes('23 yardas') && (y <= 25)) {
+                        addGlow(vx, vy, 'green');
+                        onAction('Ingreso en 23', Possession.HOME, x, y, `Sector: ${sector}`);
+                        return;
                     }
                 } else if (possession === Possession.AWAY) {
                     // RECOVER
                     addGlow(vx, vy, 'green');
                     onAction('Recupero', Possession.HOME, x, y, `Sector: ${sector}`);
+                    return;
                 }
             }, 300);
         }
@@ -330,7 +345,9 @@ export const PitchMap: React.FC<PitchMapProps> = ({
             className="w-full h-full bg-[#3d63b8] relative cursor-crosshair overflow-hidden touch-none select-none transition-all duration-700"
             onPointerDown={handlePointerDown}
             onPointerUp={handlePointerUp}
-            onPointerLeave={() => {
+            onPointerLeave={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 if (longPressTimer.current) clearTimeout(longPressTimer.current);
                 tapCount.current = 0;
             }}
