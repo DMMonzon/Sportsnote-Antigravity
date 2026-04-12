@@ -312,6 +312,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
   const homeShots = getDetailedStat(['DISPARO'], game.teamHome.id);
   const awayShots = getDetailedStat(['DISPARO'], game.teamAway.id);
 
+  const getPct = (val: number, total: number) => total > 0 ? Math.round((val / total) * 100) : 0;
+
   return (
     <div className="min-h-screen w-full flex flex-col bg-surface overflow-y-auto no-scrollbar pb-16 relative">
       <header className="sticky top-0 z-50 flex justify-between items-center px-6 py-3 bg-white/80 backdrop-blur-xl border-b border-surfaceVariant shrink-0 mb-8">
@@ -363,14 +365,29 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
           </div>
 
           <section className="bg-white p-6 rounded-[32px] shadow-sm border border-surfaceVariant">
-            <h3 className="text-xs font-black uppercase text-onSurfaceVariant mb-6 flex items-center gap-2 italic">Remates al Arco <div className="h-px flex-1 bg-surfaceVariant/50"></div></h3>
+            <h3 className="text-xs font-black uppercase text-onSurfaceVariant mb-6 flex items-center gap-2 italic">
+              <span className="text-sm">🥅</span> Remates al Arco <div className="h-px flex-1 bg-surfaceVariant/50"></div>
+            </h3>
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1 bg-surface rounded-[24px] p-5 border border-surfaceVariant/50">
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-[9px] font-black text-onSurfaceVariant uppercase">Local</span>
                   <span className="text-3xl font-black">{homeShots.total}</span>
                 </div>
-                <div className="grid grid-cols-3 gap-2"><div className="text-center"><p className="text-[7px] uppercase opacity-60">Gol</p><p className="text-sm font-black">{homeShots.goals}</p></div><div className="text-center"><p className="text-[7px] uppercase opacity-60">Atajado</p><p className="text-sm font-black">{homeShots.saved}</p></div><div className="text-center"><p className="text-[7px] uppercase opacity-60">Desv.</p><p className="text-sm font-black">{homeShots.missed}</p></div></div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="text-center">
+                    <p className="text-[7px] uppercase opacity-60">Gol</p>
+                    <p className="text-sm font-black">{homeShots.goals} ({getPct(homeShots.goals, homeShots.total)}%)</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[7px] uppercase opacity-60">Atajado</p>
+                    <p className="text-sm font-black">{homeShots.saved} ({getPct(homeShots.saved, homeShots.total)}%)</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[7px] uppercase opacity-60">Desv.</p>
+                    <p className="text-sm font-black">{homeShots.missed} ({getPct(homeShots.missed, homeShots.total)}%)</p>
+                  </div>
+                </div>
                 <PeriodRow periods={homeShots.periods} />
               </div>
               <div className="flex-1 bg-surface rounded-[24px] p-5 border border-surfaceVariant/50">
@@ -378,7 +395,20 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
                   <span className="text-3xl font-black">{awayShots.total}</span>
                   <span className="text-[9px] font-black text-onSurfaceVariant uppercase">Visitante</span>
                 </div>
-                <div className="grid grid-cols-3 gap-2"><div className="text-center"><p className="text-[7px] uppercase opacity-60">Gol</p><p className="text-sm font-black">{awayShots.goals}</p></div><div className="text-center"><p className="text-[7px] uppercase opacity-60">Atajado</p><p className="text-sm font-black">{awayShots.saved}</p></div><div className="text-center"><p className="text-[7px] uppercase opacity-60">Desv.</p><p className="text-sm font-black">{awayShots.missed}</p></div></div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="text-center">
+                    <p className="text-[7px] uppercase opacity-60">Gol</p>
+                    <p className="text-sm font-black">{awayShots.goals} ({getPct(awayShots.goals, awayShots.total)}%)</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[7px] uppercase opacity-60">Atajado</p>
+                    <p className="text-sm font-black">{awayShots.saved} ({getPct(awayShots.saved, awayShots.total)}%)</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[7px] uppercase opacity-60">Desv.</p>
+                    <p className="text-sm font-black">{awayShots.missed} ({getPct(awayShots.missed, awayShots.total)}%)</p>
+                  </div>
+                </div>
                 <PeriodRow periods={awayShots.periods} />
               </div>
             </div>
@@ -388,15 +418,18 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
             <h3 className="text-xs font-black uppercase text-onSurfaceVariant mb-6 italic">Balance de Acciones (Local)</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
-                { label: 'Pérdidas 📉', types: ['PÉRDIDA'], color: 'text-orange-600' },
-                { label: 'Recuperos 📈', types: ['RECUPERO'], color: 'text-emerald-600' },
-                { label: 'Faltas ⚠️', types: ['FALTA'], color: 'text-red-600' }
+                { label: 'Pérdidas', icon: '📉', types: ['PÉRDIDA'], color: 'text-orange-600' },
+                { label: 'Recuperos', icon: '📈', types: ['RECUPERO'], color: 'text-emerald-600' },
+                { label: 'Faltas', icon: '⚠️', types: ['FALTA'], color: 'text-red-600' }
               ].map(stat => {
                 const data = getDetailedStat(stat.types, game.teamHome.id);
                 return (
                   <div key={stat.label} className="bg-surface/30 p-5 rounded-[28px] border border-surfaceVariant flex flex-col gap-2 shadow-sm">
                     <div className="flex justify-between items-center border-b border-surfaceVariant pb-2">
-                      <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">{stat.label}</p>
+                      <div className="flex items-center gap-2">
+                        {stat.icon && <span className="text-[10px]">{stat.icon}</span>}
+                        <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">{stat.label}</p>
+                      </div>
                       <span className={`text-2xl font-black ${stat.color}`}>{data.total}</span>
                     </div>
                     <div className="grid grid-cols-2 gap-2 mt-1">
@@ -467,7 +500,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
 
 
           <section className="bg-white p-6 rounded-[32px] shadow-sm border border-surfaceVariant">
-            <h3 className="text-xs font-black uppercase text-onSurfaceVariant mb-6 italic">Fluctuación de Pases por Período</h3>
+            <h3 className="text-xs font-black uppercase text-onSurfaceVariant mb-6 flex items-center gap-2 italic">
+              <span className="text-sm">⏱️</span> Fluctuación de Pases por Período <div className="h-px flex-1 bg-surfaceVariant/50"></div>
+            </h3>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={passTrendData}>
