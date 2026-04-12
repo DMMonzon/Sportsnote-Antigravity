@@ -88,16 +88,25 @@ export const PitchMap: React.FC<PitchMapProps> = ({
         const lane = x < 33.3 ? 'Izquierda' : x < 66.6 ? 'Centro' : 'Derecha';
         const centerY = isTop ? 0 : 100;
 
-        // Hockey Area is a semi-circle of 14.63m radius from the posts + 3.66m goal width.
-        // In 0-100 units (representing 55m width x 91.4m length): 
-        // Radius Y = 16% (14.63 / 91.4)
-        // Radius X (approx for ellipse) = 30% ( (14.63 + 3.66/2) / 55 )
-        const isArea = Math.pow(x - 50, 2) / Math.pow(30, 2) + Math.pow(y - centerY, 2) / Math.pow(16, 2) <= 1;
+        // Hockey Area (D-zone) is a semi-circle of 14.63m radius (16 yards).
+        // Standard Field: 91.4m Long (Y-axis) x 55m Wide (X-axis).
+        // Scaling to 0-100 units:
+        const radiusY = (14.63 / 91.4) * 100; // ~16.0 units
+        const radiusX = (14.63 / 55) * 100;    // ~26.6 units
+        
+        // Hitbox Tolerance: Add a buffer (approx 8px on standard screens) to "attract" edge taps
+        const bufferX = 2.0; 
+        const bufferY = 1.2;
+
+        // Euclidean distance check with aspect correction and INCLUSIVE logic (<=)
+        const dx = x - 50;
+        const dy = y - centerY;
+        const isArea = Math.pow(dx / (radiusX + bufferX), 2) + Math.pow(dy / (radiusY + bufferY), 2) <= 1;
 
         if (isArea) {
-            const dy = isTop ? y : 100 - y;
-            const dx = x - 50;
-            const angle = (Math.atan2(dy, dx) * 180) / Math.PI; // 0 to 180
+            const dy_abs = isTop ? y : 100 - y;
+            const dx_abs = x - 50;
+            const angle = (Math.atan2(dy_abs, dx_abs) * 180) / Math.PI; // 0 to 180
 
             let fanSector = '';
             if (angle < 36) fanSector = 'Extremo Derecho';
@@ -109,7 +118,7 @@ export const PitchMap: React.FC<PitchMapProps> = ({
             return `Área ${isTop ? 'Rival' : 'Propia'} ${fanSector}`;
         }
 
-        // 23m line is actually located at 22.9m / 91.4m = 25%
+        // 23m line (25 yard line) is at 22.9m / 91.4m = 25% height
         if (y < 25 || y > 75) {
             return `23 yardas ${sideSuffix} ${lane}`;
         }
@@ -168,7 +177,7 @@ export const PitchMap: React.FC<PitchMapProps> = ({
             // Check if start position is in Area or 23y
             const isTop = startC.y < 50;
             const centerY = isTop ? 0 : 100;
-            const inAreaStart = Math.pow(startC.x - 50, 2) / Math.pow(30, 2) + Math.pow(startC.y - centerY, 2) / Math.pow(16, 2) <= 1;
+            const inAreaStart = Math.pow((startC.x - 50) / (26.6 + 2.0), 2) + Math.pow((startC.y - centerY) / (16.0 + 1.2), 2) <= 1;
             const in23Start = startC.y < 25 || startC.y > 75;
             const inTargetZone = inAreaStart || in23Start;
 
@@ -373,12 +382,12 @@ export const PitchMap: React.FC<PitchMapProps> = ({
                             <div className="absolute left-[25%] top-0 bottom-0 w-px border-l-2 border-dashed border-white/40" />
                             <div className="absolute right-[25%] top-0 bottom-0 w-px border-r-2 border-dashed border-white/40" />
 
-                            {/* D-Areas Hockey Style */}
+                            {/* D-Areas Hockey Style - Width based on RadiusX (~26.6 * 2), Height on RadiusY (~16 * 2) */}
                             {/* Top/Away Circle */}
-                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[32%] h-[60%] border-2 border-white/60 rounded-full -translate-x-1/2" />
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[53.2%] h-[60%] border-2 border-white/60 rounded-full -translate-x-1/2" />
 
                             {/* Bottom/Home Circle */}
-                            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[32%] h-[60%] border-2 border-white/60 rounded-full translate-x-1/2" />
+                            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[53.2%] h-[60%] border-2 border-white/60 rounded-full translate-x-1/2" />
                         </>
                     ) : (
                         <>
@@ -386,12 +395,12 @@ export const PitchMap: React.FC<PitchMapProps> = ({
                             <div className="absolute top-[25%] left-0 right-0 h-px border-t-2 border-dashed border-white/40" />
                             <div className="absolute bottom-[25%] left-0 right-0 h-px border-b-2 border-dashed border-white/40" />
 
-                            {/* D-Areas Hockey Style */}
+                            {/* D-Areas Hockey Style - Width based on RadiusX (~26.6 * 2), Height on RadiusY (~16 * 2) */}
                             {/* Top/Away Circle */}
-                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60%] h-[32%] border-2 border-white/60 rounded-full -translate-y-1/2" />
+                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[53.2%] h-[32%] border-2 border-white/60 rounded-full -translate-y-1/2" />
 
                             {/* Bottom/Home Circle */}
-                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[60%] h-[32%] border-2 border-white/60 rounded-full translate-y-1/2" />
+                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[53.2%] h-[32%] border-2 border-white/60 rounded-full translate-y-1/2" />
                         </>
                     )}
 

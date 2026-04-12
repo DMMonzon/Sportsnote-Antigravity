@@ -13,7 +13,7 @@ const NSeparator = () => (
   <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center shrink-0">
     <img
       src="./assets/logo-sportsnote-v2.png"
-      alt="Sportsnote Logo"
+      alt="SportNotes Logo"
       className="w-full h-full object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.1)]"
     />
   </div>
@@ -1552,175 +1552,7 @@ const LiveGameView: React.FC<{
 
           <div className="flex-1 relative overflow-hidden flex items-center justify-center bg-surfaceVariant/10">
             <div className={`relative ${isLandscape ? 'w-[92%] h-[92%]' : 'w-full h-full'}`}>
-              {activeView === 'tactics' ? (
-                <div className="w-full h-full bg-white rounded-[32px] border-2 border-surfaceVariant flex flex-col p-6 animate-in slide-in-from-bottom duration-300 overflow-hidden shadow-xl">
-                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-sm font-black text-dark uppercase tracking-widest">Administrador de Tácticas</h3>
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => setShowNewTacticForm(!showNewTacticForm)}
-                        className={`text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-full transition-all flex items-center gap-1 ${showNewTacticForm ? 'bg-surface text-onSurfaceVariant' : 'bg-primary text-white shadow-md hover:scale-105'}`}
-                      >
-                        {showNewTacticForm ? 'Cancelar' : <><span className="text-lg leading-none">+</span> Crear Nueva Táctica</>}
-                      </button>
-                      <button onClick={() => setActiveView('field')} className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/5 px-4 py-2 rounded-full hover:bg-primary/10 transition-colors">Cerrar</button>
-                    </div>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto space-y-4 no-scrollbar pb-4 pr-2">
-                    {showNewTacticForm && (
-                      <div className="border border-primary/30 bg-primary/5 rounded-[28px] p-5 mb-4 animate-in slide-in-from-top duration-300 shadow-inner">
-                        <p className="text-[10px] font-black text-primary uppercase tracking-widest italic border-b border-primary/20 pb-2 mb-4">Nueva Formación</p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="col-span-1 md:col-span-2">
-                            <label className="text-[9px] font-black text-dark uppercase tracking-widest block mb-1">Nombre de la Táctica</label>
-                            <input
-                              type="text"
-                              value={newTactic.name}
-                              onChange={e => setNewTactic({ ...newTactic, name: e.target.value })}
-                              className="w-full bg-white border border-primary/20 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-primary shadow-sm"
-                              placeholder="Ej: Presión Alta 3-1"
-                            />
-                          </div>
-                          <div className="col-span-1">
-                            <label className="text-[9px] font-black text-dark uppercase tracking-widest block mb-1">Objetivo Esperado</label>
-                            <input
-                              type="text"
-                              value={newTactic.objective}
-                              onChange={e => setNewTactic({ ...newTactic, objective: e.target.value })}
-                              className="w-full bg-white border border-primary/20 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-primary shadow-sm"
-                              placeholder="Ej: Recuperar en 23 yardas"
-                            />
-                          </div>
-                          <div className="col-span-1">
-                            <label className="text-[9px] font-black text-dark uppercase tracking-widest block mb-1">Descripción (Opcional)</label>
-                            <input
-                              type="text"
-                              value={newTactic.description}
-                              onChange={e => setNewTactic({ ...newTactic, description: e.target.value })}
-                              className="w-full bg-white border border-primary/20 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-primary shadow-sm"
-                              placeholder="Detalles del movimiento..."
-                            />
-                          </div>
-                          <div className="col-span-1 md:col-span-2 mt-2 flex gap-3">
-                            <button
-                              onClick={() => handleAddTactic(false)}
-                              disabled={!newTactic.name}
-                              className="flex-1 bg-surfaceVariant/20 text-onSurfaceVariant font-black py-3.5 rounded-xl active:scale-95 text-[10px] uppercase tracking-widest border border-surfaceVariant transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              GUARDAR
-                            </button>
-                            <button
-                              onClick={() => handleAddTactic(true)}
-                              disabled={!newTactic.name}
-                              className="flex-[2] bg-primary text-white font-black py-3.5 rounded-xl active:scale-95 text-[10px] uppercase tracking-widest shadow-lg shadow-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              GUARDAR Y ACTIVAR TÁCTICA
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {tacticalSchemes.map((t) => {
-                      const isActive = activeTacticId === t.id;
-                      const isExpanded = expandedTacticId === t.id;
-
-                      // Calibrar estadísticas para esta táctica
-                      const tacticEvents = game.events.filter(e => e.tacticId === t.id);
-                      const ingresosPropios = tacticEvents.filter(e => e.type.toLowerCase().includes('ingreso') && !e.type.toLowerCase().includes('rival')).length;
-                      const ingresosRivales = tacticEvents.filter(e => e.type.toLowerCase().includes('ingreso rival')).length;
-                      const recuperos = tacticEvents.filter(e => e.type.toLowerCase().includes('recupero')).length;
-
-                      return (
-                        <div
-                          key={t.id}
-                          className={`border-2 rounded-[28px] transition-all duration-300 overflow-hidden ${isActive ? 'border-[#00fe00] bg-[#00fe00]/5 shadow-lg shadow-[#00fe00]/10' : 'border-surfaceVariant bg-surface/30'
-                            }`}
-                        >
-                          <div className={`p-5 flex items-center justify-between border-b border-surfaceVariant/5 ${isActive ? 'bg-[#00fe00]/2' : ''}`}>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h4 className={`text-[11px] font-black uppercase tracking-tight ${isActive ? 'text-dark' : 'text-onSurfaceVariant'}`}>{t.name}</h4>
-                                {isActive && (
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="w-1.5 h-1.5 bg-[#00fe00] rounded-full animate-pulse shadow-[0_0_4px_#00fe00]"></span>
-                                    <span className="text-[7px] font-black text-[#00c000] uppercase tracking-widest">Activa</span>
-                                  </div>
-                                )}
-                              </div>
-                              <p className="text-[9px] font-bold text-onSurfaceVariant/60 italic leading-tight">{t.objective}</p>
-                            </div>
-
-                            <div className="flex items-center gap-4">
-                              <button
-                                onClick={() => setExpandedTacticId(isExpanded ? null : t.id)}
-                                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-surfaceVariant/20 ${isExpanded ? 'rotate-180 text-primary' : 'text-onSurfaceVariant/40'}`}
-                              >
-                                🔽
-                              </button>
-
-                              {/* Switch de Actividad */}
-                              <div className="flex flex-col items-center gap-1">
-                                <button
-                                  onClick={() => {
-                                    if (isActive) {
-                                      setActiveTacticId(null);
-                                    } else {
-                                      setActiveTacticId(t.id);
-                                      setActiveView('field');
-                                    }
-                                  }}
-                                  className={`relative w-12 h-6 rounded-full transition-all duration-300 shadow-inner border ${isActive 
-                                    ? 'bg-[#00fe00] border-[#00e000] shadow-[#00fe00]/20' 
-                                    : 'bg-surfaceVariant/30 border-surfaceVariant'
-                                  }`}
-                                >
-                                  <div className={`absolute top-0.5 h-4.5 w-4.5 rounded-full bg-white shadow-md transition-all duration-300 transform ${isActive ? 'left-[calc(100%-20px)] rotate-0' : 'left-0.5'}`} />
-                                </button>
-                                <span className={`text-[6px] font-black uppercase tracking-tighter ${isActive ? 'text-[#00c000]' : 'text-onSurfaceVariant/40'}`}>
-                                  {isActive ? 'ON' : 'OFF'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {isExpanded && (
-                            <div className="px-5 pb-5 pt-2 border-t border-surfaceVariant/10 grid grid-cols-3 gap-3 animate-in slide-in-from-top duration-300">
-                              <div className="bg-white/40 p-3 rounded-2xl border border-surfaceVariant/30 flex flex-col items-center">
-                                <span className="text-[7px] font-black uppercase text-onSurfaceVariant mb-1">Ing. Propios</span>
-                                <span className="text-sm font-black text-dark">{ingresosPropios}</span>
-                              </div>
-                              <div className="bg-white/40 p-3 rounded-2xl border border-surfaceVariant/30 flex flex-col items-center">
-                                <span className="text-[7px] font-black uppercase text-onSurfaceVariant mb-1">Ing. Rivales</span>
-                                <span className="text-sm font-black text-dark">{ingresosRivales}</span>
-                              </div>
-                              <div className="bg-white/40 p-3 rounded-2xl border border-surfaceVariant/30 flex flex-col items-center">
-                                <span className="text-[7px] font-black uppercase text-onSurfaceVariant mb-1">Recuperos</span>
-                                <span className="text-sm font-black text-dark">{recuperos}</span>
-                              </div>
-                              <div className="col-span-3 mt-1">
-                                <p className="text-[8px] font-bold text-onSurfaceVariant/50 leading-relaxed uppercase">{t.description}</p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                    {tacticalSchemes.length === 0 && (
-                      <div className="flex flex-col items-center justify-center py-20 opacity-30 text-center">
-                        <div className="mb-4 scale-150">
-                          <TacticIcon active={false} />
-                        </div>
-                        <p className="text-[11px] font-black uppercase tracking-[3px]">Sin tácticas configuradas</p>
-                        <p className="text-[9px] font-bold mt-2">Configura tus formaciones en el Dashboard</p>
-                      </div>
-                    )}
-
-                  </div>
-                </div>
-
-              ) : activeView === 'list' ? (
+              {activeView === 'list' ? (
                 <div className="w-full h-full bg-white rounded-[32px] border-2 border-surfaceVariant flex flex-col p-6 animate-in slide-in-from-bottom duration-300 overflow-hidden shadow-xl">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-sm font-black text-dark uppercase tracking-widest">Listado de Acciones</h3>
@@ -2317,6 +2149,8 @@ const LiveGameView: React.FC<{
         <div className="flex flex-1 items-center justify-around md:justify-center md:gap-16">
           <div className="flex items-center gap-4 md:gap-8">
             <button className={`text-2xl transition-all ${activeView === 'list' ? 'text-primary scale-110 drop-shadow-md' : 'text-onSurfaceVariant/30'}`} onClick={() => setActiveView(activeView === 'list' ? 'field' : 'list')}>📋</button>
+            {/* Tactic Icon Hidden for MVP */}
+            {/* 
             <div className="relative">
               <button 
                 onClick={() => setActiveView(activeView === 'tactics' ? 'field' : 'tactics')}
@@ -2328,6 +2162,7 @@ const LiveGameView: React.FC<{
                 )}
               </button>
             </div>
+            */}
             <button className={`text-2xl transition-all ${activeView === 'stats' ? 'text-primary scale-110 drop-shadow-md' : 'text-onSurfaceVariant/30'} ${!isLandscape ? 'lg:hidden' : ''}`} onClick={() => setActiveView(activeView === 'stats' ? 'field' : 'stats')}>📊</button>
           </div>
 

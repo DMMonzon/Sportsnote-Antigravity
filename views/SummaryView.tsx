@@ -299,7 +299,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
       const summaryText = `Resumen: ${game.teamHome.name} ${game.scoreHome} - ${game.scoreAway} ${game.teamAway.name}\n` +
         `Remates: ${getDetailedStat(['DISPARO'], game.teamHome.id).total} - ${getDetailedStat(['DISPARO'], game.teamAway.id).total}\n` +
         `ID de Partido: ${game.id}\n\n` +
-        `Data completa exportada desde SportsNote APP.`;
+        `Data completa exportada desde SportNotes APP.`;
       
       await navigator.clipboard.writeText(summaryText);
       alert('Resumen copiado al portapapeles con éxito.');
@@ -319,7 +319,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
           <button onClick={() => navigate('/dashboard')} className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-surfaceVariant shadow-sm hover:scale-110 transition-transform">
             <span className="text-primary font-black">←</span>
           </button>
-          <img src="./assets/logoLargoSN.svg" alt="Sportsnote Logo" className="h-8 md:h-9 w-auto" />
+          <img src="./assets/logoLargoSN.svg" alt="SportNotes Logo" className="h-8 md:h-9 w-auto" />
         </div>
       </header>
 
@@ -327,7 +327,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
         <div ref={reportRef} className="flex flex-col gap-8">
           <header className="text-center pt-4">
             <h2 className="contrail-font text-dark text-4xl mb-1 uppercase tracking-tighter">Reporte Final</h2>
-            <p className="text-[10px] text-onSurfaceVariant font-black uppercase tracking-[4px] opacity-60">Data Report SportsNote • ID: {game.id}</p>
+            <p className="text-[10px] text-onSurfaceVariant font-black uppercase tracking-[4px] opacity-60">Data Report SportNotes • ID: {game.id}</p>
           </header>
 
           <div className="bg-white rounded-[40px] p-8 shadow-xl border border-surfaceVariant relative overflow-hidden">
@@ -410,47 +410,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
             </div>
           </section>
 
-          {usedTacticIds.length > 0 && (
-            <section className="bg-white p-6 rounded-[32px] shadow-sm border border-surfaceVariant">
-              <h3 className="text-xs font-black uppercase text-onSurfaceVariant mb-6 flex items-center gap-2 italic">Rendimiento por Táctica <div className="h-px flex-1 bg-surfaceVariant/50"></div></h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {usedTacticIds.map(tid => {
-                  const s = getTacticStats(tid);
-                  if (!s) return null;
-                  return (
-                    <div key={tid} className="bg-surface/50 p-6 rounded-[28px] border border-surfaceVariant shadow-sm">
-                      <div className="flex items-center gap-3 mb-5 border-b border-surfaceVariant/50 pb-3">
-                        <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-xs font-black">♟️</div>
-                        <h4 className="text-[10px] font-black text-dark uppercase tracking-widest">{s.name}</h4>
-                      </div>
-                      
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-3 text-center mb-1">
-                          <span className="text-[7px] font-black text-onSurfaceVariant/40 uppercase">Estadística</span>
-                          <span className="text-[7px] font-black text-primary uppercase">Local</span>
-                          <span className="text-[7px] font-black text-dark uppercase">Rival</span>
-                        </div>
-                        
-                        {[
-                          { label: 'Recuperos', home: s.home.recuperos, away: s.away.recuperos, color: 'text-emerald-600' },
-                          { label: 'Pérdidas', home: s.home.perdidas, away: s.away.perdidas, color: 'text-orange-600' },
-                          { label: 'Remates', home: s.home.remates, away: s.away.remates, color: 'text-blue-600' },
-                          { label: 'Faltas', home: s.home.faltas, away: s.away.faltas, color: 'text-red-600' }
-                        ].map(row => (
-                          <div key={row.label} className="bg-white/60 rounded-xl p-2.5 flex items-center border border-surfaceVariant/30">
-                            <span className="flex-1 text-[8px] font-black text-onSurfaceVariant uppercase">{row.label}</span>
-                            <span className={`w-12 text-center text-xs font-black ${row.color}`}>{row.home}</span>
-                            <span className="w-12 text-center text-xs font-black text-dark">{row.away}</span>
-                          </div>
-                        ))}
-                      </div>
-                      
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          )}
+          {/* Tactical Performance section removed for MVP */}
 
 
           <section className="bg-white p-6 rounded-[32px] shadow-sm border border-surfaceVariant">

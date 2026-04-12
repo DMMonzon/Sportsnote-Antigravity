@@ -143,7 +143,7 @@ const GlobalStatsDashboard: React.FC<GlobalStatsDashboardProps> = ({ matches }) 
                     <button onClick={() => navigate('/dashboard')} className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-surfaceVariant shadow-sm hover:scale-110 transition-transform">
                         <span className="text-primary font-black">←</span>
                     </button>
-                    <img src="./assets/logoLargoSN.svg" alt="Sportsnote Logo" className="h-8 md:h-9 w-auto" />
+                    <img src="./assets/logoLargoSN.svg" alt="SportNotes Logo" className="h-8 md:h-9 w-auto" />
                 </div>
             </header>
 

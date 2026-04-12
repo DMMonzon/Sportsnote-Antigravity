@@ -12,12 +12,12 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ matches, onCreateFromTempla
     const [showRecycleModal, setShowRecycleModal] = React.useState<Game | null>(null);
 
     const handleShare = (game: Game) => {
-        const text = `Resumen del partido: ${game.teamHome.name} ${game.scoreHome} - ${game.scoreAway} ${game.teamAway.name}\nVer más en Sportsnote.`;
+        const text = `Resumen del partido: ${game.teamHome.name} ${game.scoreHome} - ${game.scoreAway} ${game.teamAway.name}\nVer más en SportNotes.`;
         const url = `${window.location.origin}/#/summary/${game.id}`;
 
         if (navigator.share) {
             navigator.share({
-                title: 'Sportsnote Match Summary',
+                title: 'SportNotes Match Summary',
                 text: text,
                 url: url,
             }).catch(console.error);
@@ -41,7 +41,7 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ matches, onCreateFromTempla
                     </button>
                     <img
                         src="./assets/logoLargoSN.svg"
-                        alt="Sportsnote Logo"
+                        alt="SportNotes Logo"
                         className="h-8 md:h-9 w-auto"
                     />
                 </div>

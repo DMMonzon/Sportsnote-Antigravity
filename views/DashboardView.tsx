@@ -99,7 +99,7 @@ interface DashboardViewProps {
 const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, tacticalSchemes, onUpdateTactics, onLogout }) => {
   const navigate = useNavigate();
   const [showRecycleModal, setShowRecycleModal] = React.useState<Game | null>(null);
-  const [showTacticsModal, setShowTacticsModal] = React.useState(false);
+  const [showTacticsModal, setShowTacticsModal] = React.useState(false); // Kept state to avoid breaking potential parent triggers, but will hide UI
 
   const [newTactic, setNewTactic] = React.useState({ name: '', description: '', objective: '' });
 
@@ -128,12 +128,12 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, tacticalSc
   };
 
   const handleShare = (game: Game) => {
-    const text = `Resumen del partido: ${game.teamHome.name} ${game.scoreHome} - ${game.scoreAway} ${game.teamAway.name}\nVer más en Sportsnote.`;
+    const text = `Resumen del partido: ${game.teamHome.name} ${game.scoreHome} - ${game.scoreAway} ${game.teamAway.name}\nVer más en SportNotes.`;
     const url = `${window.location.origin}/#/summary/${game.id}`;
 
     if (navigator.share) {
       navigator.share({
-        title: 'Sportsnote Match Summary',
+        title: 'SportNotes Match Summary',
         text: text,
         url: url,
       }).catch(console.error);
@@ -154,22 +154,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, tacticalSc
     window.location.reload();
   };
 
-  const handleAddTactic = () => {
-    if (!newTactic.name) return;
-    const tactic: TacticalScheme = {
-      id: Math.random().toString(36).substr(2, 9),
-      ownerId: user.uid,
-      ...newTactic
-    };
-    const updatedTactics = [...tacticalSchemes, tactic];
-    onUpdateTactics(updatedTactics);
-    setNewTactic({ name: '', description: '', objective: '' });
-  };
-
-  const handleDeleteTactic = (id: string) => {
-    const updatedTactics = tacticalSchemes.filter(t => t.id !== id);
-    onUpdateTactics(updatedTactics);
-  };
+  // Analytics for Area/23 entries (placeholder or logic cleanup if needed)
 
 
   return (
@@ -178,7 +163,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, tacticalSc
         <div className="flex items-center justify-center flex-1 md:flex-initial">
           <img
             src="./assets/logoLargoSN.svg"
-            alt="Sportsnote Logo"
+            alt="SportNotes Logo"
             className="h-10 md:h-12 w-auto animate-in fade-in zoom-in duration-500"
           />
         </div>
@@ -319,24 +304,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, tacticalSc
               </button>
 
             </div>
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 flex flex-col justify-between">
-              <div>
-                <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-2">Tácticas Especiales</p>
-                <div className="flex items-baseline gap-2">
-                  <h4 className="text-4xl font-black text-white leading-none">
-                    {tacticalSchemes.length}
-                  </h4>
-                  <span className="text-[10px] font-bold text-white/40 uppercase">Esquemas</span>
-                </div>
-                <p className="text-[10px] font-bold text-white/70 uppercase mt-3 italic">Personaliza tu estrategia</p>
-              </div>
-              <button
-                onClick={() => setShowTacticsModal(true)}
-                className="text-[9px] font-black text-white uppercase tracking-tighter hover:underline mt-4 text-left opacity-80"
-              >
-                ver tácticas especiales
-              </button>
-            </div>
+            {/* Tácticas Especiales card removed for MVP */}
           </ActionCard>
 
 
@@ -416,7 +384,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, tacticalSc
         >
           <span>🚪</span> FINALIZAR SESIÓN SEGURA
         </button>
-        <p className="mt-8 text-[8px] text-onSurfaceVariant/40 font-black tracking-[4px] uppercase italic">SportsNote Professional Dashboard • 2024</p>
+        <p className="mt-8 text-[8px] text-onSurfaceVariant/40 font-black tracking-[4px] uppercase italic">SportNotes Professional Dashboard • 2024</p>
       </footer>
 
       {showRecycleModal && (
@@ -450,86 +418,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, tacticalSc
         </div>
       )}
 
-      {showTacticsModal && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-brandDark/60 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-2xl rounded-[40px] p-8 shadow-2xl flex flex-col animate-in zoom-in duration-300 border border-surfaceVariant max-h-[90vh] overflow-hidden">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-sm font-black text-onSurfaceVariant uppercase tracking-[4px]">Gestión de Tácticas Especiales</h3>
-              <button onClick={() => setShowTacticsModal(false)} className="text-xl">✕</button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 overflow-y-auto no-scrollbar pr-2">
-              <div className="flex flex-col gap-4">
-                <p className="text-[10px] font-black text-primary uppercase tracking-widest italic border-b border-primary/10 pb-2">Nueva Formación</p>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[9px] font-black text-dark uppercase tracking-widest block mb-1">Nombre de la Táctica</label>
-                    <input
-                      type="text"
-                      value={newTactic.name}
-                      onChange={e => setNewTactic({ ...newTactic, name: e.target.value })}
-                      className="w-full bg-surface border border-surfaceVariant rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-primary"
-                      placeholder="Ej: Presión Alta 3-1"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[9px] font-black text-dark uppercase tracking-widest block mb-1">Descripción</label>
-                    <textarea
-                      value={newTactic.description}
-                      onChange={e => setNewTactic({ ...newTactic, description: e.target.value })}
-                      className="w-full bg-surface border border-surfaceVariant rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-primary h-20 resize-none"
-                      placeholder="Detalles del movimiento..."
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[9px] font-black text-dark uppercase tracking-widest block mb-1">Objetivo Esperado</label>
-                    <input
-                      type="text"
-                      value={newTactic.objective}
-                      onChange={e => setNewTactic({ ...newTactic, objective: e.target.value })}
-                      className="w-full bg-surface border border-surfaceVariant rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-primary"
-                      placeholder="Ej: Recuperar en 23 yardas"
-                    />
-                  </div>
-                  <button
-                    onClick={handleAddTactic}
-                    className="w-full bg-primary text-white font-black py-4 rounded-xl active:scale-95 text-[10px] uppercase tracking-widest shadow-lg shadow-primary/20 transition-all"
-                  >
-                    AGREGAR FORMACIÓN
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-4">
-                <p className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest italic border-b border-surfaceVariant pb-2">Mis Tácticas Guardadas</p>
-                <div className="space-y-3">
-                  {tacticalSchemes.map(t => (
-                    <div key={t.id} className="bg-surface/50 border border-surfaceVariant p-4 rounded-2xl flex justify-between items-start group">
-                      <div className="flex flex-col gap-1 pr-6">
-                        <span className="text-[11px] font-black text-dark uppercase leading-tight">{t.name}</span>
-                        <span className="text-[9px] font-bold text-onSurfaceVariant/60 italic">{t.objective}</span>
-                      </div>
-                      <button
-                        onClick={() => handleDeleteTactic(t.id)}
-                        className="text-red-400 p-2 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                  {tacticalSchemes.length === 0 && (
-                    <div className="text-center py-10 opacity-30 flex flex-col items-center">
-                      <TacticIcon className="w-12 h-12 mb-2" />
-                      <p className="text-[10px] font-black uppercase tracking-widest">Sin tácticas registradas</p>
-                    </div>
-                  )}
-
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* showTacticsModal block removed for MVP */}
 
     </div>
 

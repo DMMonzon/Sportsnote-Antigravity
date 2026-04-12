@@ -66,7 +66,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
       <div className="w-full max-w-sm flex flex-col items-center">
         <img
           src="./assets/logoLargoSN.svg"
-          alt="Sportsnote Logo"
+          alt="SportNotes Logo"
           className="w-64 md:w-80 h-auto mb-10 drop-shadow-2xl"
         />
         <p className="contrail-font text-onSurfaceVariant mb-16 text-center text-lg leading-tight tracking-wide opacity-80">
