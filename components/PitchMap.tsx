@@ -340,6 +340,25 @@ export const PitchMap: React.FC<PitchMapProps> = ({
         prevPossession.current = possession;
     }, [possession, isRunning, isLandscape, isFlipped, homeColor, awayColor]);
 
+    const radialLines = React.useMemo(() => {
+        const rx = (14.63 / 55) * 100 + 2.0; // radiusX + bufferX
+        const ry = (14.63 / 91.4) * 100 + 1.2; // radiusY + bufferY
+        return [36, 72, 108, 144].map(angleDeg => {
+            const rad = angleDeg * Math.PI / 180;
+            const cos = Math.cos(rad);
+            const sin = Math.sin(rad);
+            const r = 1 / Math.sqrt(Math.pow(cos / rx, 2) + Math.pow(sin / ry, 2));
+            return { dx: r * cos, dy: r * sin };
+        });
+    }, []);
+
+    const toScreen = React.useCallback((logicX: number, logicY: number) => {
+        if (isLandscape) {
+            return { x: logicY, y: 100 - logicX };
+        }
+        return { x: logicX, y: logicY };
+    }, [isLandscape]);
+
     return (
         <div
             className="w-full h-full bg-[#3d63b8] relative cursor-crosshair overflow-hidden touch-none select-none transition-all duration-700"
@@ -378,7 +397,30 @@ export const PitchMap: React.FC<PitchMapProps> = ({
 
             {/* Field Markings */}
             <div className={`absolute inset-0 pointer-events-none transition-transform duration-700`}>
-                <div className="absolute inset-[2%] border-2 border-white/60 overflow-hidden">
+                {/* Tactical Reference Lines (Mathematical Exact Logic) */}
+                <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-15 z-0" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <g stroke="#000000" strokeWidth="0.5" vectorEffect="non-scaling-stroke">
+                        {/* Lanes */}
+                        <line x1={toScreen(33.3, 0).x} y1={toScreen(33.3, 0).y} x2={toScreen(33.3, 100).x} y2={toScreen(33.3, 100).y} strokeDasharray="4,4" />
+                        <line x1={toScreen(66.6, 0).x} y1={toScreen(66.6, 0).y} x2={toScreen(66.6, 100).x} y2={toScreen(66.6, 100).y} strokeDasharray="4,4" />
+
+                        {/* Radial Areas */}
+                        {radialLines.map((pt, i) => {
+                            const topStart = toScreen(50, 0);
+                            const topEnd = toScreen(50 + pt.dx, pt.dy);
+                            const botStart = toScreen(50, 100);
+                            const botEnd = toScreen(50 + pt.dx, 100 - pt.dy);
+                            return (
+                                <React.Fragment key={i}>
+                                    <line x1={topStart.x} y1={topStart.y} x2={topEnd.x} y2={topEnd.y} strokeDasharray="2,2" />
+                                    <line x1={botStart.x} y1={botStart.y} x2={botEnd.x} y2={botEnd.y} strokeDasharray="2,2" />
+                                </React.Fragment>
+                            );
+                        })}
+                    </g>
+                </svg>
+
+                <div className="absolute inset-[2%] border-2 border-white/60 overflow-hidden z-10">
                     {/* Goals (Rectángulos planos sobre línea de fondo) */}
                     {isLandscape ? (
                         <>

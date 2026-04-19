@@ -355,6 +355,7 @@ const LiveGameView: React.FC<{
   const [isLandscape, setIsLandscape] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [showFinishConfirm, setShowFinishConfirm] = useState(false);
   const [syncQueueLength, setSyncQueueLength] = useState(PersistenceManager.getSyncQueueLength());
 
   useEffect(() => {
@@ -964,26 +965,31 @@ const LiveGameView: React.FC<{
     navigate('/dashboard');
   };
 
-  const handleFinishGame = async () => {
-    if (window.confirm('¿Estás seguro de finalizar el partido?')) {
-      if (id) {
-        PersistenceManager.forceSyncGame(id);
+  const handleFinishGame = () => {
+    setShowFinishConfirm(true);
+  };
 
-        try {
-          if (auth.currentUser && game) {
-            const userId = auth.currentUser.uid;
-            const gameData = { ...game, userId };
-            await setDoc(doc(db, 'matches', id), gameData, { merge: true });
-            console.log('Partido guardado en Firebase');
-          } else {
-            console.error('No se pudo guardar: Usuario o partido no válido');
-          }
-        } catch (error) {
-          console.error('Error al guardar el partido en Firebase:', error);
+  const confirmFinishGame = async () => {
+    setShowFinishConfirm(false);
+    if (id) {
+      PersistenceManager.forceSyncGame(id);
+
+      try {
+        if (auth.currentUser && game) {
+          const userId = auth.currentUser.uid;
+          const gameData = { ...game, userId };
+          await setDoc(doc(db, 'matches', id), gameData, { merge: true });
+          console.log('Partido guardado en Firebase');
+        } else {
+          console.error('No se pudo guardar: Usuario o partido no válido');
         }
+      } catch (error) {
+        console.error('Error al guardar el partido en Firebase:', error);
       }
-      StorageService.clearActiveGame();
-      onExitGame(game);
+    }
+    StorageService.clearActiveGame();
+    onExitGame(game);
+    if (game) {
       navigate(`/summary/${game.id}`);
     }
   };
@@ -1259,6 +1265,33 @@ const LiveGameView: React.FC<{
         </div>
       )}
 
+      {/* Modal Confirmar Finalizar Juego */}
+      {showFinishConfirm && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-brandDark/40 backdrop-blur-sm">
+          <div className="relative w-full max-w-sm bg-white border border-surfaceVariant p-8 rounded-[40px] shadow-2xl animate-in zoom-in duration-200 text-center">
+            <div className="text-4xl mb-4">🏁</div>
+            <h3 className="contrail-font text-2xl text-dark uppercase mb-2">¿Finalizar Partido?</h3>
+            <p className="text-[11px] font-bold text-onSurfaceVariant uppercase leading-relaxed mb-8">
+              Esta acción cerrará el registro actual y generará el reporte final de estadísticas. ¿Estás seguro de proceder?
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={confirmFinishGame}
+                className="w-full bg-primary text-white font-black py-4 rounded-2xl active:scale-95 text-xs uppercase shadow-lg shadow-primary/20 transition-all"
+              >
+                SÍ, FINALIZAR MATCH
+              </button>
+              <button
+                onClick={() => setShowFinishConfirm(false)}
+                className="w-full bg-surface text-onSurfaceVariant font-black py-4 rounded-2xl active:scale-95 text-xs uppercase border border-surfaceVariant transition-all"
+              >
+                CONTINUAR JUGANDO
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isMenuOpen && (
         <div className="fixed inset-0 z-[400] flex">
           <div className="absolute inset-0 bg-brandDark/20 backdrop-blur-md" onClick={() => setIsMenuOpen(false)} />
@@ -1268,7 +1301,12 @@ const LiveGameView: React.FC<{
               <button onClick={() => setIsMenuOpen(false)} className="text-onSurfaceVariant p-2 hover:bg-surfaceVariant rounded-full transition-colors">✕</button>
             </div>
             <nav className="flex-1 space-y-2 overflow-y-auto no-scrollbar">
-              <button onClick={handleFinishGame} className="w-full text-left p-4 rounded-xl bg-primary/10 text-primary font-bold text-[11px] uppercase tracking-widest transition-all active:scale-95 mb-4">Finalizar Match</button>
+              <button
+                onClick={handleFinishGame}
+                className="w-full text-left p-4 rounded-xl bg-primary/10 text-primary font-black text-[11px] uppercase tracking-widest flex items-center gap-3 transition-all active:scale-95 mb-4 hover:bg-primary/20"
+              >
+                <span>🏁</span> Finalizar Match
+              </button>
 
               <div className="py-2 border-b border-surfaceVariant mb-2">
                 <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest mb-3 px-4">Configuración de Vista</p>
