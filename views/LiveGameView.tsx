@@ -10,7 +10,7 @@ import { StorageService } from '../services/StorageService';
 import { PitchMap } from '../components/PitchMap';
 import { db, auth, doc, setDoc } from '../services/firebase';
 const NSeparator = () => (
-  <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center shrink-0">
+  <div className="hidden md:flex w-8 h-8 md:w-10 md:h-10 items-center justify-center shrink-0">
     <img
       src="./assets/logo-sportsnote-v2.png"
       alt="SportNotes Logo"
@@ -1407,7 +1407,7 @@ const LiveGameView: React.FC<{
             )}
           </div>
           <div className="bg-surface px-3 py-1.5 rounded-xl border border-surfaceVariant flex items-center gap-3">
-            <div className="flex flex-col items-center gap-1.5 px-0.5 border-r border-surfaceVariant pr-2">
+            <div className="hidden md:flex flex-col items-center gap-1.5 px-0.5 border-r border-surfaceVariant pr-2">
               <div
                 className={`w-2 h-2 rounded-full shadow-sm transition-all duration-500 ${!navigator.onLine
                     ? 'bg-red-500 animate-pulse'
