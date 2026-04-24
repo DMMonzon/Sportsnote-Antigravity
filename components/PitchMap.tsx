@@ -443,10 +443,10 @@ export const PitchMap: React.FC<PitchMapProps> = ({
 
                             {/* D-Areas Hockey Style - Width based on RadiusX (~26.6 * 2), Height on RadiusY (~16 * 2) */}
                             {/* Top/Away Circle */}
-                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[53.2%] h-[60%] border-2 border-white/60 rounded-full -translate-x-1/2" />
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[32%] h-[53.2%] border-2 border-white/60 rounded-full -translate-x-1/2" />
 
                             {/* Bottom/Home Circle */}
-                            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[53.2%] h-[60%] border-2 border-white/60 rounded-full translate-x-1/2" />
+                            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[32%] h-[53.2%] border-2 border-white/60 rounded-full translate-x-1/2" />
                         </>
                     ) : (
                         <>

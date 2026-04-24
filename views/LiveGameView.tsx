@@ -1087,7 +1087,7 @@ const LiveGameView: React.FC<{
 
   return (
     <div
-      className="h-screen w-full flex flex-col bg-surface overflow-hidden select-none transition-all duration-500"
+      className="h-[100dvh] w-full flex flex-col bg-surface overflow-hidden select-none transition-all duration-500"
       style={{ overscrollBehavior: 'none' }}
     >
 
@@ -1432,7 +1432,7 @@ const LiveGameView: React.FC<{
         </div>
       </header>
 
-      <main className="flex-1 flex overflow-hidden bg-surface">
+      <main className="flex-1 flex overflow-hidden bg-surface min-h-0">
         {!isLandscape && (
           <aside className="hidden lg:flex w-[320px] flex-col p-5 bg-white border-r border-surfaceVariant overflow-y-auto no-scrollbar">
             <div className="flex flex-col gap-6 pb-10">
@@ -1564,9 +1564,9 @@ const LiveGameView: React.FC<{
           </aside>
         )}
 
-        <div className={`flex-1 relative ${isLandscape ? 'p-0' : 'p-2'} flex gap-0 overflow-hidden`}>
+        <div className={`flex-1 relative ${isLandscape ? 'p-0' : 'p-2'} flex gap-0 overflow-hidden min-w-0 min-h-0`}>
           {isLandscape && (
-            <aside className="w-[80px] bg-white border-r border-surfaceVariant flex flex-col items-center py-4 gap-6 z-50 shadow-lg shrink-0">
+            <aside className="hidden md:flex w-[80px] bg-white border-r border-surfaceVariant flex-col items-center py-4 gap-6 z-50 shadow-lg shrink-0">
               <div className="flex flex-col items-center gap-1">
                 <span className="text-xl">🥅</span>
                 <span className="text-[12px] font-black">{landscapeShots.home}/{landscapeShots.away}</span>
@@ -1590,9 +1590,9 @@ const LiveGameView: React.FC<{
             </aside>
           )}
 
-          <div className="flex-1 relative overflow-hidden flex items-center justify-center bg-surfaceVariant/10">
-            <div className={`relative ${isLandscape ? 'w-[92%] h-[92%]' : 'w-full h-full'}`}>
-              {activeView === 'list' ? (
+          <div className="flex-1 relative overflow-hidden flex items-center justify-center bg-surfaceVariant/10 min-h-0 min-w-0">
+            {activeView === 'list' ? (
+              <div className={`relative ${isLandscape ? 'w-[92%] h-[92%]' : 'w-full h-full'}`}>
                 <div className="w-full h-full bg-white rounded-[32px] border-2 border-surfaceVariant flex flex-col p-6 animate-in slide-in-from-bottom duration-300 overflow-hidden shadow-xl">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-sm font-black text-dark uppercase tracking-widest">Listado de Acciones</h3>
@@ -1640,7 +1640,9 @@ const LiveGameView: React.FC<{
                     ))}
                   </div>
                 </div>
-              ) : activeView === 'stats' ? (
+              </div>
+            ) : activeView === 'stats' ? (
+               <div className={`relative ${isLandscape ? 'w-[92%] h-[92%]' : 'w-full h-full'}`}>
                 <div className="w-full h-full bg-white rounded-[32px] border-2 border-surfaceVariant flex flex-col p-6 animate-in slide-in-from-bottom duration-300 overflow-hidden shadow-xl">
                   <div className="flex justify-between items-center mb-6">
                     <h3 className="text-sm font-black text-dark uppercase tracking-widest">Estadísticas Detalladas</h3>
@@ -1932,8 +1934,18 @@ const LiveGameView: React.FC<{
                     </div>
                   </div>
                 </div>
-              ) : (
-                <>
+              </div>
+            ) : (
+                <div 
+                  className="relative flex items-center justify-center w-full h-full"
+                  style={{
+                    aspectRatio: isLandscape ? '91.4 / 55' : '55 / 91.4',
+                    maxHeight: isLandscape ? '92%' : '100%',
+                    maxWidth: isLandscape ? '92%' : '100%',
+                    height: '100%',
+                    width: 'auto'
+                  }}
+                >
                   <PitchMap
                     possession={possession}
                     isRunning={isRunning}
@@ -2072,13 +2084,12 @@ const LiveGameView: React.FC<{
                       </div>
                     </div>
                   )}
-                </>
-              )}
-            </div>
+                </div>
+            )}
           </div>
 
           {isLandscape && (
-            <aside className="w-[80px] bg-white border-l border-surfaceVariant flex flex-col items-center py-6 gap-6 z-50 shadow-lg shrink-0">
+            <aside className="hidden md:flex w-[80px] bg-white border-l border-surfaceVariant flex-col items-center py-6 gap-6 z-50 shadow-lg shrink-0">
               <p className="text-[8px] font-black text-onSurfaceVariant uppercase tracking-widest leading-none mb-2">Notas</p>
               <button
                 onClick={(e) => { e.stopPropagation(); handleVoiceNote(); }}
