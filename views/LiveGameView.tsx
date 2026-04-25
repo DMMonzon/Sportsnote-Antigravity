@@ -1,7 +1,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { telemetryService, TelemetryEvent } from '../services/telemetryService';
+
+const Portal: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  if (typeof document === 'undefined') return null;
+  return createPortal(children, document.body);
+};
 import { UserRole, Game, GameEvent, Possession, TacticalScheme } from '../types';
 
 import { PersistenceManager } from '../services/PersistenceManager';
@@ -1092,14 +1098,17 @@ const LiveGameView: React.FC<{
     >
 
       {snackbar.visible && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[1000] bg-brandDark text-white px-6 py-3 rounded-full shadow-2xl animate-in slide-in-from-bottom duration-300 border border-primary/20 flex items-center gap-3">
-          <span className="text-xs font-black uppercase tracking-widest">{snackbar.message}</span>
-        </div>
+        <Portal>
+          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[1000] bg-brandDark text-white px-6 py-3 rounded-full shadow-2xl animate-in slide-in-from-bottom duration-300 border border-primary/20 flex items-center gap-3">
+            <span className="text-xs font-black uppercase tracking-widest">{snackbar.message}</span>
+          </div>
+        </Portal>
       )}
 
       {/* Modal Detalles de Gol */}
       {showGoalModal && (
-        <div className="fixed inset-0 z-[700] flex items-center justify-center p-6 bg-brandDark/50 backdrop-blur-md animate-in fade-in duration-300">
+        <Portal>
+          <div className="fixed inset-0 z-[700] flex items-center justify-center p-6 bg-brandDark/50 backdrop-blur-md animate-in fade-in duration-300">
           <div className="relative w-full max-w-md bg-white border border-surfaceVariant p-8 rounded-[40px] shadow-2xl flex flex-col animate-in zoom-in duration-300">
             <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-[4px] mb-6 text-center">Detalles del Gol 🥅</h3>
 
@@ -1163,183 +1172,195 @@ const LiveGameView: React.FC<{
 
       {/* Modal de Confirmación de Período */}
       {periodToConfirm !== null && (
-        <div className="fixed inset-0 z-[600] flex items-center justify-center p-6 bg-brandDark/40 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-full max-w-sm bg-white border border-surfaceVariant p-8 rounded-[40px] shadow-2xl flex flex-col items-center text-center animate-in zoom-in duration-200">
-            <div className="w-16 h-16 bg-primary/10 rounded-3xl flex items-center justify-center text-primary text-3xl mb-6">⏱️</div>
-            <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-[4px] mb-2">Finalizar Tiempo Actual</h3>
-            <h2 className="contrail-font text-2xl text-dark uppercase tracking-tighter leading-tight mb-6">
-              ¿Deseas finalizar el período actual y comenzar el {periodToConfirm}Q?
-            </h2>
-            <p className="text-[11px] text-onSurfaceVariant/60 font-bold mb-8 leading-relaxed">
-              El cronómetro se reiniciará a 0:00 y se pausará automáticamente para que inicies el nuevo tiempo cuando estés listo.
-            </p>
-            <div className="flex flex-col w-full gap-3">
-              <button
-                onClick={confirmPeriodChange}
-                className="w-full bg-primary text-white font-black py-5 rounded-2xl active:scale-95 text-xs uppercase tracking-widest shadow-xl shadow-primary/20"
-              >
-                CONFIRMAR INICIO {periodToConfirm}Q
-              </button>
-              <button
-                onClick={() => setPeriodToConfirm(null)}
-                className="w-full bg-surface text-onSurfaceVariant font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest"
-              >
-                Mantener período actual
-              </button>
+        <Portal>
+          <div className="fixed inset-0 z-[600] flex items-center justify-center p-6 bg-brandDark/40 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="relative w-full max-w-sm bg-white border border-surfaceVariant p-8 rounded-[40px] shadow-2xl flex flex-col items-center text-center animate-in zoom-in duration-200">
+              <div className="w-16 h-16 bg-primary/10 rounded-3xl flex items-center justify-center text-primary text-3xl mb-6">⏱️</div>
+              <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-[4px] mb-2">Finalizar Tiempo Actual</h3>
+              <h2 className="contrail-font text-2xl text-dark uppercase tracking-tighter leading-tight mb-6">
+                ¿Deseas finalizar el período actual y comenzar el {periodToConfirm}Q?
+              </h2>
+              <p className="text-[11px] text-onSurfaceVariant/60 font-bold mb-8 leading-relaxed">
+                El cronómetro se reiniciará a 0:00 y se pausará automáticamente para que inicies el nuevo tiempo cuando estés listo.
+              </p>
+              <div className="flex flex-col w-full gap-3">
+                <button
+                  onClick={confirmPeriodChange}
+                  className="w-full bg-primary text-white font-black py-5 rounded-2xl active:scale-95 text-xs uppercase tracking-widest shadow-xl shadow-primary/20"
+                >
+                  CONFIRMAR INICIO {periodToConfirm}Q
+                </button>
+                <button
+                  onClick={() => setPeriodToConfirm(null)}
+                  className="w-full bg-surface text-onSurfaceVariant font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest"
+                >
+                  Mantener período actual
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
 
       {showNoteModal && (
-        <div className="fixed inset-0 z-[500] flex items-center justify-center p-6 bg-brandDark/40 backdrop-blur-sm">
-          <div className="relative w-full max-w-sm bg-white border border-surfaceVariant p-6 rounded-[32px] shadow-2xl">
-            <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest mb-4">Nueva Observación</h3>
-            <textarea autoFocus className="w-full h-32 bg-surfaceVariant/20 border border-surfaceVariant p-4 rounded-2xl text-onSurface outline-none focus:border-primary transition-colors text-sm" placeholder="Escribe aquí..." value={noteText} onChange={(e) => setNoteText(e.target.value)} />
-            <div className="flex gap-3 mt-6">
-              <button onClick={handleSaveTextNote} className="flex-1 bg-primary text-white font-black py-4 rounded-2xl active:scale-95 text-xs uppercase">GUARDAR</button>
-              <button onClick={() => setShowNoteModal(false)} className="px-6 bg-surfaceVariant text-onSurfaceVariant font-bold rounded-2xl text-[10px] uppercase">Cerrar</button>
+        <Portal>
+          <div className="fixed inset-0 z-[500] flex items-center justify-center p-6 bg-brandDark/40 backdrop-blur-sm">
+            <div className="relative w-full max-w-sm bg-white border border-surfaceVariant p-6 rounded-[32px] shadow-2xl">
+              <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest mb-4">Nueva Observación</h3>
+              <textarea autoFocus className="w-full h-32 bg-surfaceVariant/20 border border-surfaceVariant p-4 rounded-2xl text-onSurface outline-none focus:border-primary transition-colors text-sm" placeholder="Escribe aquí..." value={noteText} onChange={(e) => setNoteText(e.target.value)} />
+              <div className="flex gap-3 mt-6">
+                <button onClick={handleSaveTextNote} className="flex-1 bg-primary text-white font-black py-4 rounded-2xl active:scale-95 text-xs uppercase">GUARDAR</button>
+                <button onClick={() => setShowNoteModal(false)} className="px-6 bg-surfaceVariant text-onSurfaceVariant font-bold rounded-2xl text-[10px] uppercase">Cerrar</button>
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
 
       {/* Modal Editar Acción */}
       {eventToEdit && (
-        <div className="fixed inset-0 z-[500] flex items-center justify-center p-6 bg-brandDark/40 backdrop-blur-sm">
-          <div className="relative w-full max-w-sm bg-white border border-surfaceVariant p-6 rounded-[32px] shadow-2xl">
-            <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest mb-2">Editar Acción</h3>
-            <p className="text-[9px] font-black text-primary mb-4 uppercase">{eventToEdit.type} - {eventToEdit.gameTime}</p>
-            <textarea
-              autoFocus
-              className="w-full h-32 bg-surfaceVariant/20 border border-surfaceVariant p-4 rounded-2xl text-onSurface outline-none focus:border-primary transition-colors text-sm"
-              placeholder="Editar detalles..."
-              defaultValue={eventToEdit.transcription || eventToEdit.details}
-              onBlur={(e) => eventToEdit && (eventToEdit.details = e.target.value)}
-            />
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => eventToEdit && updateEventDetails(eventToEdit.id, eventToEdit.details || "")}
-                className="flex-1 bg-primary text-white font-black py-4 rounded-2xl active:scale-95 text-xs uppercase"
-              >
-                GUARDAR CAMBIOS
-              </button>
-              <button
-                onClick={() => setEventToEdit(null)}
-                className="px-6 bg-surfaceVariant text-onSurfaceVariant font-bold rounded-2xl text-[10px] uppercase"
-              >
-                Cancelar
-              </button>
+        <Portal>
+          <div className="fixed inset-0 z-[500] flex items-center justify-center p-6 bg-brandDark/40 backdrop-blur-sm">
+            <div className="relative w-full max-w-sm bg-white border border-surfaceVariant p-6 rounded-[32px] shadow-2xl">
+              <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest mb-2">Editar Acción</h3>
+              <p className="text-[9px] font-black text-primary mb-4 uppercase">{eventToEdit.type} - {eventToEdit.gameTime}</p>
+              <textarea
+                autoFocus
+                className="w-full h-32 bg-surfaceVariant/20 border border-surfaceVariant p-4 rounded-2xl text-onSurface outline-none focus:border-primary transition-colors text-sm"
+                placeholder="Editar detalles..."
+                defaultValue={eventToEdit.transcription || eventToEdit.details}
+                onBlur={(e) => eventToEdit && (eventToEdit.details = e.target.value)}
+              />
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => eventToEdit && updateEventDetails(eventToEdit.id, eventToEdit.details || "")}
+                  className="flex-1 bg-primary text-white font-black py-4 rounded-2xl active:scale-95 text-xs uppercase"
+                >
+                  GUARDAR CAMBIOS
+                </button>
+                <button
+                  onClick={() => setEventToEdit(null)}
+                  className="px-6 bg-surfaceVariant text-onSurfaceVariant font-bold rounded-2xl text-[10px] uppercase"
+                >
+                  Cancelar
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
 
       {/* Modal Confirmar Salida (Anular Juego) */}
       {showExitConfirm && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-brandDark/40 backdrop-blur-sm">
-          <div className="relative w-full max-w-sm bg-white border border-surfaceVariant p-8 rounded-[40px] shadow-2xl animate-in zoom-in duration-200 text-center">
-            <div className="text-4xl mb-4">⚠️</div>
-            <h3 className="contrail-font text-2xl text-dark uppercase mb-2">¿Anular Juego?</h3>
-            <p className="text-[11px] font-bold text-onSurfaceVariant uppercase leading-relaxed mb-8">
-              Si regresas al dashboard ahora, el progreso actual se perderá y el juego no se guardará en el historial.
-            </p>
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={() => {
-                  onAnnulGame();
-                  navigate('/dashboard');
-                }}
-                className="w-full bg-red-600 text-white font-black py-4 rounded-2xl active:scale-95 text-xs uppercase shadow-lg shadow-red-200 transition-all"
-              >
-                SÍ, ANULAR Y SALIR
-              </button>
-              <button
-                onClick={() => setShowExitConfirm(false)}
-                className="w-full bg-surface text-onSurfaceVariant font-black py-4 rounded-2xl active:scale-95 text-xs uppercase border border-surfaceVariant transition-all"
-              >
-                CONTINUAR JUGANDO
-              </button>
+        <Portal>
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-brandDark/40 backdrop-blur-sm">
+            <div className="relative w-full max-w-sm bg-white border border-surfaceVariant p-8 rounded-[40px] shadow-2xl animate-in zoom-in duration-200 text-center">
+              <div className="text-4xl mb-4">⚠️</div>
+              <h3 className="contrail-font text-2xl text-dark uppercase mb-2">¿Anular Juego?</h3>
+              <p className="text-[11px] font-bold text-onSurfaceVariant uppercase leading-relaxed mb-8">
+                Si regresas al dashboard ahora, el progreso actual se perderá y el juego no se guardará en el historial.
+              </p>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => {
+                    onAnnulGame();
+                    navigate('/dashboard');
+                  }}
+                  className="w-full bg-red-600 text-white font-black py-4 rounded-2xl active:scale-95 text-xs uppercase shadow-lg shadow-red-200 transition-all"
+                >
+                  SÍ, ANULAR Y SALIR
+                </button>
+                <button
+                  onClick={() => setShowExitConfirm(false)}
+                  className="w-full bg-surface text-onSurfaceVariant font-black py-4 rounded-2xl active:scale-95 text-xs uppercase border border-surfaceVariant transition-all"
+                >
+                  CONTINUAR JUGANDO
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
 
       {/* Modal Confirmar Finalizar Juego */}
       {showFinishConfirm && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-brandDark/40 backdrop-blur-sm">
-          <div className="relative w-full max-w-sm bg-white border border-surfaceVariant p-8 rounded-[40px] shadow-2xl animate-in zoom-in duration-200 text-center">
-            <div className="text-4xl mb-4">🏁</div>
-            <h3 className="contrail-font text-2xl text-dark uppercase mb-2">¿Finalizar Partido?</h3>
-            <p className="text-[11px] font-bold text-onSurfaceVariant uppercase leading-relaxed mb-8">
-              Esta acción cerrará el registro actual y generará el reporte final de estadísticas. ¿Estás seguro de proceder?
-            </p>
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={confirmFinishGame}
-                className="w-full bg-primary text-white font-black py-4 rounded-2xl active:scale-95 text-xs uppercase shadow-lg shadow-primary/20 transition-all"
-              >
-                SÍ, FINALIZAR MATCH
-              </button>
-              <button
-                onClick={() => setShowFinishConfirm(false)}
-                className="w-full bg-surface text-onSurfaceVariant font-black py-4 rounded-2xl active:scale-95 text-xs uppercase border border-surfaceVariant transition-all"
-              >
-                CONTINUAR JUGANDO
-              </button>
+        <Portal>
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-brandDark/40 backdrop-blur-sm">
+            <div className="relative w-full max-w-sm bg-white border border-surfaceVariant p-8 rounded-[40px] shadow-2xl animate-in zoom-in duration-200 text-center">
+              <div className="text-4xl mb-4">🏁</div>
+              <h3 className="contrail-font text-2xl text-dark uppercase mb-2">¿Finalizar Partido?</h3>
+              <p className="text-[11px] font-bold text-onSurfaceVariant uppercase leading-relaxed mb-8">
+                Esta acción cerrará el registro actual y generará el reporte final de estadísticas. ¿Estás seguro de proceder?
+              </p>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={confirmFinishGame}
+                  className="w-full bg-primary text-white font-black py-4 rounded-2xl active:scale-95 text-xs uppercase shadow-lg shadow-primary/20 transition-all"
+                >
+                  SÍ, FINALIZAR MATCH
+                </button>
+                <button
+                  onClick={() => setShowFinishConfirm(false)}
+                  className="w-full bg-surface text-onSurfaceVariant font-black py-4 rounded-2xl active:scale-95 text-xs uppercase border border-surfaceVariant transition-all"
+                >
+                  CONTINUAR JUGANDO
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
 
       {isMenuOpen && (
-        <div className="fixed inset-0 z-[400] flex">
-          <div className="absolute inset-0 bg-brandDark/20 backdrop-blur-md" onClick={() => setIsMenuOpen(false)} />
-          <aside className="relative w-72 h-full bg-white border-r border-surfaceVariant shadow-2xl flex flex-col p-8 animate-in slide-in-from-left duration-300">
-            <div className="flex justify-between items-center mb-10">
-              <h2 className="text-lg font-black text-dark uppercase tracking-[4px]">Menú</h2>
-              <button onClick={() => setIsMenuOpen(false)} className="text-onSurfaceVariant p-2 hover:bg-surfaceVariant rounded-full transition-colors">✕</button>
-            </div>
-            <nav className="flex-1 space-y-2 overflow-y-auto no-scrollbar">
-              <button
-                onClick={handleFinishGame}
-                className="w-full text-left p-4 rounded-xl bg-primary/10 text-primary font-black text-[11px] uppercase tracking-widest flex items-center gap-3 transition-all active:scale-95 mb-4 hover:bg-primary/20"
-              >
-                <span>🏁</span> Finalizar Match
-              </button>
-
-              <div className="py-2 border-b border-surfaceVariant mb-2">
-                <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest mb-3 px-4">Configuración de Vista</p>
+        <Portal>
+          <div className="fixed inset-0 z-[400] flex">
+            <div className="absolute inset-0 bg-brandDark/20 backdrop-blur-md" onClick={() => setIsMenuOpen(false)} />
+            <aside className="relative w-72 h-full bg-white border-r border-surfaceVariant shadow-2xl flex flex-col p-8 animate-in slide-in-from-left duration-300">
+              <div className="flex justify-between items-center mb-10">
+                <h2 className="text-lg font-black text-dark uppercase tracking-[4px]">Menú</h2>
+                <button onClick={() => setIsMenuOpen(false)} className="text-onSurfaceVariant p-2 hover:bg-surfaceVariant rounded-full transition-colors">✕</button>
+              </div>
+              <nav className="flex-1 space-y-2 overflow-y-auto no-scrollbar">
                 <button
-                  onClick={() => setIsLandscape(!isLandscape)}
-                  className={`w-full text-left p-4 rounded-xl flex items-center justify-between font-bold text-[11px] uppercase tracking-widest transition-all active:scale-95 ${isLandscape ? 'bg-primary/5 text-primary' : 'hover:bg-surface text-onSurface'}`}
+                  onClick={handleFinishGame}
+                  className="w-full text-left p-4 rounded-xl bg-primary/10 text-primary font-black text-[11px] uppercase tracking-widest flex items-center gap-3 transition-all active:scale-95 mb-4 hover:bg-primary/20"
                 >
-                  <span>Cancha Horizontal (90°)</span>
-                  <span>{isLandscape ? 'ON' : 'OFF'}</span>
+                  <span>🏁</span> Finalizar Match
                 </button>
+  
+                <div className="py-2 border-b border-surfaceVariant mb-2">
+                  <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest mb-3 px-4">Configuración de Vista</p>
+                  <button
+                    onClick={() => setIsLandscape(!isLandscape)}
+                    className={`w-full text-left p-4 rounded-xl flex items-center justify-between font-bold text-[11px] uppercase tracking-widest transition-all active:scale-95 ${isLandscape ? 'bg-primary/5 text-primary' : 'hover:bg-surface text-onSurface'}`}
+                  >
+                    <span>Cancha Horizontal (90°)</span>
+                    <span>{isLandscape ? 'ON' : 'OFF'}</span>
+                  </button>
+                  <button
+                    onClick={() => setIsFlipped(!isFlipped)}
+                    className={`w-full text-left p-4 rounded-xl flex items-center justify-between font-bold text-[11px] uppercase tracking-widest transition-all active:scale-95 ${isFlipped ? 'bg-primary/5 text-primary' : 'hover:bg-surface text-onSurface'}`}
+                  >
+                    <span>Invertir Sentido Ataque</span>
+                    <span>{isFlipped ? 'ON' : 'OFF'}</span>
+                  </button>
+                </div>
+  
+                {["1: Configurar juego", "2: Configurar plantel", "3: Configurar acciones"].map((opt, i) => (
+                  <button key={i} className="w-full text-left p-4 rounded-xl hover:bg-surface text-onSurface font-bold text-[11px] uppercase tracking-widest transition-all active:scale-95" onClick={() => setIsMenuOpen(false)}>{opt}</button>
+                ))}
+              </nav>
+              <div className="pt-6 mt-6 border-t border-surfaceVariant">
                 <button
-                  onClick={() => setIsFlipped(!isFlipped)}
-                  className={`w-full text-left p-4 rounded-xl flex items-center justify-between font-bold text-[11px] uppercase tracking-widest transition-all active:scale-95 ${isFlipped ? 'bg-primary/5 text-primary' : 'hover:bg-surface text-onSurface'}`}
+                  onClick={() => setShowExitConfirm(true)}
+                  className="w-full text-left p-4 bg-red-50 text-red-600 rounded-xl font-black text-[11px] uppercase tracking-widest flex items-center gap-3 transition-all hover:bg-red-100 active:scale-95"
                 >
-                  <span>Invertir Sentido Ataque</span>
-                  <span>{isFlipped ? 'ON' : 'OFF'}</span>
+                  <span>🏠</span> Regresar al dashboard
                 </button>
               </div>
-
-              {["1: Configurar juego", "2: Configurar plantel", "3: Configurar acciones"].map((opt, i) => (
-                <button key={i} className="w-full text-left p-4 rounded-xl hover:bg-surface text-onSurface font-bold text-[11px] uppercase tracking-widest transition-all active:scale-95" onClick={() => setIsMenuOpen(false)}>{opt}</button>
-              ))}
-            </nav>
-            <div className="pt-6 mt-6 border-t border-surfaceVariant">
-              <button
-                onClick={() => setShowExitConfirm(true)}
-                className="w-full text-left p-4 bg-red-50 text-red-600 rounded-xl font-black text-[11px] uppercase tracking-widest flex items-center gap-3 transition-all hover:bg-red-100 active:scale-95"
-              >
-                <span>🏠</span> Regresar al dashboard
-              </button>
-            </div>
-          </aside>
-        </div>
+            </aside>
+          </div>
+        </Portal>
       )}
 
       <header className="h-16 md:h-20 flex items-center justify-between px-4 md:px-6 bg-white shrink-0 border-b border-surfaceVariant shadow-sm z-[200]">
@@ -1957,13 +1978,27 @@ const LiveGameView: React.FC<{
                     onManualMenu={handleManualMenu}
                   />
 
-                  {showPopup && (
+                  {showPopup && (() => {
+                    let dispX = showPopup.x;
+                    let dispY = showPopup.y;
+                    
+                    if (isFlipped) {
+                      dispX = 100 - dispX;
+                      dispY = 100 - dispY;
+                    }
+                    if (isLandscape) {
+                      const temp = dispX;
+                      dispX = dispY;
+                      dispY = 100 - temp;
+                    }
+                    
+                    return (
                     <div
                       className={`absolute z-[300] bg-white shadow-2xl rounded-[32px] p-6 flex flex-col gap-3 min-w-[200px] border border-surfaceVariant animate-in zoom-in duration-150`}
                       style={{
-                        left: `${showPopup.x}%`,
-                        top: showPopup.y < 35 ? `${showPopup.y + 10}%` : `${showPopup.y}%`,
-                        transform: `${showPopup.y < 35 ? 'translate(-50%, 0)' : 'translate(-50%, -100%)'} ${isLandscape ? 'rotate(-90deg)' : ''} ${isFlipped ? 'rotate(-180deg)' : ''}`.trim()
+                        left: `${dispX}%`,
+                        top: dispY < 35 ? `${dispY + 10}%` : `${dispY}%`,
+                        transform: `${dispY < 35 ? 'translate(-50%, 0)' : 'translate(-50%, -100%)'}`
                       }}
                       onClick={e => e.stopPropagation()}
                     >
@@ -2070,13 +2105,13 @@ const LiveGameView: React.FC<{
 
                       <button className="text-[8px] font-black text-onSurfaceVariant uppercase mt-1 text-center py-1 hover:text-primary transition-colors" onClick={() => { setShowPopup(null); setFoulCardType('NONE'); }}>Cerrar</button>
                     </div>
-                  )}
+                    );
+                  })()}
 
                   {!isRunning && possession === Possession.NONE && seconds === 0 && (
                     <div className="absolute inset-0 bg-brandDark/40 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500 z-50">
                       <div
                         className="bg-white p-8 rounded-[40px] shadow-2xl border border-surfaceVariant max-w-xs transform animate-bounce-short"
-                        style={{ transform: `${isLandscape ? 'rotate(-90deg)' : ''} ${isFlipped ? 'rotate(-180deg)' : ''}`.trim() }}
                       >
                         <div className="text-4xl mb-4">🏑</div>
                         <h3 className="contrail-font text-2xl text-dark uppercase mb-2">¡Casi Listos!</h3>

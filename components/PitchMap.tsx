@@ -161,9 +161,10 @@ export const PitchMap: React.FC<PitchMapProps> = ({
         const duration = Date.now() - pointerStart.current.t;
         const dx = e.clientX - pointerStart.current.x;
         const dy = e.clientY - pointerStart.current.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
 
         // Swipe Vector Logic
-        if (Math.sqrt(dx * dx + dy * dy) > 40 && duration < 500) {
+        if (distance > 40 && duration < 500) {
             e.preventDefault();
             e.stopPropagation();
             isGestureActive.current = true;
@@ -218,7 +219,7 @@ export const PitchMap: React.FC<PitchMapProps> = ({
         }
 
         // Tap
-        if (Math.abs(dx) < 20 && Math.abs(dy) < 20) {
+        if (distance <= 40) {
             handleTap(vx, vy);
         }
     };
@@ -262,31 +263,34 @@ export const PitchMap: React.FC<PitchMapProps> = ({
         }
 
         tapCount.current += 1;
-        if (tapTimer.current) clearTimeout(tapTimer.current);
+        if (tapTimer.current) {
+            clearTimeout(tapTimer.current);
+            tapTimer.current = null;
+        }
 
         if (tapCount.current === 2) {
             tapCount.current = 0;
             // Double Tap
-            if (possession === Possession.HOME) {
-                // LOSS
-                addGlow(vx, vy, 'red');
-                onAction('PÉRDIDA', Possession.AWAY, x, y, `Sector: ${sector}`);
-                return;
-            } else if (possession === Possession.AWAY) {
-                // RIVAL ENTRY
-                if (sector.includes('Área')) {
+            window.setTimeout(() => {
+                if (possession === Possession.HOME) {
+                    // LOSS
                     addGlow(vx, vy, 'red');
-                    onAction('Ingreso Rival en área', Possession.AWAY, x, y, `Sector: ${sector}`);
-                    return;
-                } else if (sector.includes('23 yardas') && (y >= 75)) {
-                    addGlow(vx, vy, 'red');
-                    onAction('Ingreso rival en 23', Possession.AWAY, x, y, `Sector: ${sector}`);
-                    return;
+                    onAction('PÉRDIDA', Possession.AWAY, x, y, `Sector: ${sector}`);
+                } else if (possession === Possession.AWAY) {
+                    // RIVAL ENTRY
+                    if (sector.includes('Área')) {
+                        addGlow(vx, vy, 'red');
+                        onAction('Ingreso Rival en área', Possession.AWAY, x, y, `Sector: ${sector}`);
+                    } else if (sector.includes('23 yardas') && (y >= 75)) {
+                        addGlow(vx, vy, 'red');
+                        onAction('Ingreso rival en 23', Possession.AWAY, x, y, `Sector: ${sector}`);
+                    }
                 }
-            }
+            }, 0);
         } else {
             tapTimer.current = window.setTimeout(() => {
                 tapCount.current = 0;
+                tapTimer.current = null;
                 // Single Tap
                 if (possession === Possession.HOME) {
                     // ENTRY - Prioridad Área > 23 Yardas
@@ -311,6 +315,13 @@ export const PitchMap: React.FC<PitchMapProps> = ({
 
     const homeColor = teamHome?.primaryColor || '#6d5dfc';
     const awayColor = teamAway?.primaryColor || '#ef4444';
+
+    useEffect(() => {
+        return () => {
+            if (tapTimer.current) clearTimeout(tapTimer.current);
+            if (longPressTimer.current) clearTimeout(longPressTimer.current);
+        };
+    }, []);
 
     useEffect(() => {
         if (possession !== Possession.NONE && possession !== prevPossession.current && isRunning) {
@@ -353,11 +364,20 @@ export const PitchMap: React.FC<PitchMapProps> = ({
     }, []);
 
     const toScreen = React.useCallback((logicX: number, logicY: number) => {
-        if (isLandscape) {
-            return { x: logicY, y: 100 - logicX };
+        let x = logicX;
+        let y = logicY;
+        if (isFlipped) {
+            x = 100 - x;
+            y = 100 - y;
         }
-        return { x: logicX, y: logicY };
-    }, [isLandscape]);
+        if (isLandscape) {
+            return { x: y, y: 100 - x };
+        }
+        return { x, y };
+    }, [isLandscape, isFlipped]);
+
+    const topGoalColor = isFlipped ? homeColor : awayColor;
+    const bottomGoalColor = isFlipped ? awayColor : homeColor;
 
     return (
         <div
@@ -424,13 +444,13 @@ export const PitchMap: React.FC<PitchMapProps> = ({
                     {/* Goals (Rectángulos planos sobre línea de fondo) */}
                     {isLandscape ? (
                         <>
-                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[5%] h-[20%] opacity-60 rounded-sm" style={{ backgroundColor: awayColor }} />
-                            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[5%] h-[20%] opacity-60 rounded-sm" style={{ backgroundColor: homeColor }} />
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[5%] h-[20%] opacity-60 rounded-sm" style={{ backgroundColor: topGoalColor }} />
+                            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[5%] h-[20%] opacity-60 rounded-sm" style={{ backgroundColor: bottomGoalColor }} />
                         </>
                     ) : (
                         <>
-                            <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[5%] w-[20%] opacity-60 rounded-sm" style={{ backgroundColor: awayColor }} />
-                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[5%] w-[20%] opacity-60 rounded-sm" style={{ backgroundColor: homeColor }} />
+                            <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[5%] w-[20%] opacity-60 rounded-sm" style={{ backgroundColor: topGoalColor }} />
+                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[5%] w-[20%] opacity-60 rounded-sm" style={{ backgroundColor: bottomGoalColor }} />
                         </>
                     )}
 
