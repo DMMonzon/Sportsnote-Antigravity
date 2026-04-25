@@ -238,7 +238,15 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
   };
 
   const getDetailedStat = (types: string[], teamId: string) => {
-    const events = game.events.filter(e => teamId === teamId && types.some(t => e.type.toUpperCase().includes(t.toUpperCase())));
+    const events = game.events.filter(e => {
+      const isTeam = e.teamId === teamId;
+      const isTarget = types.some(t => {
+        const typeUpper = e.type.toUpperCase();
+        const tUpper = t.toUpperCase();
+        return typeUpper === tUpper || typeUpper.includes(`${tUpper} `) || typeUpper.includes(`(${tUpper})`);
+      });
+      return isTeam && isTarget;
+    });
     const getPeriodCount = (p: string) => events.filter(e => e.gameTime.startsWith(p)).length;
     return {
       total: events.length,

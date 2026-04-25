@@ -81,6 +81,72 @@ const ActionCard: React.FC<ActionCardProps> = ({ title, subtitle, description, c
   </div>
 );
 
+const GameAccordion = ({ g, onStats, onShare, onRecycle, onFavorite, onDelete }: { g: Game, onStats: () => void, onShare: () => void, onRecycle: () => void, onFavorite: () => void, onDelete: () => void }) => {
+  const [expanded, setExpanded] = React.useState(false);
+
+  return (
+    <div className="bg-black/20 hover:bg-black/30 border border-white/5 rounded-xl overflow-hidden transition-all duration-300 group/accordion">
+      {/* AccordionSummary */}
+      <div 
+        className="flex items-center justify-between p-1.5 cursor-pointer transition-colors"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div className="flex items-center gap-2 truncate flex-1 min-w-0 pr-2">
+          <span className="text-[8px] font-black text-white/60 uppercase tracking-widest shrink-0 w-8 text-center">
+            {new Date(g.createdAt).toLocaleDateString([], { month: '2-digit', day: '2-digit' })}
+          </span>
+          <div className="flex items-center justify-between gap-1.5 flex-1 min-w-0 bg-white/10 px-2 py-1.5 rounded-lg border border-white/5">
+            <span className="truncate text-right flex-1 text-white text-[10px] font-bold">{g.teamHome.name}</span>
+            <span className="text-[10px] font-black text-white px-2 py-0.5 rounded-md leading-none shrink-0 bg-black/40 shadow-inner flex items-center gap-1">
+              {g.scoreHome} - {g.scoreAway}
+              {g.isFavorite && <span className="text-yellow-400 text-[10px] drop-shadow-sm ml-0.5">⭐</span>}
+            </span>
+            <span className="truncate text-left flex-1 text-white text-[10px] font-bold">{g.teamAway.name}</span>
+          </div>
+        </div>
+        <button 
+          className="text-white/60 hover:text-white px-2 py-1 rounded-full transition-colors flex items-center justify-center shrink-0"
+          onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+        >
+          <svg className={`w-5 h-5 transition-transform duration-300 ${expanded ? 'rotate-90' : ''}`} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+          </svg>
+        </button>
+      </div>
+
+      {/* AccordionDetails */}
+      <div 
+        className={`grid transition-all duration-300 ease-in-out ${expanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
+      >
+        <div className="overflow-hidden">
+          <div className="flex items-center justify-center gap-2 p-3 border-t border-white/10 bg-black/20">
+            <button onClick={() => onStats()} className="flex items-center justify-center gap-2 p-2.5 min-w-[44px] min-h-[44px] rounded-lg bg-white/5 hover:bg-white/10 text-white transition-colors">
+              <span className="text-lg leading-none">📊</span>
+              <span className="hidden md:inline text-[9px] font-black uppercase tracking-widest">Estadísticas</span>
+            </button>
+            <button onClick={() => onRecycle()} className="flex items-center justify-center gap-2 p-2.5 min-w-[44px] min-h-[44px] rounded-lg bg-white/5 hover:bg-white/10 text-white transition-colors">
+              <span className="text-lg leading-none">🔄</span>
+              <span className="hidden md:inline text-[9px] font-black uppercase tracking-widest">Reutilizar</span>
+            </button>
+            <button onClick={() => onShare()} className="flex items-center justify-center gap-2 p-2.5 min-w-[44px] min-h-[44px] rounded-lg bg-white/5 hover:bg-white/10 text-white transition-colors">
+              <span className="text-lg leading-none">🔗</span>
+              <span className="hidden md:inline text-[9px] font-black uppercase tracking-widest">Compartir</span>
+            </button>
+            <button onClick={() => onFavorite()} className="flex items-center justify-center gap-2 p-2.5 min-w-[44px] min-h-[44px] rounded-lg bg-white/5 hover:bg-white/10 text-white transition-colors">
+              <span className={`text-lg leading-none ${g.isFavorite ? 'text-yellow-400' : ''}`}>{g.isFavorite ? '⭐' : '☆'}</span>
+              <span className="hidden md:inline text-[9px] font-black uppercase tracking-widest">{g.isFavorite ? 'Quitar Favorito' : 'Favorito'}</span>
+            </button>
+            <button onClick={() => onDelete()} className="flex items-center justify-center gap-2 p-2.5 min-w-[44px] min-h-[44px] rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors">
+              <span className="text-lg leading-none">🗑️</span>
+              <span className="hidden md:inline text-[9px] font-black uppercase tracking-widest">Eliminar</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 interface DashboardViewProps {
   user: {
     id: string;
@@ -154,6 +220,13 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, tacticalSc
     window.location.reload();
   };
 
+  const handleDeleteGame = (game: Game) => {
+    if (window.confirm(`¿Estás seguro de que deseas eliminar el partido entre ${game.teamHome.name} y ${game.teamAway.name}? Esta acción no se puede deshacer.`)) {
+      PersistenceManager.deleteGame(game.id);
+      window.location.reload();
+    }
+  };
+
   // Analytics for Area/23 entries (placeholder or logic cleanup if needed)
 
 
@@ -203,36 +276,16 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, tacticalSc
               <div>
                 <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-3 italic">Últimos 3 Juegos</p>
                 <div className="space-y-2 mb-4">
-                  {matches.slice(-3).reverse().map((g, i) => (
-                    <div key={g.id} className="group/item relative flex items-center justify-between bg-black/20 hover:bg-black/40 border border-white/5 p-1.5 rounded-xl text-[10px] text-white font-bold transition-all overflow-hidden">
-
-                      {/* Left: Score & Teams Layout */}
-                      <div className="flex items-center gap-2 truncate flex-1 min-w-0 pr-2">
-                        <span className="text-[8px] font-black text-white/60 uppercase tracking-widest shrink-0 w-8 text-center">
-                          {new Date(g.createdAt).toLocaleDateString([], { month: '2-digit', day: '2-digit' })}
-                        </span>
-
-                        <div className="flex items-center justify-between gap-1.5 flex-1 min-w-0 bg-white/10 px-2 py-1.5 rounded-lg border border-white/5">
-                          <span className="truncate text-right flex-1 text-white">{g.teamHome.name}</span>
-                          <span className="text-[10px] font-black text-white px-2 py-0.5 rounded-md leading-none shrink-0 bg-black/40 shadow-inner">
-                            {g.scoreHome} - {g.scoreAway}
-                          </span>
-                          <span className="truncate text-left flex-1 text-white">{g.teamAway.name}</span>
-                        </div>
-                      </div>
-
-                      {/* Right: Actions Container */}
-                      <div className="flex gap-1 shrink-0 h-full items-center px-1 border-l border-white/10 pl-2 ml-1">
-
-                        {/* Hover-only Action buttons */}
-                        <div className="flex gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity duration-200">
-                          <button onClick={() => navigate(`/summary/${g.id}`)} className="hover:scale-125 transition-transform px-1 text-white/80 hover:text-white text-lg" title="Stats">📊</button>
-                          <button onClick={() => handleShare(g)} className="hover:scale-125 transition-transform px-1 text-white/80 hover:text-white text-lg" title="Share">📤</button>
-                          <button onClick={() => setShowRecycleModal(g)} className="hover:scale-125 transition-transform px-1 text-white/80 hover:text-white text-lg" title="Recycle">♻️</button>
-                          <button onClick={() => handleToggleFavorite(g)} className={`hover:scale-125 transition-transform px-1 py-1 text-lg ${g.isFavorite ? 'text-yellow-400 opacity-100' : 'text-white/30 hover:opacity-100 opacity-40'}`} title="Favorite">{g.isFavorite ? '⭐' : '☆'}</button>
-                        </div>
-                      </div>
-                    </div>
+                  {matches.slice(-3).reverse().map((g) => (
+                    <GameAccordion
+                      key={g.id}
+                      g={g}
+                      onStats={() => navigate(`/summary/${g.id}`)}
+                      onShare={() => handleShare(g)}
+                      onRecycle={() => setShowRecycleModal(g)}
+                      onFavorite={() => handleToggleFavorite(g)}
+                      onDelete={() => handleDeleteGame(g)}
+                    />
                   ))}
                   {matches.length === 0 && <p className="text-[10px] text-white/40 italic">Sin registros disponibles.</p>}
                 </div>

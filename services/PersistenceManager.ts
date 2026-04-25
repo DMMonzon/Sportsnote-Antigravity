@@ -1,5 +1,5 @@
 import { AppState, Game, TacticalScheme } from '../types';
-import { db, collection, doc, setDoc, getDocs, query, where } from './firebase';
+import { db, collection, doc, setDoc, getDocs, query, where, deleteDoc } from './firebase';
 
 const STORAGE_KEY = 'sportsnote_db';
 const SYNC_QUEUE_KEY = 'sportsnote_sync_queue';
@@ -83,6 +83,20 @@ export const PersistenceManager = {
     return state.matches.find(g => g.id === id);
   },
 
+  deleteGame: (gameId: string) => {
+    const state = PersistenceManager.loadStateLocal();
+    state.matches = state.matches.filter(g => g.id !== gameId);
+    PersistenceManager.saveStateLocal(state);
+    
+    PersistenceManager.queueForSync({
+      id: `sync_del_${Date.now()}_${gameId}`,
+      type: 'GAME',
+      action: 'DELETE',
+      data: { id: gameId },
+      timestamp: Date.now()
+    });
+  },
+
   updateTactics: (tactics: TacticalScheme[], userId?: string) => {
     const state = PersistenceManager.loadStateLocal();
     const tacticsWithOwner = tactics.map(t => ({
@@ -162,7 +176,11 @@ export const PersistenceManager = {
       try {
         if (item.type === 'GAME') {
             const gameRef = doc(db, 'matches', item.data.id);
-            await setDoc(gameRef, item.data, { merge: true });
+            if (item.action === 'DELETE') {
+              await deleteDoc(gameRef);
+            } else {
+              await setDoc(gameRef, item.data, { merge: true });
+            }
         } else if (item.type === 'TACTIC') {
             const tacticRef = doc(db, 'tactics', item.data.id);
             await setDoc(tacticRef, item.data, { merge: true });

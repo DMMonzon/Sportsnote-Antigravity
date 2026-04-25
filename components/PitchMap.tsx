@@ -393,21 +393,19 @@ export const PitchMap: React.FC<PitchMapProps> = ({
         >
             {/* Attack Direction Arrow (Big background arrow) */}
             <div 
-                className={`absolute top-1/2 left-1/2 pointer-events-none transition-all duration-1000 ease-in-out ${foulPulse ? 'animate-foul-pulse z-[110]' : 'opacity-20 z-10'}`}
+                className={`absolute top-1/2 left-1/2 pointer-events-none flex items-center justify-center transition-all duration-1000 ease-in-out w-[70%] sm:w-[60%] max-w-[400px] aspect-square ${foulPulse ? 'animate-foul-pulse z-[110]' : 'opacity-20 z-10'}`}
                 style={{ 
                     transform: `translate(-50%, -50%) rotate(${(isRunning && possession !== Possession.NONE) ? (overrideAngle ?? currentAttackAngle) : 0}deg)`,
-                    width: 'clamp(200px, 60vw, 400px)',
-                    height: 'clamp(200px, 60vw, 400px)',
                 }}
             >
                 {isRunning && possession !== Possession.NONE && currentAttackAngle !== null ? (
-                    <svg viewBox="0 0 24 24" fill="none" strokeWidth="3" stroke={possession === Possession.HOME ? (teamHome?.primaryColor || '#6d5dfc') : (teamAway?.primaryColor || '#ef4444')} strokeLinecap="round" strokeLinejoin="round" className="w-full h-full drop-shadow-2xl">
-                        <line x1="2" y1="12" x2="22" y2="12" strokeWidth="4"></line>
-                        <polyline points="12 2 22 12 12 22" strokeWidth="4"></polyline>
+                    <svg viewBox="0 0 24 24" fill="none" stroke={possession === Possession.HOME ? (teamHome?.primaryColor || '#6d5dfc') : (teamAway?.primaryColor || '#ef4444')} strokeLinecap="round" strokeLinejoin="round" className="w-full h-full max-w-full drop-shadow-2xl stroke-[2] md:stroke-[3]">
+                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                        <polyline points="12 2 22 12 12 22"></polyline>
                     </svg>
                 ) : (
                     <div className="absolute inset-0 flex items-center justify-center opacity-40">
-                        <svg width="40%" height="40%" viewBox="0 0 24 24" fill="currentColor" className="text-white drop-shadow-xl">
+                        <svg viewBox="0 0 24 24" fill="currentColor" className="text-white drop-shadow-xl w-[40%] h-[40%] max-w-full">
                             <rect x="6" y="4" width="5" height="16" rx="1" />
                             <rect x="13" y="4" width="5" height="16" rx="1" />
                         </svg>

@@ -266,8 +266,8 @@ const SectorRectangle: React.FC<{
       <div className={`w-full overflow-hidden flex flex-col ${borderPosition === 'top' ? 'flex-col-reverse' : 'flex-col'}`}>
         <div
           className={`w-full h-12 bg-surfaceVariant/5 border border-surfaceVariant flex overflow-hidden ${type === 'zone23'
-              ? 'rounded-none'
-              : borderPosition === 'top' ? 'rounded-b-[40px] rounded-t-md' : 'rounded-t-[40px] rounded-b-md'
+            ? 'rounded-none'
+            : borderPosition === 'top' ? 'rounded-b-[40px] rounded-t-md' : 'rounded-t-[40px] rounded-b-md'
             }`}
           style={type === 'zone23' ? {
             borderTopStyle: borderPosition === 'bottom' ? 'dashed' : undefined,
@@ -309,6 +309,19 @@ const SectorRectangle: React.FC<{
   );
 };
 
+const getActionIcon = (type: string) => {
+  const t = type.toUpperCase();
+  if (t.includes('CÓRNER CORTO')) return '🏑';
+  if (t.includes('PENAL')) return '🎯';
+  if (t.includes('GOL')) return '⚽';
+  if (t.includes('DISPARO') || t.includes('ATAJADO') || t.includes('DESVIADO')) return '🥅';
+  if (t.includes('FALTA')) return '⚠️';
+  if (t.includes('PÉRDIDA')) return '📉';
+  if (t.includes('RECUPERO')) return '📈';
+  if (t.includes('INGRESO')) return '📥';
+  return '📌';
+};
+
 const LiveGameView: React.FC<{
   role: UserRole,
   tacticalSchemes: TacticalScheme[],
@@ -326,6 +339,19 @@ const LiveGameView: React.FC<{
   const [foulPlayer, setFoulPlayer] = useState('');
   const [foulMinutes, setFoulMinutes] = useState('');
   const [showPopup, setShowPopup] = useState<{ x: number, y: number, type: 'FOUL' | 'SHOT' | 'CORTO_PENAL', targetGoal?: 'TOP' | 'BOTTOM' } | null>(null);
+  const [feedback, setFeedback] = useState<{ id: string, x: number, y: number, text: string, icon: string, fading: boolean } | null>(null);
+
+  useEffect(() => {
+    if (feedback && !feedback.fading) {
+      const fadeTimer = setTimeout(() => {
+        setFeedback(prev => prev ? { ...prev, fading: true } : null);
+      }, 600);
+      const removeTimer = setTimeout(() => {
+        setFeedback(null);
+      }, 1000);
+      return () => { clearTimeout(fadeTimer); clearTimeout(removeTimer); };
+    }
+  }, [feedback]);
 
   // Modal de detalles de gol
   const [showGoalModal, setShowGoalModal] = useState(false);
@@ -490,7 +516,7 @@ const LiveGameView: React.FC<{
           // Usamos .find() con un orden específico para evitar colisiones de sub-strings (ej: 'Centro' dentro de 'Centro Derecha')
           const areaSectors = ['Extremo Derecho', 'Centro Derecha', 'Centro Izquierda', 'Extremo Izquierdo', 'Centro'];
           const matchedSector = areaSectors.find(sect => details.toLowerCase().includes(sect.toLowerCase()));
-          
+
           if (matchedSector) {
             if (isHomeEntry) statsArea.home[matchedSector as keyof typeof statsArea.home]++;
             else statsArea.away[matchedSector as keyof typeof statsArea.away]++;
@@ -589,12 +615,12 @@ const LiveGameView: React.FC<{
       // Determine the team committing the foul
       // If nextPoss is same as current possession, the rival committed it
       // If nextPoss is different, the team in possession committed it (loses possession)
-      const committingTeamPoss = nextPoss === possession 
+      const committingTeamPoss = nextPoss === possession
         ? (possession === Possession.HOME ? Possession.AWAY : Possession.HOME)
         : possession;
-      
+
       const committingTeamId = committingTeamPoss === Possession.HOME ? game.teamHome.id : game.teamAway.id;
-      
+
       // Register event with the specific committing team
       registerEvent(type, nextPoss, x, y, details, committingTeamId);
       setShowPopup({ x, y, type: 'FOUL' });
@@ -615,6 +641,21 @@ const LiveGameView: React.FC<{
 
   const registerEvent = (type: string, nextPoss: Possession, x: number, y: number, details?: string, forcedTeamId?: string, scoringTeam?: Possession, audioData?: string) => {
     const eventId = Math.random().toString(36).substr(2, 5);
+
+    if (game) {
+      const attackingTeamId = possession === Possession.HOME ? game.teamHome.id : game.teamAway.id;
+      const eventTeamId = forcedTeamId || ((type.includes('DISPARO') || type.includes('GOL')) ? attackingTeamId : (nextPoss === Possession.HOME ? game.teamHome.id : game.teamAway.id));
+      const currentCount = game.events.filter(e => e.type === type && e.teamId === eventTeamId).length + 1;
+
+      setFeedback({
+        id: eventId,
+        x,
+        y,
+        text: `${type} (${currentCount})`,
+        icon: getActionIcon(type),
+        fading: false
+      });
+    }
 
     setGame(prev => {
       if (!prev) return prev;
@@ -1109,65 +1150,65 @@ const LiveGameView: React.FC<{
       {showGoalModal && (
         <Portal>
           <div className="fixed inset-0 z-[700] flex items-center justify-center p-6 bg-brandDark/50 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="relative w-full max-w-md bg-white border border-surfaceVariant p-8 rounded-[40px] shadow-2xl flex flex-col animate-in zoom-in duration-300">
-            <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-[4px] mb-6 text-center">Detalles del Gol 🥅</h3>
+            <div className="relative w-full max-w-md bg-white border border-surfaceVariant p-8 rounded-[40px] shadow-2xl flex flex-col animate-in zoom-in duration-300">
+              <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-[4px] mb-6 text-center">Detalles del Gol 🥅</h3>
 
-            {/* Sección Autor */}
-            <div className="mb-8">
-              <label className="text-[9px] font-black text-dark uppercase tracking-widest mb-3 block">Autor del Gol (Dorsal)</label>
-              <input
-                type="number"
-                maxLength={2}
-                autoFocus
-                value={goalAuthor}
-                onChange={(e) => setGoalAuthor(e.target.value.slice(0, 2))}
-                className="w-full h-16 bg-surface border border-surfaceVariant rounded-2xl text-center text-3xl font-black outline-none focus:border-primary transition-colors tabular-nums"
-                placeholder="00"
-              />
-            </div>
+              {/* Sección Autor */}
+              <div className="mb-8">
+                <label className="text-[9px] font-black text-dark uppercase tracking-widest mb-3 block">Autor del Gol (Dorsal)</label>
+                <input
+                  type="number"
+                  maxLength={2}
+                  autoFocus
+                  value={goalAuthor}
+                  onChange={(e) => setGoalAuthor(e.target.value.slice(0, 2))}
+                  className="w-full h-16 bg-surface border border-surfaceVariant rounded-2xl text-center text-3xl font-black outline-none focus:border-primary transition-colors tabular-nums"
+                  placeholder="00"
+                />
+              </div>
 
-            {/* Sección Tipo de Jugada */}
-            <div className="mb-10">
-              <label className="text-[9px] font-black text-dark uppercase tracking-widest mb-4 block">Tipo de Jugada</label>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { id: 'Individual', label: 'Individual', icon: '👤' },
-                  { id: 'Colectiva', label: 'Colectiva', icon: '🤝' },
-                  { id: 'Penal', label: 'Penal', icon: '🎯' },
-                  { id: 'Corto', label: 'C. Corto', icon: '🏑' },
-                ].map((type) => (
-                  <button
-                    key={type.id}
-                    onClick={() => setGoalType(type.id as any)}
-                    className={`h-16 rounded-2xl border flex items-center justify-center gap-3 text-xs font-black transition-all ${goalType === type.id
-                      ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20'
-                      : 'bg-surface border-surfaceVariant text-onSurfaceVariant'
-                      }`}
-                  >
-                    <span>{type.icon}</span>
-                    <span className="uppercase">{type.label}</span>
-                  </button>
-                ))}
+              {/* Sección Tipo de Jugada */}
+              <div className="mb-10">
+                <label className="text-[9px] font-black text-dark uppercase tracking-widest mb-4 block">Tipo de Jugada</label>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { id: 'Individual', label: 'Individual', icon: '👤' },
+                    { id: 'Colectiva', label: 'Colectiva', icon: '🤝' },
+                    { id: 'Penal', label: 'Penal', icon: '🎯' },
+                    { id: 'Corto', label: 'C. Corto', icon: '🏑' },
+                  ].map((type) => (
+                    <button
+                      key={type.id}
+                      onClick={() => setGoalType(type.id as any)}
+                      className={`h-16 rounded-2xl border flex items-center justify-center gap-3 text-xs font-black transition-all ${goalType === type.id
+                        ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20'
+                        : 'bg-surface border-surfaceVariant text-onSurfaceVariant'
+                        }`}
+                    >
+                      <span>{type.icon}</span>
+                      <span className="uppercase">{type.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Botones de Acción */}
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={confirmGoalDetails}
+                  className="w-full bg-primary text-white font-black py-5 rounded-2xl active:scale-95 text-xs uppercase tracking-widest shadow-xl shadow-primary/20"
+                >
+                  Confirmar Registro
+                </button>
+                <button
+                  onClick={skipGoalDetails}
+                  className="w-full bg-surface text-red-600 font-black py-4 rounded-2xl active:scale-95 text-[10px] uppercase tracking-widest border border-red-100"
+                >
+                  Omitir info
+                </button>
               </div>
             </div>
-
-            {/* Botones de Acción */}
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={confirmGoalDetails}
-                className="w-full bg-primary text-white font-black py-5 rounded-2xl active:scale-95 text-xs uppercase tracking-widest shadow-xl shadow-primary/20"
-              >
-                Confirmar Registro
-              </button>
-              <button
-                onClick={skipGoalDetails}
-                className="w-full bg-surface text-red-600 font-black py-4 rounded-2xl active:scale-95 text-[10px] uppercase tracking-widest border border-red-100"
-              >
-                Omitir info
-              </button>
-            </div>
           </div>
-        </div>
         </Portal>
       )}
 
@@ -1328,7 +1369,7 @@ const LiveGameView: React.FC<{
                 >
                   <span>🏁</span> Finalizar Match
                 </button>
-  
+
                 <div className="py-2 border-b border-surfaceVariant mb-2">
                   <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest mb-3 px-4">Configuración de Vista</p>
                   <button
@@ -1346,7 +1387,7 @@ const LiveGameView: React.FC<{
                     <span>{isFlipped ? 'ON' : 'OFF'}</span>
                   </button>
                 </div>
-  
+
                 {["1: Configurar juego", "2: Configurar plantel", "3: Configurar acciones"].map((opt, i) => (
                   <button key={i} className="w-full text-left p-4 rounded-xl hover:bg-surface text-onSurface font-bold text-[11px] uppercase tracking-widest transition-all active:scale-95" onClick={() => setIsMenuOpen(false)}>{opt}</button>
                 ))}
@@ -1432,10 +1473,10 @@ const LiveGameView: React.FC<{
             <div className="hidden md:flex flex-col items-center gap-1.5 px-0.5 border-r border-surfaceVariant pr-2">
               <div
                 className={`w-2 h-2 rounded-full shadow-sm transition-all duration-500 ${!navigator.onLine
-                    ? 'bg-red-500 animate-pulse'
-                    : syncQueueLength > 0
-                      ? 'bg-amber-400 animate-bounce'
-                      : 'bg-emerald-500 shadow-emerald-500/50'
+                  ? 'bg-red-500 animate-pulse'
+                  : syncQueueLength > 0
+                    ? 'bg-amber-400 animate-bounce'
+                    : 'bg-emerald-500 shadow-emerald-500/50'
                   }`}
                 title={!navigator.onLine ? 'Desconectado' : syncQueueLength > 0 ? 'Sincronizando...' : 'Sincronizado'}
               />
@@ -1664,7 +1705,7 @@ const LiveGameView: React.FC<{
                 </div>
               </div>
             ) : activeView === 'stats' ? (
-               <div className={`relative ${isLandscape ? 'w-[92%] h-[92%]' : 'w-full h-full'}`}>
+              <div className={`relative ${isLandscape ? 'w-[92%] h-[92%]' : 'w-full h-full'}`}>
                 <div className="w-full h-full bg-white rounded-[32px] border-2 border-surfaceVariant flex flex-col p-6 animate-in slide-in-from-bottom duration-300 overflow-hidden shadow-xl">
                   <div className="flex justify-between items-center mb-6">
                     <h3 className="text-sm font-black text-dark uppercase tracking-widest">Estadísticas Detalladas</h3>
@@ -1958,42 +1999,77 @@ const LiveGameView: React.FC<{
                 </div>
               </div>
             ) : (
-                <div 
-                  className="relative flex items-center justify-center w-full h-full"
-                  style={{
-                    aspectRatio: isLandscape ? '91.4 / 55' : '55 / 91.4',
-                    maxHeight: isLandscape ? '92%' : '100%',
-                    maxWidth: isLandscape ? '92%' : '100%',
-                    height: '100%',
-                    width: 'auto'
-                  }}
-                >
-                  <PitchMap
-                    possession={possession}
-                    isRunning={isRunning}
-                    isLandscape={isLandscape}
-                    isFlipped={isFlipped}
-                    teamHome={game?.teamHome}
-                    teamAway={game?.teamAway}
-                    onAction={handlePitchAction}
-                    onManualMenu={handleManualMenu}
-                  />
+              <div
+                className="relative flex items-center justify-center w-full h-full"
+                style={{
+                  aspectRatio: isLandscape ? '91.4 / 55' : '55 / 91.4',
+                  maxHeight: isLandscape ? '92%' : '100%',
+                  maxWidth: isLandscape ? '92%' : '100%',
+                  height: '100%',
+                  width: 'auto'
+                }}
+              >
+                <PitchMap
+                  possession={possession}
+                  isRunning={isRunning}
+                  isLandscape={isLandscape}
+                  isFlipped={isFlipped}
+                  teamHome={game?.teamHome}
+                  teamAway={game?.teamAway}
+                  onAction={handlePitchAction}
+                  onManualMenu={handleManualMenu}
+                />
 
-                  {showPopup && (() => {
-                    let dispX = showPopup.x;
-                    let dispY = showPopup.y;
-                    
-                    if (isFlipped) {
-                      dispX = 100 - dispX;
-                      dispY = 100 - dispY;
-                    }
-                    if (isLandscape) {
-                      const temp = dispX;
-                      dispX = dispY;
-                      dispY = 100 - temp;
-                    }
-                    
-                    return (
+                {feedback && (() => {
+                  let dispX = feedback.x;
+                  let dispY = feedback.y;
+
+                  if (isFlipped) {
+                    dispX = 100 - dispX;
+                    dispY = 100 - dispY;
+                  }
+                  if (isLandscape) {
+                    const temp = dispX;
+                    dispX = dispY;
+                    dispY = 100 - temp;
+                  }
+
+                  const isNearTop = dispY < 15;
+
+                  return (
+                    <div
+                      key={feedback.id}
+                      className="absolute z-[400] pointer-events-none transition-all duration-200"
+                      style={{
+                        left: `${dispX}%`,
+                        top: `${dispY}%`,
+                        opacity: feedback.fading ? 0 : 1,
+                        transform: feedback.fading ? 'scale(0.95)' : 'scale(1)',
+                      }}
+                    >
+                      <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-md border border-white/50 shadow-lg -translate-x-1/2 ${isNearTop ? 'translate-y-4' : '-translate-y-10'} ${feedback.fading ? '' : 'animate-in zoom-in slide-in-from-bottom-2 duration-200'}`}>
+                        <span className="text-sm">{feedback.icon}</span>
+                        <span className="text-[10px] font-black text-dark uppercase tracking-wider whitespace-nowrap">{feedback.text}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {showPopup && (() => {
+                  let dispX = showPopup.x;
+                  let dispY = showPopup.y;
+
+                  if (isFlipped) {
+                    dispX = 100 - dispX;
+                    dispY = 100 - dispY;
+                  }
+                  if (isLandscape) {
+                    const temp = dispX;
+                    dispX = dispY;
+                    dispY = 100 - temp;
+                  }
+
+                  return (
                     <div
                       className={`absolute z-[300] bg-white shadow-2xl rounded-[32px] p-6 flex flex-col gap-3 min-w-[200px] border border-surfaceVariant animate-in zoom-in duration-150`}
                       style={{
@@ -2056,8 +2132,8 @@ const LiveGameView: React.FC<{
                                   <span className="w-5 h-7 bg-red-600 rounded-sm shadow-sm"></span>
                                   <span>ROJA</span>
                                 </button>
-                                <button 
-                                  className="text-[10px] font-black text-onSurface py-3 rounded-xl bg-surface border border-surfaceVariant flex flex-col items-center justify-center gap-1.5 hover:bg-surfaceVariant/20 transition-colors" 
+                                <button
+                                  className="text-[10px] font-black text-onSurface py-3 rounded-xl bg-surface border border-surfaceVariant flex flex-col items-center justify-center gap-1.5 hover:bg-surfaceVariant/20 transition-colors"
                                   onClick={() => updateLastEvent('FALTA COMETIDA', 'Sin tarjeta')}
                                 >
                                   <div className="w-5 h-7 border-2 border-dashed border-onSurfaceVariant/30 rounded-sm flex items-center justify-center">
@@ -2106,21 +2182,21 @@ const LiveGameView: React.FC<{
 
                       <button className="text-[8px] font-black text-onSurfaceVariant uppercase mt-1 text-center py-1 hover:text-primary transition-colors" onClick={() => { setShowPopup(null); setFoulCardType('NONE'); }}>Cerrar</button>
                     </div>
-                    );
-                  })()}
+                  );
+                })()}
 
-                  {!isRunning && possession === Possession.NONE && seconds === 0 && (
-                    <div className="absolute inset-0 bg-brandDark/40 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500 z-50">
-                      <div
-                        className="bg-white p-8 rounded-[40px] shadow-2xl border border-surfaceVariant max-w-xs transform animate-bounce-short"
-                      >
-                        <div className="text-4xl mb-4">🏑</div>
-                        <h3 className="contrail-font text-2xl text-dark uppercase mb-2">¡Casi Listos!</h3>
-                        <p className="text-[11px] font-bold text-onSurfaceVariant uppercase leading-relaxed">Selecciona qué equipo inicia con la posesión haciendo click en su marcador arriba.</p>
-                      </div>
+                {!isRunning && possession === Possession.NONE && seconds === 0 && (
+                  <div className="absolute inset-0 bg-brandDark/40 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500 z-50">
+                    <div
+                      className="bg-white p-8 rounded-[40px] shadow-2xl border border-surfaceVariant max-w-xs transform animate-bounce-short"
+                    >
+                      <div className="text-4xl mb-4">🏑</div>
+                      <h3 className="contrail-font text-2xl text-dark uppercase mb-2">¡Casi Listos!</h3>
+                      <p className="text-[11px] font-bold text-onSurfaceVariant uppercase leading-relaxed">Selecciona qué equipo inicia con la posesión haciendo click en su marcador arriba.</p>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
