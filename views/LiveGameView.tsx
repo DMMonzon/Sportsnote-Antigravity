@@ -1168,6 +1168,7 @@ const LiveGameView: React.FC<{
             </div>
           </div>
         </div>
+        </Portal>
       )}
 
       {/* Modal de Confirmación de Período */}
@@ -2235,20 +2236,6 @@ const LiveGameView: React.FC<{
         <div className="flex flex-1 items-center justify-around md:justify-center md:gap-16">
           <div className="flex items-center gap-4 md:gap-8">
             <button className={`text-2xl transition-all ${activeView === 'list' ? 'text-primary scale-110 drop-shadow-md' : 'text-onSurfaceVariant/30'}`} onClick={() => setActiveView(activeView === 'list' ? 'field' : 'list')}>📋</button>
-            {/* Tactic Icon Hidden for MVP */}
-            {/* 
-            <div className="relative">
-              <button 
-                onClick={() => setActiveView(activeView === 'tactics' ? 'field' : 'tactics')}
-                className="relative group p-2 rounded-full transition-all active:scale-90"
-              >
-                <TacticIcon active={activeView === 'tactics' || !!activeTacticId} animated={!!activeTacticId} />
-                {activeTacticId && (
-                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-[#00fe00] rounded-full border-2 border-white shadow-[0_0_4px_#00fe00]"></span>
-                )}
-              </button>
-            </div>
-            */}
             <button className={`text-2xl transition-all ${activeView === 'stats' ? 'text-primary scale-110 drop-shadow-md' : 'text-onSurfaceVariant/30'} ${!isLandscape ? 'lg:hidden' : ''}`} onClick={() => setActiveView(activeView === 'stats' ? 'field' : 'stats')}>📊</button>
           </div>
 
