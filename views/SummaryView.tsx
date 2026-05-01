@@ -241,9 +241,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
     const events = game.events.filter(e => {
       const isTeam = e.teamId === teamId;
       const isTarget = types.some(t => {
-        const typeUpper = e.type.toUpperCase();
-        const tUpper = t.toUpperCase();
-        return typeUpper === tUpper || typeUpper.includes(`${tUpper} `) || typeUpper.includes(`(${tUpper})`);
+        return e.type.toUpperCase().includes(t.toUpperCase());
       });
       return isTeam && isTarget;
     });
@@ -374,80 +372,122 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
 
           <section className="bg-white p-6 rounded-[32px] shadow-sm border border-surfaceVariant">
             <h3 className="text-xs font-black uppercase text-onSurfaceVariant mb-6 flex items-center gap-2 italic">
-              <span className="text-sm">🥅</span> Remates al Arco <div className="h-px flex-1 bg-surfaceVariant/50"></div>
-            </h3>
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 bg-surface rounded-[24px] p-5 border border-surfaceVariant/50">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-[9px] font-black text-onSurfaceVariant uppercase">Local</span>
-                  <span className="text-3xl font-black">{homeShots.total}</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="text-center">
-                    <p className="text-[7px] uppercase opacity-60">Gol</p>
-                    <p className="text-sm font-black">{homeShots.goals} ({getPct(homeShots.goals, homeShots.total)}%)</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[7px] uppercase opacity-60">Atajado</p>
-                    <p className="text-sm font-black">{homeShots.saved} ({getPct(homeShots.saved, homeShots.total)}%)</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[7px] uppercase opacity-60">Desv.</p>
-                    <p className="text-sm font-black">{homeShots.missed} ({getPct(homeShots.missed, homeShots.total)}%)</p>
-                  </div>
-                </div>
-                <PeriodRow periods={homeShots.periods} />
+          <section className="bg-white p-6 rounded-[32px] shadow-sm border border-surfaceVariant">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xs font-black uppercase text-onSurfaceVariant flex items-center gap-2 italic">
+                <span className="text-sm">🥅</span> Remates Totales
+              </h3>
+              <div className="text-2xl font-black text-dark">
+                {homeShots.total} <span className="text-onSurfaceVariant/40">-</span> {awayShots.total}
               </div>
-              <div className="flex-1 bg-surface rounded-[24px] p-5 border border-surfaceVariant/50">
-                <div className="flex justify-between items-center mb-4 text-right">
-                  <span className="text-3xl font-black">{awayShots.total}</span>
-                  <span className="text-[9px] font-black text-onSurfaceVariant uppercase">Visitante</span>
+            </div>
+            
+            <div className="flex flex-col gap-4">
+              {/* Local */}
+              <div className="bg-surface/50 rounded-[20px] p-4 border border-surfaceVariant/50 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div className="flex items-center gap-3 w-full md:w-1/4">
+                  <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
+                  <span className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest">{game.teamHome.name}</span>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="text-center">
-                    <p className="text-[7px] uppercase opacity-60">Gol</p>
-                    <p className="text-sm font-black">{awayShots.goals} ({getPct(awayShots.goals, awayShots.total)}%)</p>
+                <div className="grid grid-cols-3 gap-2 md:gap-4 flex-1 w-full">
+                  <div className="text-center bg-white p-2 rounded-xl shadow-sm border border-surfaceVariant/30">
+                    <p className="text-[7px] uppercase opacity-60 mb-0.5">Gol</p>
+                    <p className="text-sm font-black text-dark">{homeShots.goals} <span className="text-[9px] opacity-50">({getPct(homeShots.goals, homeShots.total)}%)</span></p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-[7px] uppercase opacity-60">Atajado</p>
-                    <p className="text-sm font-black">{awayShots.saved} ({getPct(awayShots.saved, awayShots.total)}%)</p>
+                  <div className="text-center bg-white p-2 rounded-xl shadow-sm border border-surfaceVariant/30">
+                    <p className="text-[7px] uppercase opacity-60 mb-0.5">Atajado</p>
+                    <p className="text-sm font-black text-dark">{homeShots.saved} <span className="text-[9px] opacity-50">({getPct(homeShots.saved, homeShots.total)}%)</span></p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-[7px] uppercase opacity-60">Desv.</p>
-                    <p className="text-sm font-black">{awayShots.missed} ({getPct(awayShots.missed, awayShots.total)}%)</p>
+                  <div className="text-center bg-white p-2 rounded-xl shadow-sm border border-surfaceVariant/30">
+                    <p className="text-[7px] uppercase opacity-60 mb-0.5">Desv.</p>
+                    <p className="text-sm font-black text-dark">{homeShots.missed} <span className="text-[9px] opacity-50">({getPct(homeShots.missed, homeShots.total)}%)</span></p>
                   </div>
                 </div>
-                <PeriodRow periods={awayShots.periods} />
+              </div>
+
+              {/* Visitante */}
+              <div className="bg-surface/50 rounded-[20px] p-4 border border-surfaceVariant/50 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div className="flex items-center gap-3 w-full md:w-1/4">
+                  <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
+                  <span className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest">{game.teamAway.name}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 md:gap-4 flex-1 w-full">
+                  <div className="text-center bg-white p-2 rounded-xl shadow-sm border border-surfaceVariant/30">
+                    <p className="text-[7px] uppercase opacity-60 mb-0.5">Gol</p>
+                    <p className="text-sm font-black text-dark">{awayShots.goals} <span className="text-[9px] opacity-50">({getPct(awayShots.goals, awayShots.total)}%)</span></p>
+                  </div>
+                  <div className="text-center bg-white p-2 rounded-xl shadow-sm border border-surfaceVariant/30">
+                    <p className="text-[7px] uppercase opacity-60 mb-0.5">Atajado</p>
+                    <p className="text-sm font-black text-dark">{awayShots.saved} <span className="text-[9px] opacity-50">({getPct(awayShots.saved, awayShots.total)}%)</span></p>
+                  </div>
+                  <div className="text-center bg-white p-2 rounded-xl shadow-sm border border-surfaceVariant/30">
+                    <p className="text-[7px] uppercase opacity-60 mb-0.5">Desv.</p>
+                    <p className="text-sm font-black text-dark">{awayShots.missed} <span className="text-[9px] opacity-50">({getPct(awayShots.missed, awayShots.total)}%)</span></p>
+                  </div>
+                </div>
               </div>
             </div>
           </section>
 
           <section className="bg-white p-6 rounded-[32px] shadow-sm border border-surfaceVariant">
-            <h3 className="text-xs font-black uppercase text-onSurfaceVariant mb-6 italic">Balance de Acciones (Local)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {[
-                { label: 'Pérdidas', icon: '📉', types: ['PÉRDIDA'], color: 'text-orange-600' },
-                { label: 'Recuperos', icon: '📈', types: ['RECUPERO'], color: 'text-emerald-600' },
-                { label: 'Faltas', icon: '⚠️', types: ['FALTA'], color: 'text-red-600' }
-              ].map(stat => {
-                const data = getDetailedStat(stat.types, game.teamHome.id);
-                return (
-                  <div key={stat.label} className="bg-surface/30 p-5 rounded-[28px] border border-surfaceVariant flex flex-col gap-2 shadow-sm">
-                    <div className="flex justify-between items-center border-b border-surfaceVariant pb-2">
-                      <div className="flex items-center gap-2">
-                        {stat.icon && <span className="text-[10px]">{stat.icon}</span>}
-                        <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">{stat.label}</p>
+            <div className="flex flex-col md:flex-row gap-6">
+              <div className="flex-1">
+                <h3 className="text-xs font-black uppercase text-onSurfaceVariant mb-4 italic">Balance de Acciones (Local)</h3>
+                <div className="flex flex-col gap-4">
+                  {[
+                    { label: 'Pérdidas', icon: '📉', types: ['PÉRDIDA', 'PERDIDA', 'TURNOVER'], color: 'text-orange-600' },
+                    { label: 'Recuperos', icon: '📈', types: ['RECUPERO'], color: 'text-emerald-600' },
+                    { label: 'Faltas', icon: '⚠️', types: ['FALTA'], color: 'text-red-600' }
+                  ].map(stat => {
+                    const data = getDetailedStat(stat.types, game.teamHome.id);
+                    return (
+                      <div key={stat.label} className="bg-surface/30 p-4 rounded-[24px] border border-surfaceVariant flex flex-col gap-2 shadow-sm">
+                        <div className="flex justify-between items-center border-b border-surfaceVariant pb-2">
+                          <div className="flex items-center gap-2">
+                            {stat.icon && <span className="text-[10px]">{stat.icon}</span>}
+                            <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">{stat.label}</p>
+                          </div>
+                          <span className={`text-xl font-black ${stat.color}`}>{data.total}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 mt-1">
+                          <div className="flex items-center gap-2 p-2 rounded-xl bg-white border border-surfaceVariant/30"><span className="text-blue-500 text-[10px]">↓</span><div className="flex flex-col"><span className="text-[8px] font-bold opacity-60">Propio</span><span className="text-[11px] font-black">{data.own}</span></div></div>
+                          <div className="flex items-center gap-2 p-2 rounded-xl bg-white border border-surfaceVariant/30"><span className="text-orange-500 text-[10px]">↑</span><div className="flex flex-col"><span className="text-[8px] font-bold opacity-60">Rival</span><span className="text-[11px] font-black">{data.rival}</span></div></div>
+                        </div>
+                        <PeriodRow periods={data.periods} />
                       </div>
-                      <span className={`text-2xl font-black ${stat.color}`}>{data.total}</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 mt-1">
-                      <div className="flex items-center gap-2 p-2 rounded-xl bg-white border border-surfaceVariant/30"><span className="text-blue-500 text-[10px]">↓</span><div className="flex flex-col"><span className="text-[8px] font-bold opacity-60">Propio</span><span className="text-[11px] font-black">{data.own}</span></div></div>
-                      <div className="flex items-center gap-2 p-2 rounded-xl bg-white border border-surfaceVariant/30"><span className="text-orange-500 text-[10px]">↑</span><div className="flex flex-col"><span className="text-[8px] font-bold opacity-60">Rival</span><span className="text-[11px] font-black">{data.rival}</span></div></div>
-                    </div>
-                    <PeriodRow periods={data.periods} />
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              </div>
+              
+              <div className="flex-1">
+                <h3 className="text-xs font-black uppercase text-onSurfaceVariant mb-4 italic text-right">Balance de Acciones (Visitante)</h3>
+                <div className="flex flex-col gap-4">
+                  {[
+                    { label: 'Pérdidas', icon: '📉', types: ['PÉRDIDA', 'PERDIDA', 'TURNOVER'], color: 'text-orange-600' },
+                    { label: 'Recuperos', icon: '📈', types: ['RECUPERO'], color: 'text-emerald-600' },
+                    { label: 'Faltas', icon: '⚠️', types: ['FALTA'], color: 'text-red-600' }
+                  ].map(stat => {
+                    const data = getDetailedStat(stat.types, game.teamAway.id);
+                    return (
+                      <div key={stat.label} className="bg-surface/30 p-4 rounded-[24px] border border-surfaceVariant flex flex-col gap-2 shadow-sm">
+                        <div className="flex justify-between items-center border-b border-surfaceVariant pb-2">
+                          <div className="flex items-center gap-2">
+                            {stat.icon && <span className="text-[10px]">{stat.icon}</span>}
+                            <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">{stat.label}</p>
+                          </div>
+                          <span className={`text-xl font-black ${stat.color}`}>{data.total}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 mt-1">
+                          <div className="flex items-center gap-2 p-2 rounded-xl bg-white border border-surfaceVariant/30"><span className="text-blue-500 text-[10px]">↓</span><div className="flex flex-col"><span className="text-[8px] font-bold opacity-60">Propio</span><span className="text-[11px] font-black">{data.own}</span></div></div>
+                          <div className="flex items-center gap-2 p-2 rounded-xl bg-white border border-surfaceVariant/30"><span className="text-orange-500 text-[10px]">↑</span><div className="flex flex-col"><span className="text-[8px] font-bold opacity-60">Rival</span><span className="text-[11px] font-black">{data.rival}</span></div></div>
+                        </div>
+                        <PeriodRow periods={data.periods} />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </section>
 

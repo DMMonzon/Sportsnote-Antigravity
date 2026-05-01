@@ -655,7 +655,7 @@ const LiveGameView: React.FC<{
 
     if (game) {
       const attackingTeamId = possession === Possession.HOME ? game.teamHome.id : game.teamAway.id;
-      const eventTeamId = forcedTeamId || ((type.includes('DISPARO') || type.includes('GOL')) ? attackingTeamId : (nextPoss === Possession.HOME ? game.teamHome.id : game.teamAway.id));
+      const eventTeamId = forcedTeamId || ((type.toUpperCase().includes('DISPARO') || type.toUpperCase().includes('GOL') || type.toUpperCase().includes('PÉRDIDA')) ? attackingTeamId : (nextPoss === Possession.HOME ? game.teamHome.id : game.teamAway.id));
       const currentCount = game.events.filter(e => e.type === type && e.teamId === eventTeamId).length + 1;
 
       setFeedback({
@@ -946,11 +946,8 @@ const LiveGameView: React.FC<{
     const targetTeamId = teamId || game.teamHome.id;
     const events = game.events.filter(e => {
       const isTeam = e.teamId === targetTeamId;
-      // Exact match for the main event type or containing it
       const isTarget = types.some(t => {
-        const typeUpper = e.type.toUpperCase();
-        const tUpper = t.toUpperCase();
-        return typeUpper === tUpper || typeUpper.includes(`${tUpper} `) || typeUpper.includes(`(${tUpper})`);
+        return e.type.toUpperCase().includes(t.toUpperCase());
       });
       const periodMatch = periodFilter === 'ALL' || e.gameTime.startsWith(`${periodFilter}Q`);
       return isTeam && isTarget && periodMatch;
@@ -1902,10 +1899,20 @@ const LiveGameView: React.FC<{
                         )}
                       </div>
 
-                      <StatDetailCard title="Pérdidas 📉" data={getDetailedStat(['PÉRDIDA'])} colorClass="text-orange-600" />
-                      <StatDetailCard title="Recuperos 📈" data={getDetailedStat(['RECUPERO'])} colorClass="text-emerald-600" />
-                      <StatDetailCard title="Faltas ⚠️" data={getDetailedStat(['FALTA'])} colorClass="text-red-600" />
-                      <StatDetailCard title="Remates 🥅" data={getDetailedStat(['DISPARO'])} colorClass="text-slate-700" />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-4">
+                          <h4 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest px-2 italic">Local</h4>
+                          <StatDetailCard title="Pérdidas 📉" data={getDetailedStat(['PÉRDIDA', 'PERDIDA', 'TURNOVER'], game.teamHome.id)} colorClass="text-orange-600" />
+                          <StatDetailCard title="Recuperos 📈" data={getDetailedStat(['RECUPERO'], game.teamHome.id)} colorClass="text-emerald-600" />
+                          <StatDetailCard title="Faltas ⚠️" data={getDetailedStat(['FALTA'], game.teamHome.id)} colorClass="text-red-600" />
+                        </div>
+                        <div className="flex flex-col gap-4">
+                          <h4 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest px-2 italic text-right">Visitante</h4>
+                          <StatDetailCard title="Pérdidas 📉" data={getDetailedStat(['PÉRDIDA', 'PERDIDA', 'TURNOVER'], game.teamAway.id)} colorClass="text-orange-600" />
+                          <StatDetailCard title="Recuperos 📈" data={getDetailedStat(['RECUPERO'], game.teamAway.id)} colorClass="text-emerald-600" />
+                          <StatDetailCard title="Faltas ⚠️" data={getDetailedStat(['FALTA'], game.teamAway.id)} colorClass="text-red-600" />
+                        </div>
+                      </div>
 
                       {/* Ingresos al Área */}
                       <EntryAnalysisCard
