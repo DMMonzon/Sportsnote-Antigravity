@@ -39,7 +39,10 @@ export const PitchMap: React.FC<PitchMapProps> = ({
     const isGestureActive = useRef(false);
     const [foulPulse, setFoulPulse] = React.useState(false);
     const [overrideAngle, setOverrideAngle] = React.useState<number | null>(null);
-    const lastTapInfo = useRef<{ x: number, y: number, t: number } | null>(null);
+    
+    // User requested state for pointer logic
+    const lastTapTime = useRef<number>(0);
+    const lastTapCoords = useRef<{ x: number, y: number }>({ x: 0, y: 0 });
     const pitchRef = useRef<HTMLDivElement>(null);
 
     const prevPossession = useRef<Possession>(possession);
@@ -128,102 +131,6 @@ export const PitchMap: React.FC<PitchMapProps> = ({
         return `Transición ${sideSuffix} ${lane}`;
     };
 
-    const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!isRunning) return;
-        isGestureActive.current = false;
-        const rect = e.currentTarget.getBoundingClientRect();
-        const vx = ((e.clientX - rect.left) / rect.width) * 100;
-        const vy = ((e.clientY - rect.top) / rect.height) * 100;
-        pointerStart.current = { x: e.clientX, y: e.clientY, t: Date.now() };
-
-        longPressTimer.current = window.setTimeout(() => {
-            isGestureActive.current = true;
-            if (navigator.vibrate) navigator.vibrate(100);
-            addGlow(vx, vy, 'green');
-            const coords = getMappedCoords(vx, vy);
-            onManualMenu(coords.x, coords.y);
-        }, 600);
-    };
-
-    const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        if (!isRunning || !pointerStart.current) return;
-        if (longPressTimer.current) clearTimeout(longPressTimer.current);
-
-        if (isGestureActive.current) return;
-
-        const rect = e.currentTarget.getBoundingClientRect();
-        const vx = ((e.clientX - rect.left) / rect.width) * 100;
-        const vy = ((e.clientY - rect.top) / rect.height) * 100;
-        const duration = Date.now() - pointerStart.current.t;
-        const dx = e.clientX - pointerStart.current.x;
-        const dy = e.clientY - pointerStart.current.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-
-        // Swipe Vector Logic
-        if (distance > 40 && duration < 500) {
-            e.preventDefault();
-            e.stopPropagation();
-            isGestureActive.current = true;
-            if (tapTimer.current) {
-                clearTimeout(tapTimer.current);
-                tapTimer.current = null;
-            }
-            
-            const startVx = ((pointerStart.current.x - rect.left) / rect.width) * 100;
-            const startVy = ((pointerStart.current.y - rect.top) / rect.height) * 100;
-            const startC = getMappedCoords(startVx, startVy);
-            const endC = getMappedCoords(vx, vy);
-            const dy_pitch = endC.y - startC.y;
-            const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-            
-            // Check if start position is in Area or 23y using the same logic as getSector
-            const startSector = getSector(startC.x, startC.y);
-            const inAreaStart = startSector.includes('Área');
-            const in23Start = startSector.includes('23 yardas');
-            const inTargetZone = inAreaStart || in23Start;
-
-            // If swipe STARTED inside 23 yards/Area AND is towards a goal (significant dy_pitch)
-            if (inTargetZone && Math.abs(dy_pitch) > 1) {
-                // Determine which team is attacking the goal the swipe points to
-                const attackingTeam = dy_pitch < 0 ? Possession.HOME : Possession.AWAY;
-                const ownColor = attackingTeam === Possession.HOME ? (teamHome?.primaryColor || '#6d5dfc') : (teamAway?.primaryColor || '#ef4444');
-                addGlow(startVx, startVy, ownColor, false);
-                triggerFoulAnimation(angle);
-                onAction('FALTA A FAVOR EN 23', attackingTeam, startC.x, startC.y, 'Falta en zona de peligro');
-                return;
-            }
-
-            const isTowardsOwn = possession === Possession.HOME ? dy_pitch > 0 : dy_pitch < 0;
-            const isTowardsRival = possession === Possession.HOME ? dy_pitch < 0 : dy_pitch > 0;
-            
-            if (isTowardsOwn) {
-                const oppColor = possession === Possession.HOME ? (teamAway?.primaryColor || '#ef4444') : (teamHome?.primaryColor || '#6d5dfc');
-                addGlow(startVx, startVy, oppColor, false);
-                triggerFoulAnimation(angle);
-                const oppPoss = possession === Possession.HOME ? Possession.AWAY : Possession.HOME;
-                // If focus is on cards for outside fouls, we send "Falta Cometida" to trigger the card modal
-                onAction('Falta Cometida', oppPoss, startC.x, startC.y, 'Deslizar hacia arco propio (Falta cometida)');
-            } else if (isTowardsRival) {
-                const ownColor = possession === Possession.HOME ? (teamHome?.primaryColor || '#6d5dfc') : (teamAway?.primaryColor || '#ef4444');
-                addGlow(startVx, startVy, ownColor, false);
-                triggerFoulAnimation(angle);
-                // Also trigger card modal for rival foul if outside 23
-                onAction('Falta Cometida', possession, startC.x, startC.y, 'Deslizar hacia arco rival (Falta a favor)');
-            }
-            return;
-        }
-
-        // Tap
-        if (distance <= 40) {
-            handleTap(vx, vy, e.clientX, e.clientY);
-        }
-    };
-
     const getMappedCoords = (vx: number, vy: number) => {
         let x = vx;
         let y = vy;
@@ -241,17 +148,24 @@ export const PitchMap: React.FC<PitchMapProps> = ({
         return { x: Math.min(100, Math.max(0, x)), y: Math.min(100, Math.max(0, y)) };
     };
 
-    const handleTap = (vx: number, vy: number, clientX: number, clientY: number) => {
-        const coords = getMappedCoords(vx, vy);
-        const { x, y } = coords;
-        const sector = getSector(x, y);
+    const fireDoubleTap = (x: number, y: number, vx: number, vy: number, sector: string) => {
+        if (possession === Possession.HOME) {
+            addGlow(vx, vy, 'red');
+            onAction('PÉRDIDA', Possession.AWAY, x, y, `Sector: ${sector}`);
+        } else if (possession === Possession.AWAY) {
+            if (sector.includes('Área')) {
+                addGlow(vx, vy, 'red');
+                onAction('Ingreso Rival en área', Possession.AWAY, x, y, `Sector: ${sector}`);
+            } else if (sector.includes('23 yardas') && (y >= 75)) {
+                addGlow(vx, vy, 'red');
+                onAction('Ingreso rival en 23', Possession.AWAY, x, y, `Sector: ${sector}`);
+            }
+        }
+    };
 
-        // Detect tap specifically on the GOAL (Arco) for Shots
-        // Goal Width is 20% (40 to 60), Height is 5% visual, ~8% hit-box for comfort
-        // Restriction: Only clickable if the team with possession is attacking that goal.
+    const fireSingleTap = (x: number, y: number, vx: number, vy: number, sector: string) => {
         const isTopGoal = y <= 8 && x >= 40 && x <= 60;
         const isBottomGoal = y >= 92 && x >= 40 && x <= 60;
-
         let isGoalTap = false;
         if (possession === Possession.HOME && isTopGoal) isGoalTap = true;
         if (possession === Possession.AWAY && isBottomGoal) isGoalTap = true;
@@ -262,79 +176,54 @@ export const PitchMap: React.FC<PitchMapProps> = ({
             return;
         }
 
-        const now = Date.now();
-        let isDoubleTap = false;
-
-        if (lastTapInfo.current) {
-            const timeSinceLastTap = now - lastTapInfo.current.t;
-            const dx = clientX - lastTapInfo.current.x;
-            const dy = clientY - lastTapInfo.current.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-
-            if (timeSinceLastTap <= 300 && distance <= 10) {
-                isDoubleTap = true;
+        if (possession === Possession.HOME) {
+            if (sector.includes('Área')) {
+                addGlow(vx, vy, 'green');
+                onAction('Ingreso en área', Possession.HOME, x, y, `Sector: ${sector}`);
+            } else if (sector.includes('23 yardas') && (y <= 25)) {
+                addGlow(vx, vy, 'green');
+                onAction('Ingreso en 23', Possession.HOME, x, y, `Sector: ${sector}`);
             }
-        }
-
-        if (isDoubleTap) {
-            console.log('Detección: Doble Toque Confirmado');
-            if (tapTimer.current) {
-                clearTimeout(tapTimer.current);
-                tapTimer.current = null;
-            }
-            lastTapInfo.current = null; // Reset for next tap
-            
-            // Double Tap
-            window.setTimeout(() => {
-                if (possession === Possession.HOME) {
-                    // LOSS
-                    addGlow(vx, vy, 'red');
-                    onAction('PÉRDIDA', Possession.AWAY, x, y, `Sector: ${sector}`);
-                } else if (possession === Possession.AWAY) {
-                    // RIVAL ENTRY
-                    if (sector.includes('Área')) {
-                        addGlow(vx, vy, 'red');
-                        onAction('Ingreso Rival en área', Possession.AWAY, x, y, `Sector: ${sector}`);
-                    } else if (sector.includes('23 yardas') && (y >= 75)) {
-                        addGlow(vx, vy, 'red');
-                        onAction('Ingreso rival en 23', Possession.AWAY, x, y, `Sector: ${sector}`);
-                    }
-                }
-            }, 0);
-        } else {
-            console.log('Detección: Primer Toque');
-            lastTapInfo.current = { x: clientX, y: clientY, t: now };
-            if (tapTimer.current) {
-                clearTimeout(tapTimer.current);
-            }
-            
-            tapTimer.current = window.setTimeout(() => {
-                tapTimer.current = null;
-                lastTapInfo.current = null;
-                // Single Tap
-                if (possession === Possession.HOME) {
-                    // ENTRY - Prioridad Área > 23 Yardas
-                    if (sector.includes('Área')) {
-                        addGlow(vx, vy, 'green');
-                        onAction('Ingreso en área', Possession.HOME, x, y, `Sector: ${sector}`);
-                        return;
-                    } else if (sector.includes('23 yardas') && (y <= 25)) {
-                        addGlow(vx, vy, 'green');
-                        onAction('Ingreso en 23', Possession.HOME, x, y, `Sector: ${sector}`);
-                        return;
-                    }
-                } else if (possession === Possession.AWAY) {
-                    // RECOVER
-                    addGlow(vx, vy, 'green');
-                    onAction('Recupero', Possession.HOME, x, y, `Sector: ${sector}`);
-                    return;
-                }
-            }, 300);
+        } else if (possession === Possession.AWAY) {
+            addGlow(vx, vy, 'green');
+            onAction('Recupero', Possession.HOME, x, y, `Sector: ${sector}`);
         }
     };
 
     const homeColor = teamHome?.primaryColor || '#6d5dfc';
     const awayColor = teamAway?.primaryColor || '#ef4444';
+
+    const fireSwipe = (startC: {x: number, y: number}, startVx: number, startVy: number, dy_pitch: number, angle: number) => {
+        const startSector = getSector(startC.x, startC.y);
+        const inAreaStart = startSector.includes('Área');
+        const in23Start = startSector.includes('23 yardas');
+        const inTargetZone = inAreaStart || in23Start;
+
+        if (inTargetZone && Math.abs(dy_pitch) > 1) {
+            const attackingTeam = dy_pitch < 0 ? Possession.HOME : Possession.AWAY;
+            const ownColor = attackingTeam === Possession.HOME ? homeColor : awayColor;
+            addGlow(startVx, startVy, ownColor, false);
+            triggerFoulAnimation(angle);
+            onAction('FALTA A FAVOR EN 23', attackingTeam, startC.x, startC.y, 'Falta en zona de peligro');
+            return;
+        }
+
+        const isTowardsOwn = possession === Possession.HOME ? dy_pitch > 0 : dy_pitch < 0;
+        const isTowardsRival = possession === Possession.HOME ? dy_pitch < 0 : dy_pitch > 0;
+        
+        if (isTowardsOwn) {
+            const oppColor = possession === Possession.HOME ? awayColor : homeColor;
+            addGlow(startVx, startVy, oppColor, false);
+            triggerFoulAnimation(angle);
+            const oppPoss = possession === Possession.HOME ? Possession.AWAY : Possession.HOME;
+            onAction('Falta Cometida', oppPoss, startC.x, startC.y, 'Deslizar hacia arco propio (Falta cometida)');
+        } else if (isTowardsRival) {
+            const ownColor = possession === Possession.HOME ? homeColor : awayColor;
+            addGlow(startVx, startVy, ownColor, false);
+            triggerFoulAnimation(angle);
+            onAction('Falta Cometida', possession, startC.x, startC.y, 'Deslizar hacia arco rival (Falta a favor)');
+        }
+    };
 
     useEffect(() => {
         return () => {
@@ -347,21 +236,149 @@ export const PitchMap: React.FC<PitchMapProps> = ({
         const el = pitchRef.current;
         if (!el) return;
 
-        const preventTouchDefault = (e: TouchEvent) => {
+        const handlePointerDown = (e: PointerEvent) => {
+            // Cancelar comportamientos por defecto del navegador (scroll, zoom, long-press nativo)
             e.preventDefault();
             e.stopPropagation();
+
+            if (!isRunning) return;
+
+            const rect = el.getBoundingClientRect();
+            const clientX = e.clientX;
+            const clientY = e.clientY;
+            const vx = ((clientX - rect.left) / rect.width) * 100;
+            const vy = ((clientY - rect.top) / rect.height) * 100;
+            const coords = getMappedCoords(vx, vy);
+            const { x, y } = coords;
+
+            const now = Date.now();
+            const timeDiff = now - lastTapTime.current;
+            const dx = clientX - lastTapCoords.current.x;
+            const dy = clientY - lastTapCoords.current.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (timeDiff < 250 && distance < 15) {
+                // Doble Tap detectado
+                if (tapTimer.current) clearTimeout(tapTimer.current);
+                lastTapTime.current = 0; // Prevenir múltiples disparos (triple tap)
+                fireDoubleTap(x, y, vx, vy, getSector(x, y));
+            } else {
+                // Posible Tap Simple
+                lastTapTime.current = now;
+                lastTapCoords.current = { x: clientX, y: clientY };
+                pointerStart.current = { x: clientX, y: clientY, t: now };
+                isGestureActive.current = false;
+
+                if (tapTimer.current) clearTimeout(tapTimer.current);
+                
+                tapTimer.current = window.setTimeout(() => {
+                    tapTimer.current = null;
+                    if (!isGestureActive.current) {
+                        fireSingleTap(x, y, vx, vy, getSector(x, y));
+                    }
+                }, 200);
+
+                if (longPressTimer.current) clearTimeout(longPressTimer.current);
+                longPressTimer.current = window.setTimeout(() => {
+                    isGestureActive.current = true;
+                    if (tapTimer.current) clearTimeout(tapTimer.current);
+                    if (navigator.vibrate) navigator.vibrate(100);
+                    addGlow(vx, vy, 'green');
+                    onManualMenu(coords.x, coords.y);
+                }, 600);
+            }
         };
 
-        el.addEventListener('touchstart', preventTouchDefault, { passive: false });
-        el.addEventListener('touchend', preventTouchDefault, { passive: false });
-        el.addEventListener('touchmove', preventTouchDefault, { passive: false });
+        const handlePointerMove = (e: PointerEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!pointerStart.current) return;
+            
+            const dx = e.clientX - pointerStart.current.x;
+            const dy = e.clientY - pointerStart.current.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > 15) {
+                isGestureActive.current = true; // Anular tap si hay movimiento
+                if (tapTimer.current) {
+                    clearTimeout(tapTimer.current);
+                    tapTimer.current = null;
+                }
+                if (longPressTimer.current) {
+                    clearTimeout(longPressTimer.current);
+                    longPressTimer.current = null;
+                }
+            }
+        };
+
+        const handlePointerUp = (e: PointerEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (!isRunning || !pointerStart.current) return;
+
+            if (longPressTimer.current) {
+                clearTimeout(longPressTimer.current);
+                longPressTimer.current = null;
+            }
+
+            const dx = e.clientX - pointerStart.current.x;
+            const dy = e.clientY - pointerStart.current.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const duration = Date.now() - pointerStart.current.t;
+
+            if (distance > 40 && duration < 500) {
+                isGestureActive.current = true;
+                if (tapTimer.current) {
+                    clearTimeout(tapTimer.current);
+                    tapTimer.current = null;
+                }
+
+                const rect = el.getBoundingClientRect();
+                const vx = ((e.clientX - rect.left) / rect.width) * 100;
+                const vy = ((e.clientY - rect.top) / rect.height) * 100;
+                
+                const startVx = ((pointerStart.current.x - rect.left) / rect.width) * 100;
+                const startVy = ((pointerStart.current.y - rect.top) / rect.height) * 100;
+                const startC = getMappedCoords(startVx, startVy);
+                const endC = getMappedCoords(vx, vy);
+                const dy_pitch = endC.y - startC.y;
+                const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+                fireSwipe(startC, startVx, startVy, dy_pitch, angle);
+            }
+            // NO limpiamos pointerStart porque podría ser necesario si hacemos un segundo tap rápido (double tap distance measure usa lastTapCoords de todos modos, así que está bien)
+        };
+
+        const cancelPointer = (e: Event) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (tapTimer.current) {
+                clearTimeout(tapTimer.current);
+                tapTimer.current = null;
+            }
+            if (longPressTimer.current) {
+                clearTimeout(longPressTimer.current);
+                longPressTimer.current = null;
+            }
+            isGestureActive.current = true;
+        };
+
+        // Escuchadores de eventos pasivos obligatoriamente en false
+        el.addEventListener('pointerdown', handlePointerDown as EventListener, { passive: false });
+        el.addEventListener('pointermove', handlePointerMove as EventListener, { passive: false });
+        el.addEventListener('pointerup', handlePointerUp as EventListener, { passive: false });
+        el.addEventListener('pointercancel', cancelPointer, { passive: false });
+        el.addEventListener('pointerleave', cancelPointer, { passive: false });
 
         return () => {
-            el.removeEventListener('touchstart', preventTouchDefault);
-            el.removeEventListener('touchend', preventTouchDefault);
-            el.removeEventListener('touchmove', preventTouchDefault);
+            el.removeEventListener('pointerdown', handlePointerDown as EventListener);
+            el.removeEventListener('pointermove', handlePointerMove as EventListener);
+            el.removeEventListener('pointerup', handlePointerUp as EventListener);
+            el.removeEventListener('pointercancel', cancelPointer);
+            el.removeEventListener('pointerleave', cancelPointer);
         };
-    }, []);
+    }, [isRunning, possession, isLandscape, isFlipped, homeColor, awayColor]);
 
     useEffect(() => {
         if (possession !== Possession.NONE && possession !== prevPossession.current && isRunning) {
@@ -423,22 +440,10 @@ export const PitchMap: React.FC<PitchMapProps> = ({
         <div
             ref={pitchRef}
             className="w-full h-full bg-[#3d63b8] relative cursor-crosshair overflow-hidden touch-none select-none transition-all duration-700"
-            style={{ touchAction: 'none' }}
-            onPointerDown={handlePointerDown}
-            onPointerUp={handlePointerUp}
-            onPointerLeave={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (longPressTimer.current) clearTimeout(longPressTimer.current);
-                lastTapInfo.current = null;
-            }}
-            onTouchStart={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-            }}
-            onTouchEnd={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
+            style={{ 
+                touchAction: 'none',
+                WebkitTapHighlightColor: 'transparent',
+                userSelect: 'none',
             }}
         >
             {/* Attack Direction Arrow (Big background arrow) */}
