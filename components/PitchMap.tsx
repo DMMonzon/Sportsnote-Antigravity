@@ -252,7 +252,7 @@ export const PitchMap: React.FC<PitchMapProps> = ({
             const { x, y } = coords;
 
             // Feedback visual INMEDIATO (sin latencia)
-            addGlow(vx, vy, 'white', true);
+            addGlow(vx, vy, 'white');
 
             const now = Date.now();
             const timeDiff = now - lastTapTime.current;
