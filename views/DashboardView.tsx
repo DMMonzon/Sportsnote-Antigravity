@@ -81,7 +81,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ title, subtitle, description, c
   </div>
 );
 
-const GameAccordion = ({ g, onStats, onShare, onRecycle, onFavorite, onDelete }: { g: Game, onStats: () => void, onShare: () => void, onRecycle: () => void, onFavorite: () => void, onDelete: () => void }) => {
+const GameAccordion: React.FC<{ g: Game, onStats: () => void, onShare: () => void, onRecycle: () => void, onFavorite: () => void, onDelete: () => void }> = ({ g, onStats, onShare, onRecycle, onFavorite, onDelete }) => {
   const [expanded, setExpanded] = React.useState(false);
 
   return (

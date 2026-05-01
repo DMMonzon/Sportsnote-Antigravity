@@ -371,8 +371,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
           </div>
 
           <section className="bg-white p-6 rounded-[32px] shadow-sm border border-surfaceVariant">
-            <h3 className="text-xs font-black uppercase text-onSurfaceVariant mb-6 flex items-center gap-2 italic">
-          <section className="bg-white p-6 rounded-[32px] shadow-sm border border-surfaceVariant">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xs font-black uppercase text-onSurfaceVariant flex items-center gap-2 italic">
                 <span className="text-sm">🥅</span> Remates Totales
