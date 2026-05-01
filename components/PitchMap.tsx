@@ -33,13 +33,14 @@ export const PitchMap: React.FC<PitchMapProps> = ({
     onManualMenu,
 }) => {
     const [glows, setGlows] = useState<Glow[]>([]);
-    const tapCount = useRef(0);
     const tapTimer = useRef<number | null>(null);
     const pointerStart = useRef<{ x: number, y: number, t: number } | null>(null);
     const longPressTimer = useRef<number | null>(null);
     const isGestureActive = useRef(false);
     const [foulPulse, setFoulPulse] = React.useState(false);
     const [overrideAngle, setOverrideAngle] = React.useState<number | null>(null);
+    const lastTapInfo = useRef<{ x: number, y: number, t: number } | null>(null);
+    const pitchRef = useRef<HTMLDivElement>(null);
 
     const prevPossession = useRef<Possession>(possession);
 
@@ -168,7 +169,6 @@ export const PitchMap: React.FC<PitchMapProps> = ({
             e.preventDefault();
             e.stopPropagation();
             isGestureActive.current = true;
-            tapCount.current = 0;
             if (tapTimer.current) {
                 clearTimeout(tapTimer.current);
                 tapTimer.current = null;
@@ -220,7 +220,7 @@ export const PitchMap: React.FC<PitchMapProps> = ({
 
         // Tap
         if (distance <= 40) {
-            handleTap(vx, vy);
+            handleTap(vx, vy, e.clientX, e.clientY);
         }
     };
 
@@ -241,7 +241,7 @@ export const PitchMap: React.FC<PitchMapProps> = ({
         return { x: Math.min(100, Math.max(0, x)), y: Math.min(100, Math.max(0, y)) };
     };
 
-    const handleTap = (vx: number, vy: number) => {
+    const handleTap = (vx: number, vy: number, clientX: number, clientY: number) => {
         const coords = getMappedCoords(vx, vy);
         const { x, y } = coords;
         const sector = getSector(x, y);
@@ -262,14 +262,28 @@ export const PitchMap: React.FC<PitchMapProps> = ({
             return;
         }
 
-        tapCount.current += 1;
-        if (tapTimer.current) {
-            clearTimeout(tapTimer.current);
-            tapTimer.current = null;
+        const now = Date.now();
+        let isDoubleTap = false;
+
+        if (lastTapInfo.current) {
+            const timeSinceLastTap = now - lastTapInfo.current.t;
+            const dx = clientX - lastTapInfo.current.x;
+            const dy = clientY - lastTapInfo.current.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (timeSinceLastTap <= 300 && distance <= 10) {
+                isDoubleTap = true;
+            }
         }
 
-        if (tapCount.current === 2) {
-            tapCount.current = 0;
+        if (isDoubleTap) {
+            console.log('Detección: Doble Toque Confirmado');
+            if (tapTimer.current) {
+                clearTimeout(tapTimer.current);
+                tapTimer.current = null;
+            }
+            lastTapInfo.current = null; // Reset for next tap
+            
             // Double Tap
             window.setTimeout(() => {
                 if (possession === Possession.HOME) {
@@ -288,9 +302,15 @@ export const PitchMap: React.FC<PitchMapProps> = ({
                 }
             }, 0);
         } else {
+            console.log('Detección: Primer Toque');
+            lastTapInfo.current = { x: clientX, y: clientY, t: now };
+            if (tapTimer.current) {
+                clearTimeout(tapTimer.current);
+            }
+            
             tapTimer.current = window.setTimeout(() => {
-                tapCount.current = 0;
                 tapTimer.current = null;
+                lastTapInfo.current = null;
                 // Single Tap
                 if (possession === Possession.HOME) {
                     // ENTRY - Prioridad Área > 23 Yardas
@@ -320,6 +340,26 @@ export const PitchMap: React.FC<PitchMapProps> = ({
         return () => {
             if (tapTimer.current) clearTimeout(tapTimer.current);
             if (longPressTimer.current) clearTimeout(longPressTimer.current);
+        };
+    }, []);
+
+    useEffect(() => {
+        const el = pitchRef.current;
+        if (!el) return;
+
+        const preventTouchDefault = (e: TouchEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+        };
+
+        el.addEventListener('touchstart', preventTouchDefault, { passive: false });
+        el.addEventListener('touchend', preventTouchDefault, { passive: false });
+        el.addEventListener('touchmove', preventTouchDefault, { passive: false });
+
+        return () => {
+            el.removeEventListener('touchstart', preventTouchDefault);
+            el.removeEventListener('touchend', preventTouchDefault);
+            el.removeEventListener('touchmove', preventTouchDefault);
         };
     }, []);
 
@@ -381,14 +421,24 @@ export const PitchMap: React.FC<PitchMapProps> = ({
 
     return (
         <div
+            ref={pitchRef}
             className="w-full h-full bg-[#3d63b8] relative cursor-crosshair overflow-hidden touch-none select-none transition-all duration-700"
+            style={{ touchAction: 'none' }}
             onPointerDown={handlePointerDown}
             onPointerUp={handlePointerUp}
             onPointerLeave={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 if (longPressTimer.current) clearTimeout(longPressTimer.current);
-                tapCount.current = 0;
+                lastTapInfo.current = null;
+            }}
+            onTouchStart={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            }}
+            onTouchEnd={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
             }}
         >
             {/* Attack Direction Arrow (Big background arrow) */}
