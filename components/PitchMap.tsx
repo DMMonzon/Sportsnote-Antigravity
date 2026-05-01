@@ -251,15 +251,21 @@ export const PitchMap: React.FC<PitchMapProps> = ({
             const coords = getMappedCoords(vx, vy);
             const { x, y } = coords;
 
+            // Feedback visual INMEDIATO (sin latencia)
+            addGlow(vx, vy, 'white', true);
+
             const now = Date.now();
             const timeDiff = now - lastTapTime.current;
             const dx = clientX - lastTapCoords.current.x;
             const dy = clientY - lastTapCoords.current.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
 
-            if (timeDiff < 250 && distance < 15) {
+            if (timeDiff < 200 && distance < 10) {
                 // Doble Tap detectado
-                if (tapTimer.current) clearTimeout(tapTimer.current);
+                if (tapTimer.current) {
+                    clearTimeout(tapTimer.current);
+                    tapTimer.current = null;
+                }
                 lastTapTime.current = 0; // Prevenir múltiples disparos (triple tap)
                 fireDoubleTap(x, y, vx, vy, getSector(x, y));
             } else {
@@ -269,7 +275,9 @@ export const PitchMap: React.FC<PitchMapProps> = ({
                 pointerStart.current = { x: clientX, y: clientY, t: now };
                 isGestureActive.current = false;
 
-                if (tapTimer.current) clearTimeout(tapTimer.current);
+                if (tapTimer.current) {
+                    clearTimeout(tapTimer.current);
+                }
                 
                 tapTimer.current = window.setTimeout(() => {
                     tapTimer.current = null;
@@ -278,10 +286,15 @@ export const PitchMap: React.FC<PitchMapProps> = ({
                     }
                 }, 200);
 
-                if (longPressTimer.current) clearTimeout(longPressTimer.current);
+                if (longPressTimer.current) {
+                    clearTimeout(longPressTimer.current);
+                }
                 longPressTimer.current = window.setTimeout(() => {
                     isGestureActive.current = true;
-                    if (tapTimer.current) clearTimeout(tapTimer.current);
+                    if (tapTimer.current) {
+                        clearTimeout(tapTimer.current);
+                        tapTimer.current = null;
+                    }
                     if (navigator.vibrate) navigator.vibrate(100);
                     addGlow(vx, vy, 'green');
                     onManualMenu(coords.x, coords.y);
@@ -298,7 +311,7 @@ export const PitchMap: React.FC<PitchMapProps> = ({
             const dy = e.clientY - pointerStart.current.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
             
-            if (distance > 15) {
+            if (distance > 10) {
                 isGestureActive.current = true; // Anular tap si hay movimiento
                 if (tapTimer.current) {
                     clearTimeout(tapTimer.current);
@@ -347,10 +360,9 @@ export const PitchMap: React.FC<PitchMapProps> = ({
 
                 fireSwipe(startC, startVx, startVy, dy_pitch, angle);
             }
-            // NO limpiamos pointerStart porque podría ser necesario si hacemos un segundo tap rápido (double tap distance measure usa lastTapCoords de todos modos, así que está bien)
         };
 
-        const cancelPointer = (e: Event) => {
+        const handlePointerCancel = (e: Event) => {
             e.preventDefault();
             e.stopPropagation();
             if (tapTimer.current) {
@@ -368,15 +380,17 @@ export const PitchMap: React.FC<PitchMapProps> = ({
         el.addEventListener('pointerdown', handlePointerDown as EventListener, { passive: false });
         el.addEventListener('pointermove', handlePointerMove as EventListener, { passive: false });
         el.addEventListener('pointerup', handlePointerUp as EventListener, { passive: false });
-        el.addEventListener('pointercancel', cancelPointer, { passive: false });
-        el.addEventListener('pointerleave', cancelPointer, { passive: false });
+        el.addEventListener('pointercancel', handlePointerCancel, { passive: false });
 
         return () => {
             el.removeEventListener('pointerdown', handlePointerDown as EventListener);
             el.removeEventListener('pointermove', handlePointerMove as EventListener);
             el.removeEventListener('pointerup', handlePointerUp as EventListener);
-            el.removeEventListener('pointercancel', cancelPointer);
-            el.removeEventListener('pointerleave', cancelPointer);
+            el.removeEventListener('pointercancel', handlePointerCancel);
+            
+            // Clean up timers on unmount securely
+            if (tapTimer.current) clearTimeout(tapTimer.current);
+            if (longPressTimer.current) clearTimeout(longPressTimer.current);
         };
     }, [isRunning, possession, isLandscape, isFlipped, homeColor, awayColor]);
 
