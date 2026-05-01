@@ -2047,19 +2047,29 @@ const LiveGameView: React.FC<{
                   }
 
                   const isNearTop = dispY < 15;
+                  
+                  let leftPos = `${dispX}%`;
+                  let hTransform = '-translate-x-1/2';
+                  if (dispX < 15) {
+                      leftPos = '20px';
+                      hTransform = 'translate-x-0';
+                  } else if (dispX > 85) {
+                      leftPos = 'calc(100% - 20px)';
+                      hTransform = '-translate-x-full';
+                  }
 
                   return (
                     <div
                       key={feedback.id}
                       className="absolute z-[400] pointer-events-none transition-all duration-200"
                       style={{
-                        left: `${dispX}%`,
+                        left: leftPos,
                         top: `${dispY}%`,
                         opacity: feedback.fading ? 0 : 1,
                         transform: feedback.fading ? 'scale(0.95)' : 'scale(1)',
                       }}
                     >
-                      <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-md border border-white/50 shadow-lg -translate-x-1/2 ${isNearTop ? 'translate-y-4' : '-translate-y-10'} ${feedback.fading ? '' : 'animate-in zoom-in slide-in-from-bottom-2 duration-200'}`}>
+                      <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-md border border-white/50 shadow-lg ${hTransform} ${isNearTop ? 'translate-y-4' : '-translate-y-10'} ${feedback.fading ? '' : 'animate-in zoom-in slide-in-from-bottom-2 duration-200'}`}>
                         <span className="text-sm">{feedback.icon}</span>
                         <span className="text-[10px] font-black text-dark uppercase tracking-wider whitespace-nowrap">{feedback.text}</span>
                       </div>
@@ -2067,31 +2077,14 @@ const LiveGameView: React.FC<{
                   );
                 })()}
 
-                {showPopup && (() => {
-                  let dispX = showPopup.x;
-                  let dispY = showPopup.y;
-
-                  if (isFlipped) {
-                    dispX = 100 - dispX;
-                    dispY = 100 - dispY;
-                  }
-                  if (isLandscape) {
-                    const temp = dispX;
-                    dispX = dispY;
-                    dispY = 100 - temp;
-                  }
-
-                  return (
-                    <div
-                      className={`absolute z-[300] bg-white shadow-2xl rounded-[32px] p-6 flex flex-col gap-3 min-w-[200px] border border-surfaceVariant animate-in zoom-in duration-150`}
-                      style={{
-                        left: `${dispX}%`,
-                        top: dispY < 35 ? `${dispY + 10}%` : `${dispY}%`,
-                        transform: `${dispY < 35 ? 'translate(-50%, 0)' : 'translate(-50%, -100%)'}`
-                      }}
-                      onClick={e => e.stopPropagation()}
-                    >
-                      <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest border-b border-surfaceVariant pb-2 mb-1">Resultado de Acción</p>
+                {showPopup && (
+                  <Portal>
+                    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-brandDark/40 backdrop-blur-sm animate-in fade-in duration-200">
+                      <div
+                        className="relative bg-white shadow-2xl rounded-[40px] p-8 flex flex-col gap-4 min-w-[300px] max-w-sm border border-surfaceVariant animate-in zoom-in duration-200 text-center"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <p className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest border-b border-surfaceVariant pb-3 mb-2">Resultado de Acción</p>
                       {showPopup.type === 'FOUL' ? (
                         <div className="flex flex-col gap-3">
                           {foulCardType === 'AMARILLA' ? (
@@ -2192,10 +2185,11 @@ const LiveGameView: React.FC<{
                         </div>
                       )}
 
-                      <button className="text-[8px] font-black text-onSurfaceVariant uppercase mt-1 text-center py-1 hover:text-primary transition-colors" onClick={() => { setShowPopup(null); setFoulCardType('NONE'); }}>Cerrar</button>
+                      <button className="text-[8px] font-black text-onSurfaceVariant uppercase mt-4 text-center py-2 hover:text-primary transition-colors border-t border-surfaceVariant/50" onClick={() => { setShowPopup(null); setFoulCardType('NONE'); }}>Cerrar</button>
                     </div>
-                  );
-                })()}
+                  </div>
+                </Portal>
+                )}
 
                 {!isRunning && possession === Possession.NONE && seconds === 0 && (
                   <div className="absolute inset-0 bg-brandDark/40 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500 z-50">
