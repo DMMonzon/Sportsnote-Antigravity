@@ -389,6 +389,17 @@ const LiveGameView: React.FC<{
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showFinishConfirm, setShowFinishConfirm] = useState(false);
   const [syncQueueLength, setSyncQueueLength] = useState(PersistenceManager.getSyncQueueLength());
+  const [orientationTrigger, setOrientationTrigger] = useState(0);
+
+  useEffect(() => {
+    const handleResize = () => setOrientationTrigger(prev => prev + 1);
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
+  }, []);
 
   useEffect(() => {
     const syncInterval = setInterval(() => {
@@ -2000,13 +2011,14 @@ const LiveGameView: React.FC<{
               </div>
             ) : (
               <div
-                className="relative flex items-center justify-center w-full h-full"
+                key={`pitch-wrapper-${orientationTrigger}`}
+                className="relative flex items-center justify-center"
                 style={{
                   aspectRatio: isLandscape ? '91.4 / 55' : '55 / 91.4',
-                  maxHeight: isLandscape ? '92%' : '100%',
-                  maxWidth: isLandscape ? '92%' : '100%',
-                  height: '100%',
-                  width: 'auto'
+                  maxHeight: '100%',
+                  maxWidth: '100%',
+                  height: isLandscape ? '100%' : 'auto',
+                  width: isLandscape ? 'auto' : '100%'
                 }}
               >
                 <PitchMap
