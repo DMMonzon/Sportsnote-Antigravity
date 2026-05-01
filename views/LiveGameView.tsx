@@ -686,7 +686,7 @@ const LiveGameView: React.FC<{
       }
 
       const attackingTeamId = possession === Possession.HOME ? prev.teamHome.id : prev.teamAway.id;
-      const eventTeamId = forcedTeamId || ((type.includes('DISPARO') || type.includes('GOL')) ? attackingTeamId : (nextPoss === Possession.HOME ? prev.teamHome.id : prev.teamAway.id));
+      const eventTeamId = forcedTeamId || ((type.toUpperCase().includes('DISPARO') || type.toUpperCase().includes('GOL') || type.toUpperCase().includes('PÉRDIDA')) ? attackingTeamId : (nextPoss === Possession.HOME ? prev.teamHome.id : prev.teamAway.id));
 
       const sector = getSectorInfo(x, y);
 
@@ -1784,119 +1784,63 @@ const LiveGameView: React.FC<{
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Remates Propios */}
+                      {/* Remates Totales Unificados */}
                       <div className="bg-surface/50 p-5 rounded-[28px] border border-surfaceVariant shadow-sm flex flex-col gap-4">
-                        <div className={`flex justify-between items-center ${shotsOwnExpanded ? 'border-b border-surfaceVariant pb-3' : ''}`}>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs">🥅</span>
-                            <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">Remates Propios</p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-xl font-black text-primary">{getStat(['DISPARO'])}</span>
-                            <button
-                              onClick={() => setShotsOwnExpanded(!shotsOwnExpanded)}
-                              className={`w-6 h-6 flex items-center justify-center rounded-full bg-surfaceVariant/10 transition-transform duration-300 ${shotsOwnExpanded ? 'rotate-180' : ''}`}
-                            >
-                              <span className="text-[10px]">▼</span>
-                            </button>
-                          </div>
-                        </div>
-                        {shotsOwnExpanded && (
-                          <div className="grid grid-cols-3 gap-2 animate-in slide-in-from-top duration-300">
-                            <div className="flex flex-col items-center">
-                              <span className="text-[7px] font-black text-primary uppercase mb-1">Goles</span>
-                              <span className="text-[11px] font-black text-dark">{getStat(['GOL'])}</span>
-                            </div>
-                            <div className="flex flex-col items-center">
-                              <span className="text-[7px] font-black text-onSurfaceVariant uppercase mb-1">Atajados</span>
-                              <span className="text-[11px] font-black text-dark">{getStat(['ATAJADO'])}</span>
-                            </div>
-                            <div className="flex flex-col items-center">
-                              <span className="text-[7px] font-black text-onSurfaceVariant uppercase mb-1">Desviados</span>
-                              <span className="text-[11px] font-black text-dark">{getStat(['DESVIADO'])}</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Remates Rival */}
-                      <div className="bg-surface/50 p-5 rounded-[28px] border border-surfaceVariant shadow-sm flex flex-col gap-4">
-                        <div className={`flex justify-between items-center ${shotsRivalExpanded ? 'border-b border-surfaceVariant pb-3' : ''}`}>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs">🥅</span>
-                            <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">Remates Rival</p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-xl font-black text-orange-600">{getStat(['DISPARO'], game.teamAway.id)}</span>
-                            <button
-                              onClick={() => setShotsRivalExpanded(!shotsRivalExpanded)}
-                              className={`w-6 h-6 flex items-center justify-center rounded-full bg-surfaceVariant/10 transition-transform duration-300 ${shotsRivalExpanded ? 'rotate-180' : ''}`}
-                            >
-                              <span className="text-[10px]">▼</span>
-                            </button>
-                          </div>
-                        </div>
-                        {shotsRivalExpanded && (
-                          <div className="grid grid-cols-3 gap-2 animate-in slide-in-from-top duration-300">
-                            <div className="flex flex-col items-center">
-                              <span className="text-[7px] font-black text-orange-600 uppercase mb-1">Goles</span>
-                              <span className="text-[11px] font-black text-dark">{getStat(['GOL'], game.teamAway.id)}</span>
-                            </div>
-                            <div className="flex flex-col items-center">
-                              <span className="text-[7px] font-black text-onSurfaceVariant uppercase mb-1">Atajados</span>
-                              <span className="text-[11px] font-black text-dark">{getStat(['ATAJADO'], game.teamAway.id)}</span>
-                            </div>
-                            <div className="flex flex-col items-center">
-                              <span className="text-[7px] font-black text-onSurfaceVariant uppercase mb-1">Desviados</span>
-                              <span className="text-[11px] font-black text-dark">{getStat(['DESVIADO'], game.teamAway.id)}</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Remates Totales Summary Card */}
-                      <div className="bg-surface/50 p-5 rounded-[28px] border border-surfaceVariant shadow-sm flex flex-col gap-4">
-                        <div className={`flex justify-between items-center ${shotsTotalSidebarExpanded ? 'border-b border-surfaceVariant pb-3' : ''}`}>
+                        <div className="flex justify-between items-center mb-2">
                           <div className="flex items-center gap-2">
                             <span className="text-xs">🥅</span>
                             <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">Remates Totales</p>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-xl font-black text-dark">{landscapeShots.home}/{landscapeShots.away}</span>
-                            <button
-                              onClick={() => setShotsTotalSidebarExpanded(!shotsTotalSidebarExpanded)}
-                              className={`w-6 h-6 flex items-center justify-center rounded-full bg-surfaceVariant/10 transition-transform duration-300 ${shotsTotalSidebarExpanded ? 'rotate-180' : ''}`}
-                            >
-                              <span className="text-[10px]">▼</span>
-                            </button>
+                          <div className="text-xl font-black text-dark">
+                            {getStat(['DISPARO'], game.teamHome.id)} <span className="text-onSurfaceVariant/40">-</span> {getStat(['DISPARO'], game.teamAway.id)}
                           </div>
                         </div>
-                        {shotsTotalSidebarExpanded && (
-                          <div className="flex flex-col gap-4 animate-in slide-in-from-top duration-300">
-                            <div className="flex items-center justify-between py-1 border-b border-surfaceVariant/30">
-                              <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
-                                <span className="text-[9px] font-black text-onSurfaceVariant uppercase">Local</span>
-                              </div>
-                              <div className="flex gap-4">
-                                <span className="text-[10px] font-black text-dark">G: {getStat(['GOL'], game.teamHome.id)}</span>
-                                <span className="text-[10px] font-black text-dark">A: {getStat(['ATAJADO'], game.teamHome.id)}</span>
-                                <span className="text-[10px] font-black text-dark">D: {getStat(['DESVIADO'], game.teamHome.id)}</span>
-                              </div>
+                        
+                        <div className="flex flex-col gap-4">
+                          {/* Local */}
+                          <div className="bg-white rounded-[20px] p-4 border border-surfaceVariant/50 flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div className="flex items-center gap-3 w-full md:w-1/4">
+                              <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
+                              <span className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest">{game.teamHome.name}</span>
                             </div>
-                            <div className="flex items-center justify-between py-1">
-                              <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
-                                <span className="text-[9px] font-black text-onSurfaceVariant uppercase">Visita</span>
+                            <div className="grid grid-cols-3 gap-2 md:gap-4 flex-1 w-full">
+                              <div className="text-center bg-surface/30 p-2 rounded-xl shadow-sm border border-surfaceVariant/30">
+                                <p className="text-[7px] uppercase opacity-60 mb-0.5">Gol</p>
+                                <p className="text-sm font-black text-dark">{getStat(['GOL'], game.teamHome.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['GOL'], game.teamHome.id) / (getStat(['DISPARO'], game.teamHome.id) || 1)) * 100)}%)</span></p>
                               </div>
-                              <div className="flex gap-4">
-                                <span className="text-[10px] font-black text-dark">G: {getStat(['GOL'], game.teamAway.id)}</span>
-                                <span className="text-[10px] font-black text-dark">A: {getStat(['ATAJADO'], game.teamAway.id)}</span>
-                                <span className="text-[10px] font-black text-dark">D: {getStat(['DESVIADO'], game.teamAway.id)}</span>
+                              <div className="text-center bg-surface/30 p-2 rounded-xl shadow-sm border border-surfaceVariant/30">
+                                <p className="text-[7px] uppercase opacity-60 mb-0.5">Atajado</p>
+                                <p className="text-sm font-black text-dark">{getStat(['ATAJADO'], game.teamHome.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['ATAJADO'], game.teamHome.id) / (getStat(['DISPARO'], game.teamHome.id) || 1)) * 100)}%)</span></p>
+                              </div>
+                              <div className="text-center bg-surface/30 p-2 rounded-xl shadow-sm border border-surfaceVariant/30">
+                                <p className="text-[7px] uppercase opacity-60 mb-0.5">Desv.</p>
+                                <p className="text-sm font-black text-dark">{getStat(['DESVIADO'], game.teamHome.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['DESVIADO'], game.teamHome.id) / (getStat(['DISPARO'], game.teamHome.id) || 1)) * 100)}%)</span></p>
                               </div>
                             </div>
                           </div>
-                        )}
+
+                          {/* Visitante */}
+                          <div className="bg-white rounded-[20px] p-4 border border-surfaceVariant/50 flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div className="flex items-center gap-3 w-full md:w-1/4">
+                              <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
+                              <span className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest">{game.teamAway.name}</span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 md:gap-4 flex-1 w-full">
+                              <div className="text-center bg-surface/30 p-2 rounded-xl shadow-sm border border-surfaceVariant/30">
+                                <p className="text-[7px] uppercase opacity-60 mb-0.5">Gol</p>
+                                <p className="text-sm font-black text-dark">{getStat(['GOL'], game.teamAway.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['GOL'], game.teamAway.id) / (getStat(['DISPARO'], game.teamAway.id) || 1)) * 100)}%)</span></p>
+                              </div>
+                              <div className="text-center bg-surface/30 p-2 rounded-xl shadow-sm border border-surfaceVariant/30">
+                                <p className="text-[7px] uppercase opacity-60 mb-0.5">Atajado</p>
+                                <p className="text-sm font-black text-dark">{getStat(['ATAJADO'], game.teamAway.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['ATAJADO'], game.teamAway.id) / (getStat(['DISPARO'], game.teamAway.id) || 1)) * 100)}%)</span></p>
+                              </div>
+                              <div className="text-center bg-surface/30 p-2 rounded-xl shadow-sm border border-surfaceVariant/30">
+                                <p className="text-[7px] uppercase opacity-60 mb-0.5">Desv.</p>
+                                <p className="text-sm font-black text-dark">{getStat(['DESVIADO'], game.teamAway.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['DESVIADO'], game.teamAway.id) / (getStat(['DISPARO'], game.teamAway.id) || 1)) * 100)}%)</span></p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
