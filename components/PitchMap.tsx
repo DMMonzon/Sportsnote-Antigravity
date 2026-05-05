@@ -199,8 +199,15 @@ export const PitchMap: React.FC<PitchMapProps> = ({
         const in23Start = startSector.includes('23 yardas');
         const inTargetZone = inAreaStart || in23Start;
 
-        if (inTargetZone && Math.abs(dy_pitch) > 1) {
-            const attackingTeam = dy_pitch < 0 ? Possession.HOME : Possession.AWAY;
+        const inTopZone = startC.y <= 25;
+        const inBottomZone = startC.y >= 75;
+        const isTowardsTopGoal = dy_pitch < -1;
+        const isTowardsBottomGoal = dy_pitch > 1;
+        
+        const isFoulTowardsGoalInZone = (inTopZone && isTowardsTopGoal) || (inBottomZone && isTowardsBottomGoal);
+
+        if (inTargetZone && Math.abs(dy_pitch) > 1 && isFoulTowardsGoalInZone) {
+            const attackingTeam = isTowardsTopGoal ? Possession.HOME : Possession.AWAY;
             const ownColor = attackingTeam === Possession.HOME ? homeColor : awayColor;
             addGlow(startVx, startVy, ownColor, false);
             triggerFoulAnimation(angle);

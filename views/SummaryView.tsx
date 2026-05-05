@@ -428,45 +428,16 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
           </section>
 
           <section className="bg-white p-6 rounded-[32px] shadow-sm border border-surfaceVariant">
-            <div className="flex flex-col md:flex-row gap-6">
-              <div className="flex-1">
+            <div className="flex flex-col gap-6">
+              <div className="w-full">
                 <h3 className="text-xs font-black uppercase text-onSurfaceVariant mb-4 italic">Balance de Acciones (Local)</h3>
-                <div className="flex flex-col gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {[
                     { label: 'Pérdidas', icon: '📉', types: ['PÉRDIDA', 'PERDIDA', 'TURNOVER'], color: 'text-orange-600' },
                     { label: 'Recuperos', icon: '📈', types: ['RECUPERO'], color: 'text-emerald-600' },
                     { label: 'Faltas', icon: '⚠️', types: ['FALTA'], color: 'text-red-600' }
                   ].map(stat => {
                     const data = getDetailedStat(stat.types, game.teamHome.id);
-                    return (
-                      <div key={stat.label} className="bg-surface/30 p-4 rounded-[24px] border border-surfaceVariant flex flex-col gap-2 shadow-sm">
-                        <div className="flex justify-between items-center border-b border-surfaceVariant pb-2">
-                          <div className="flex items-center gap-2">
-                            {stat.icon && <span className="text-[10px]">{stat.icon}</span>}
-                            <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">{stat.label}</p>
-                          </div>
-                          <span className={`text-xl font-black ${stat.color}`}>{data.total}</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 mt-1">
-                          <div className="flex items-center gap-2 p-2 rounded-xl bg-white border border-surfaceVariant/30"><span className="text-blue-500 text-[10px]">↓</span><div className="flex flex-col"><span className="text-[8px] font-bold opacity-60">Propio</span><span className="text-[11px] font-black">{data.own}</span></div></div>
-                          <div className="flex items-center gap-2 p-2 rounded-xl bg-white border border-surfaceVariant/30"><span className="text-orange-500 text-[10px]">↑</span><div className="flex flex-col"><span className="text-[8px] font-bold opacity-60">Rival</span><span className="text-[11px] font-black">{data.rival}</span></div></div>
-                        </div>
-                        <PeriodRow periods={data.periods} />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-              
-              <div className="flex-1">
-                <h3 className="text-xs font-black uppercase text-onSurfaceVariant mb-4 italic text-right">Balance de Acciones (Visitante)</h3>
-                <div className="flex flex-col gap-4">
-                  {[
-                    { label: 'Pérdidas', icon: '📉', types: ['PÉRDIDA', 'PERDIDA', 'TURNOVER'], color: 'text-orange-600' },
-                    { label: 'Recuperos', icon: '📈', types: ['RECUPERO'], color: 'text-emerald-600' },
-                    { label: 'Faltas', icon: '⚠️', types: ['FALTA'], color: 'text-red-600' }
-                  ].map(stat => {
-                    const data = getDetailedStat(stat.types, game.teamAway.id);
                     return (
                       <div key={stat.label} className="bg-surface/30 p-4 rounded-[24px] border border-surfaceVariant flex flex-col gap-2 shadow-sm">
                         <div className="flex justify-between items-center border-b border-surfaceVariant pb-2">

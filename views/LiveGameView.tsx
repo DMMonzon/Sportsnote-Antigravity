@@ -353,11 +353,8 @@ const LiveGameView: React.FC<{
     }
   }, [feedback]);
 
-  // Modal de detalles de gol
-  const [showGoalModal, setShowGoalModal] = useState(false);
-  const [goalAuthor, setGoalAuthor] = useState('');
+  // Modal de detalles de gol (Unificado)
   const [goalType, setGoalType] = useState<'Individual' | 'Colectiva' | 'Penal' | 'Corto' | null>(null);
-  const [pendingGoalAction, setPendingGoalAction] = useState<{ scoreUpdate: { home: number, away: number }, nextPoss: Possession } | null>(null);
 
   const [activeView, setActiveView] = useState<'field' | 'list' | 'tactics' | 'stats'>('field');
 
@@ -495,6 +492,7 @@ const LiveGameView: React.FC<{
       setAtajadoSelected(false);
       setFoulPlayer('');
       setFoulMinutes('');
+      setGoalType(null);
     }
   }, [showPopup]);
 
@@ -642,6 +640,13 @@ const LiveGameView: React.FC<{
       const targetGoal = y < 50 ? 'TOP' : 'BOTTOM';
       setShowPopup({ x, y, type: 'SHOT', targetGoal });
       setAtajadoSelected(false);
+      if (lastSecondaryAction) {
+        if (lastSecondaryAction.includes('CÓRNER CORTO')) setGoalType('Corto');
+        else if (lastSecondaryAction.includes('PENAL')) setGoalType('Penal');
+        else setGoalType(null);
+      } else {
+        setGoalType(null);
+      }
     }
     registerEvent(type, nextPoss, x, y, details);
   };
@@ -852,16 +857,8 @@ const LiveGameView: React.FC<{
     setFoulCardType('NONE');
   };
 
-  const handleGoalClick = (scoreUpdate: { home: number, away: number }, nextPoss: Possession) => {
-    setPendingGoalAction({ scoreUpdate, nextPoss });
-    if (foulPlayer) setGoalAuthor(foulPlayer);
-    setShowGoalModal(true);
-  };
-
-  const confirmGoalDetails = () => {
-    if (!pendingGoalAction) return;
-
-    const authorStr = goalAuthor ? `#${goalAuthor}` : 'Jugador: N/A';
+  const handleGoalConfirmation = (scoreUpdate: { home: number, away: number }, nextPoss: Possession) => {
+    const authorStr = foulPlayer ? `#${foulPlayer}` : 'Jugador: N/A';
     const typeMap = {
       'Individual': 'J. Individual',
       'Colectiva': 'J. Colectiva',
@@ -870,38 +867,13 @@ const LiveGameView: React.FC<{
     };
     const typeStr = goalType ? typeMap[goalType] : 'Tipo: No especificado';
 
-    let eventType = 'DISPARO (GOL)';
-    if (lastSecondaryAction) {
-      if (lastSecondaryAction.includes('CÓRNER CORTO')) eventType = 'GOL (Córner Corto)';
-      else if (lastSecondaryAction.includes('PENAL')) eventType = 'GOL (Penal)';
-    }
-
+    // Siempre registramos como DISPARO (GOL) para no duplicar el contador estadístico
+    const eventType = 'DISPARO (GOL)';
     const finalDetails = `GOL${foulPlayer ? ` (#${foulPlayer})` : ''} | ${authorStr} | ${typeStr}`;
 
-    updateLastEvent(eventType, finalDetails, pendingGoalAction.scoreUpdate, pendingGoalAction.nextPoss);
+    updateLastEvent(eventType, finalDetails, scoreUpdate, nextPoss);
     setLastSecondaryAction(null); // Used, now clear it
-    resetGoalModal();
-  };
-
-  const skipGoalDetails = () => {
-    if (!pendingGoalAction) return;
-
-    let eventType = 'DISPARO (GOL)';
-    if (lastSecondaryAction) {
-      if (lastSecondaryAction.includes('CÓRNER CORTO')) eventType = 'GOL (Córner Corto)';
-      else if (lastSecondaryAction.includes('PENAL')) eventType = 'GOL (Penal)';
-    }
-
-    updateLastEvent(eventType, 'GOL | Jugador: N/A | Tipo: No especificado', pendingGoalAction.scoreUpdate, pendingGoalAction.nextPoss);
-    setLastSecondaryAction(null);
-    resetGoalModal();
-  };
-
-  const resetGoalModal = () => {
-    setShowGoalModal(false);
-    setGoalAuthor('');
     setGoalType(null);
-    setPendingGoalAction(null);
   };
 
   const deleteEvent = (eventId: string) => {
@@ -1154,71 +1126,7 @@ const LiveGameView: React.FC<{
         </Portal>
       )}
 
-      {/* Modal Detalles de Gol */}
-      {showGoalModal && (
-        <Portal>
-          <div className="fixed inset-0 z-[700] flex items-center justify-center p-6 bg-brandDark/50 backdrop-blur-md animate-in fade-in duration-300">
-            <div className="relative w-full max-w-md bg-white border border-surfaceVariant p-8 rounded-[40px] shadow-2xl flex flex-col animate-in zoom-in duration-300">
-              <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-[4px] mb-6 text-center">Detalles del Gol 🥅</h3>
-
-              {/* Sección Autor */}
-              <div className="mb-8">
-                <label className="text-[9px] font-black text-dark uppercase tracking-widest mb-3 block">Autor del Gol (Dorsal)</label>
-                <input
-                  type="number"
-                  maxLength={2}
-                  autoFocus
-                  value={goalAuthor}
-                  onChange={(e) => setGoalAuthor(e.target.value.slice(0, 2))}
-                  className="w-full h-16 bg-surface border border-surfaceVariant rounded-2xl text-center text-3xl font-black outline-none focus:border-primary transition-colors tabular-nums"
-                  placeholder="00"
-                />
-              </div>
-
-              {/* Sección Tipo de Jugada */}
-              <div className="mb-10">
-                <label className="text-[9px] font-black text-dark uppercase tracking-widest mb-4 block">Tipo de Jugada</label>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { id: 'Individual', label: 'Individual', icon: '👤' },
-                    { id: 'Colectiva', label: 'Colectiva', icon: '🤝' },
-                    { id: 'Penal', label: 'Penal', icon: '🎯' },
-                    { id: 'Corto', label: 'C. Corto', icon: '🏑' },
-                  ].map((type) => (
-                    <button
-                      key={type.id}
-                      onClick={() => setGoalType(type.id as any)}
-                      className={`h-16 rounded-2xl border flex items-center justify-center gap-3 text-xs font-black transition-all ${goalType === type.id
-                        ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20'
-                        : 'bg-surface border-surfaceVariant text-onSurfaceVariant'
-                        }`}
-                    >
-                      <span>{type.icon}</span>
-                      <span className="uppercase">{type.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Botones de Acción */}
-              <div className="flex flex-col gap-3">
-                <button
-                  onClick={confirmGoalDetails}
-                  className="w-full bg-primary text-white font-black py-5 rounded-2xl active:scale-95 text-xs uppercase tracking-widest shadow-xl shadow-primary/20"
-                >
-                  Confirmar Registro
-                </button>
-                <button
-                  onClick={skipGoalDetails}
-                  className="w-full bg-surface text-red-600 font-black py-4 rounded-2xl active:scale-95 text-[10px] uppercase tracking-widest border border-red-100"
-                >
-                  Omitir info
-                </button>
-              </div>
-            </div>
-          </div>
-        </Portal>
-      )}
+      {/* Modal Detalles de Gol eliminado y unificado con Modal de Remate */}
 
       {/* Modal de Confirmación de Período */}
       {periodToConfirm !== null && (
@@ -1384,15 +1292,13 @@ const LiveGameView: React.FC<{
                     onClick={() => setIsLandscape(!isLandscape)}
                     className={`w-full text-left p-4 rounded-xl flex items-center justify-between font-bold text-[11px] uppercase tracking-widest transition-all active:scale-95 ${isLandscape ? 'bg-primary/5 text-primary' : 'hover:bg-surface text-onSurface'}`}
                   >
-                    <span>Cancha Horizontal (90°)</span>
-                    <span>{isLandscape ? 'ON' : 'OFF'}</span>
+                    <span>{isLandscape ? 'Cancha Vertical' : 'Cancha Horizontal'}</span>
                   </button>
                   <button
                     onClick={() => setIsFlipped(!isFlipped)}
                     className={`w-full text-left p-4 rounded-xl flex items-center justify-between font-bold text-[11px] uppercase tracking-widest transition-all active:scale-95 ${isFlipped ? 'bg-primary/5 text-primary' : 'hover:bg-surface text-onSurface'}`}
                   >
-                    <span>Invertir Sentido Ataque</span>
-                    <span>{isFlipped ? 'ON' : 'OFF'}</span>
+                    <span>Invertir arcos</span>
                   </button>
                 </div>
 
@@ -1843,18 +1749,12 @@ const LiveGameView: React.FC<{
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4">
                         <div className="flex flex-col gap-4">
                           <h4 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest px-2 italic">Local</h4>
                           <StatDetailCard title="Pérdidas 📉" data={getDetailedStat(['PÉRDIDA', 'PERDIDA', 'TURNOVER'], game.teamHome.id)} colorClass="text-orange-600" />
                           <StatDetailCard title="Recuperos 📈" data={getDetailedStat(['RECUPERO'], game.teamHome.id)} colorClass="text-emerald-600" />
                           <StatDetailCard title="Faltas ⚠️" data={getDetailedStat(['FALTA'], game.teamHome.id)} colorClass="text-red-600" />
-                        </div>
-                        <div className="flex flex-col gap-4">
-                          <h4 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest px-2 italic text-right">Visitante</h4>
-                          <StatDetailCard title="Pérdidas 📉" data={getDetailedStat(['PÉRDIDA', 'PERDIDA', 'TURNOVER'], game.teamAway.id)} colorClass="text-orange-600" />
-                          <StatDetailCard title="Recuperos 📈" data={getDetailedStat(['RECUPERO'], game.teamAway.id)} colorClass="text-emerald-600" />
-                          <StatDetailCard title="Faltas ⚠️" data={getDetailedStat(['FALTA'], game.teamAway.id)} colorClass="text-red-600" />
                         </div>
                       </div>
 
@@ -2112,16 +2012,42 @@ const LiveGameView: React.FC<{
                           <div className="flex flex-col gap-2 mb-1">
                             <label className="text-[8px] font-bold text-onSurfaceVariant uppercase">Jugador #</label>
                             <input
-                              type="text"
+                              type="number"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
                               value={foulPlayer}
                               onChange={(e) => setFoulPlayer(e.target.value)}
                               className="w-full bg-surface border border-surfaceVariant rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:border-primary"
                               placeholder="Ej: 8"
                             />
                           </div>
+                          
+                          <div className="flex flex-col gap-2 mb-2">
+                            <label className="text-[8px] font-bold text-onSurfaceVariant uppercase">Modo del Gol (Si aplica)</label>
+                            <div className="grid grid-cols-4 gap-1.5">
+                              {[
+                                { id: 'Individual', label: 'Indiv.' },
+                                { id: 'Colectiva', label: 'Colect.' },
+                                { id: 'Penal', label: 'Penal' },
+                                { id: 'Corto', label: 'C. Corto' },
+                              ].map((type) => (
+                                <button
+                                  key={type.id}
+                                  onClick={() => setGoalType(type.id as any)}
+                                  className={`py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${goalType === type.id
+                                    ? 'bg-primary text-white shadow-sm'
+                                    : 'bg-surface border border-surfaceVariant text-onSurfaceVariant'
+                                    }`}
+                                >
+                                  {type.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
                           {!atajadoSelected ? (
                             <div className="flex flex-col gap-2">
-                              <button className="text-xs font-black text-primary text-left py-4 px-5 rounded-xl bg-primary/5 border border-primary/10 flex items-center gap-4 uppercase" onClick={() => handleGoalClick(showPopup.targetGoal === 'TOP' ? { home: 1, away: 0 } : { home: 0, away: 1 }, showPopup.targetGoal === 'TOP' ? Possession.AWAY : Possession.HOME)}>🥅 GOL</button>
+                              <button className="text-xs font-black text-primary text-left py-4 px-5 rounded-xl bg-primary/5 border border-primary/10 flex items-center gap-4 uppercase" onClick={() => handleGoalConfirmation(showPopup.targetGoal === 'TOP' ? { home: 1, away: 0 } : { home: 0, away: 1 }, showPopup.targetGoal === 'TOP' ? Possession.AWAY : Possession.HOME)}>🥅 GOL</button>
                               <button className="text-xs font-black text-dark text-left py-4 px-5 rounded-xl bg-surface border border-surfaceVariant flex items-center gap-4 uppercase" onClick={() => setAtajadoSelected(true)}>🛡️ ATAJADO</button>
                               <button className="text-xs font-black text-onSurfaceVariant text-left py-4 px-5 rounded-xl bg-surface border border-surfaceVariant flex items-center gap-4 uppercase" onClick={() => updateLastEvent('DISPARO (DESVIADO)', `DESVIADO${foulPlayer ? ` - Jugador #${foulPlayer}` : ''}`, undefined, possession === Possession.HOME ? Possession.AWAY : Possession.HOME)}>💨 DESVIADO</button>
                             </div>
@@ -2222,9 +2148,9 @@ const LiveGameView: React.FC<{
 
 
                 {/* Desgloses Detallados Sidebar */}
-                <StatDetailCard title="Pérdidas" data={getDetailedStat(['PÉRDIDA'])} colorClass="text-orange-600" compact={true} icon="📉" />
-                <StatDetailCard title="Recuperos" data={getDetailedStat(['RECUPERO'])} colorClass="text-emerald-600" compact={true} icon="📈" />
-                <StatDetailCard title="Faltas" data={getDetailedStat(['FALTA'])} colorClass="text-red-600" compact={true} icon="⚠️" />
+                <StatDetailCard title="Pérdidas" data={getDetailedStat(['PÉRDIDA', 'PERDIDA', 'TURNOVER'], game.teamHome.id)} colorClass="text-orange-600" compact={true} icon="📉" />
+                <StatDetailCard title="Recuperos" data={getDetailedStat(['RECUPERO'], game.teamHome.id)} colorClass="text-emerald-600" compact={true} icon="📈" />
+                <StatDetailCard title="Faltas" data={getDetailedStat(['FALTA'], game.teamHome.id)} colorClass="text-red-600" compact={true} icon="⚠️" />
 
                 {/* Análisis de Pases Sidebar Horizontal */}
                 <div className="mt-2">
