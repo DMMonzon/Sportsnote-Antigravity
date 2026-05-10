@@ -414,6 +414,9 @@ const LiveGameView: React.FC<{
   const [possessionSidebarExpanded, setPossessionSidebarExpanded] = useState(true);
   const [shotsTotalSidebarExpanded, setShotsTotalSidebarExpanded] = useState(true);
 
+  const [selectedShotAction, setSelectedShotAction] = useState<'GOL' | 'ATAJADO' | 'DESVIADO' | null>(null);
+  const [atajadoPossession, setAtajadoPossession] = useState<'MANTIENE' | 'PIERDE' | null>(null);
+
   const timerRef = useRef<number | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -482,6 +485,8 @@ const LiveGameView: React.FC<{
   useEffect(() => {
     if (!showPopup) {
       setAtajadoSelected(false);
+      setSelectedShotAction(null);
+      setAtajadoPossession(null);
       setFoulPlayer('');
       setFoulMinutes('');
       setGoalType(null);
@@ -846,6 +851,16 @@ const LiveGameView: React.FC<{
     setShowPopup(null);
     setFoulPlayer('');
     setFoulMinutes('');
+    setFoulCardType('NONE');
+  };
+
+  const handleClosePopup = () => {
+    if (showPopup?.type === 'SHOT') {
+      if (game && game.events.length > 0 && game.events[game.events.length - 1].type === 'DISPARO') {
+        deleteEvent(game.events[game.events.length - 1].id);
+      }
+    }
+    setShowPopup(null);
     setFoulCardType('NONE');
   };
 
@@ -1619,44 +1634,68 @@ const LiveGameView: React.FC<{
                   </div>
                   <FilterChips />
                   <div className="flex-1 overflow-y-auto space-y-3 no-scrollbar pb-4">
-                    {filteredEvents.map((e) => (
-                      <div key={e.id} className="bg-surface/60 border border-surfaceVariant p-4 rounded-2xl flex flex-col gap-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                            <span className="text-primary font-black text-xs bg-primary/10 px-2 py-1 rounded shrink-0">{e.gameTime}</span>
+                    {filteredEvents.map((e) => {
+                      let title = e.type;
+                      let subtitle = e.transcription || e.details || '';
+                      const isOwn = e.teamId === game.teamHome.id || e.scoringTeam === Possession.HOME;
+
+                      if (e.type.includes('DISPARO') || e.type.includes('GOL')) {
+                        const baseTitle = isOwn ? 'Disparo propio' : 'Disparo rival';
+                        let outcome = '';
+                        if (e.type.includes('GOL')) outcome = 'Gol';
+                        else if (e.type.includes('ATAJADO')) outcome = 'Atajado';
+                        else if (e.type.includes('DESVIADO')) outcome = 'Desviado';
+                        title = outcome ? `${baseTitle} (${outcome})` : baseTitle;
+                      } else if (e.type.includes('FALTA')) {
+                        title = isOwn ? 'Falta propia' : 'Falta recibida';
+                        const isCard = subtitle.includes('AMARILLA') || subtitle.includes('VERDE') || subtitle.includes('ROJA');
+                        const isCortoPenal = subtitle.includes('Provoca C.Corto/Penal');
+                        if (isCortoPenal) {
+                          subtitle = 'Provoca Córner Corto o Penal';
+                        } else if (!isCard && !e.transcription) {
+                          subtitle = '';
+                        }
+                      }
+
+                      return (
+                        <div key={e.id} className="bg-surface/60 border border-surfaceVariant p-4 rounded-2xl flex flex-col gap-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <span className="text-primary font-black text-xs bg-primary/10 px-2 py-1 rounded shrink-0">{e.gameTime}</span>
+                              <div className="flex items-center gap-2">
+                                {(e.type.includes('DISPARO') || e.type.includes('GOL') || e.type.includes('FALTA')) && (
+                                  <span
+                                    className="text-[10px] font-black px-2 py-0.5 rounded border border-current shrink-0 min-w-[24px] text-center"
+                                    style={{
+                                      color: isOwn ? (game.teamHome.primaryColor || '#6d5dfc') : (game.teamAway.primaryColor || '#ef4444'),
+                                      borderColor: isOwn ? (game.teamHome.primaryColor || '#6d5dfc') : (game.teamAway.primaryColor || '#ef4444'),
+                                      backgroundColor: isOwn ? `${game.teamHome.primaryColor || '#6d5dfc'}11` : `${game.teamAway.primaryColor || '#ef4444'}11`
+                                    }}
+                                  >
+                                    {isOwn ? 'L' : 'V'}
+                                  </span>
+                                )}
+                                <p className="text-dark text-sm font-bold uppercase">{title}</p>
+                              </div>
+                            </div>
                             <div className="flex items-center gap-2">
-                              {(e.type.includes('DISPARO') || e.type.includes('GOL') || e.type.includes('FALTA')) && (
-                                <span
-                                  className="text-[10px] font-black px-2 py-0.5 rounded border border-current shrink-0 min-w-[24px] text-center"
-                                  style={{
-                                    color: (e.teamId === game.teamHome.id || e.scoringTeam === Possession.HOME) ? (game.teamHome.primaryColor || '#6d5dfc') : (game.teamAway.primaryColor || '#ef4444'),
-                                    borderColor: (e.teamId === game.teamHome.id || e.scoringTeam === Possession.HOME) ? (game.teamHome.primaryColor || '#6d5dfc') : (game.teamAway.primaryColor || '#ef4444'),
-                                    backgroundColor: (e.teamId === game.teamHome.id || e.scoringTeam === Possession.HOME) ? `${game.teamHome.primaryColor || '#6d5dfc'}11` : `${game.teamAway.primaryColor || '#ef4444'}11`
-                                  }}
-                                >
-                                  {((e.teamId === game.teamHome.id && !e.type.includes('GOL')) || (e.scoringTeam === Possession.HOME)) ? 'L' : 'V'}
-                                </span>
-                              )}
-                              <p className="text-dark text-sm font-bold uppercase">{e.type}</p>
+                              <button onClick={() => setEventToEdit(e)} className="text-primary p-2">✏️</button>
+                              <button onClick={() => deleteEvent(e.id)} className="text-red-400 p-2">✕</button>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <button onClick={() => setEventToEdit(e)} className="text-primary p-2">✏️</button>
-                            <button onClick={() => deleteEvent(e.id)} className="text-red-400 p-2">✕</button>
-                          </div>
+                          {e.isTranscribing ? (
+                            <div className="flex items-center gap-2 py-2">
+                              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                              <span className="text-xs font-bold text-primary animate-pulse tracking-widest uppercase">Transcribiendo...</span>
+                            </div>
+                          ) : subtitle ? (
+                            <p className={`text-[10px] font-black uppercase ${e.transcription ? 'text-dark italic bg-primary/5 p-3 rounded-xl border border-primary/10' : 'text-onSurfaceVariant'}`}>
+                              {subtitle}
+                            </p>
+                          ) : null}
                         </div>
-                        {e.isTranscribing ? (
-                          <div className="flex items-center gap-2 py-2">
-                            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                            <span className="text-xs font-bold text-primary animate-pulse tracking-widest uppercase">Transcribiendo...</span>
-                          </div>
-                        ) : e.transcription ? (
-                          <p className="text-xs text-dark italic bg-primary/5 p-3 rounded-xl border border-primary/10">{e.transcription}</p>
-                        ) : (
-                          <p className="text-[10px] text-onSurfaceVariant uppercase font-black">{e.details}</p>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -2048,10 +2087,58 @@ const LiveGameView: React.FC<{
                           <button className="text-[10px] font-black text-indigo-600 py-3 rounded-xl bg-indigo-50 border border-indigo-100 uppercase flex items-center justify-center gap-2" onClick={() => registerEvent('CÓRNER CORTO', possession, showPopup.x, showPopup.y, "Córner Corto a Favor")}>🏑 C. CORTO</button>
                           <button className="text-[10px] font-black text-purple-600 py-3 rounded-xl bg-purple-50 border border-purple-100 uppercase flex items-center justify-center gap-2" onClick={() => registerEvent('PENAL', possession, showPopup.x, showPopup.y, "Penal a Favor")}>🎯 PENAL</button>
                         </div>
-                      ) : (
-                        <div className="flex flex-col gap-3">
-                          <p className="text-[9px] font-black text-dark uppercase mb-1">Detalles del Remate</p>
-                          <div className="flex flex-col gap-2 mb-1">
+                      ) : showPopup.type === 'SHOT' ? (
+                        <div className="flex flex-col gap-3 relative">
+                          <button
+                            onClick={handleClosePopup}
+                            className="absolute -top-3 -right-3 w-8 h-8 flex items-center justify-center bg-surfaceVariant/20 rounded-full text-onSurfaceVariant hover:bg-surfaceVariant transition-colors font-black"
+                          >
+                            ✕
+                          </button>
+                          <p className="text-[9px] font-black text-dark uppercase mb-1">Resultado del Remate</p>
+                          
+                          <div className="grid grid-cols-3 gap-2 mb-1">
+                            <button 
+                              className={`py-3 rounded-xl text-[10px] font-black uppercase flex flex-col items-center gap-1 transition-all border ${selectedShotAction === 'GOL' ? 'bg-primary text-white border-primary shadow-md' : 'bg-surface text-dark border-surfaceVariant'}`}
+                              onClick={() => setSelectedShotAction('GOL')}
+                            >
+                              <span className="text-sm">🥅</span> GOL
+                            </button>
+                            <button 
+                              className={`py-3 rounded-xl text-[10px] font-black uppercase flex flex-col items-center gap-1 transition-all border ${selectedShotAction === 'ATAJADO' ? 'bg-primary text-white border-primary shadow-md' : 'bg-surface text-dark border-surfaceVariant'}`}
+                              onClick={() => setSelectedShotAction('ATAJADO')}
+                            >
+                              <span className="text-sm">🛡️</span> ATAJADO
+                            </button>
+                            <button 
+                              className={`py-3 rounded-xl text-[10px] font-black uppercase flex flex-col items-center gap-1 transition-all border ${selectedShotAction === 'DESVIADO' ? 'bg-primary text-white border-primary shadow-md' : 'bg-surface text-dark border-surfaceVariant'}`}
+                              onClick={() => setSelectedShotAction('DESVIADO')}
+                            >
+                              <span className="text-sm">💨</span> DESV.
+                            </button>
+                          </div>
+
+                          {selectedShotAction === 'ATAJADO' && (
+                            <div className="flex flex-col gap-2 mb-1 animate-in slide-in-from-top duration-200">
+                              <p className="text-[8px] font-bold text-onSurfaceVariant uppercase">Posesión tras el atajo:</p>
+                              <div className="grid grid-cols-2 gap-2">
+                                <button 
+                                  className={`py-2 rounded-lg text-[9px] font-black uppercase transition-all border ${atajadoPossession === 'MANTIENE' ? 'bg-green-500 text-white border-green-600' : 'bg-green-50 text-green-700 border-green-200'}`}
+                                  onClick={() => setAtajadoPossession('MANTIENE')}
+                                >
+                                  Mantiene
+                                </button>
+                                <button 
+                                  className={`py-2 rounded-lg text-[9px] font-black uppercase transition-all border ${atajadoPossession === 'PIERDE' ? 'bg-red-500 text-white border-red-600' : 'bg-red-50 text-red-700 border-red-200'}`}
+                                  onClick={() => setAtajadoPossession('PIERDE')}
+                                >
+                                  Pierde
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex flex-col gap-2 mt-2">
                             <label className="text-[8px] font-bold text-onSurfaceVariant uppercase">Jugador #</label>
                             <input
                               type="number"
@@ -2059,13 +2146,13 @@ const LiveGameView: React.FC<{
                               pattern="[0-9]*"
                               value={foulPlayer}
                               onChange={(e) => setFoulPlayer(e.target.value)}
-                              className="w-full bg-surface border border-surfaceVariant rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:border-primary"
+                              className="w-full bg-surface border border-surfaceVariant rounded-lg px-2 py-2 text-xs font-bold focus:outline-none focus:border-primary"
                               placeholder="Ej: 8"
                             />
                           </div>
                           
                           <div className="flex flex-col gap-2 mb-2">
-                            <label className="text-[8px] font-bold text-onSurfaceVariant uppercase">Modo del Gol (Si aplica)</label>
+                            <label className="text-[8px] font-bold text-onSurfaceVariant uppercase">Origen de la jugada</label>
                             <div className="grid grid-cols-4 gap-1.5">
                               {[
                                 { id: 'Individual', label: 'Indiv.' },
@@ -2076,7 +2163,7 @@ const LiveGameView: React.FC<{
                                 <button
                                   key={type.id}
                                   onClick={() => setGoalType(type.id as any)}
-                                  className={`py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${goalType === type.id
+                                  className={`py-2 rounded-lg text-[8px] font-black uppercase transition-all ${goalType === type.id
                                     ? 'bg-primary text-white shadow-sm'
                                     : 'bg-surface border border-surfaceVariant text-onSurfaceVariant'
                                     }`}
@@ -2087,24 +2174,33 @@ const LiveGameView: React.FC<{
                             </div>
                           </div>
 
-                          {!atajadoSelected ? (
-                            <div className="flex flex-col gap-2">
-                              <button className="text-xs font-black text-primary text-left py-4 px-5 rounded-xl bg-primary/5 border border-primary/10 flex items-center gap-4 uppercase" onClick={() => handleGoalConfirmation(showPopup.targetGoal === 'TOP' ? { home: 1, away: 0 } : { home: 0, away: 1 }, showPopup.targetGoal === 'TOP' ? Possession.AWAY : Possession.HOME)}>🥅 GOL</button>
-                              <button className="text-xs font-black text-dark text-left py-4 px-5 rounded-xl bg-surface border border-surfaceVariant flex items-center gap-4 uppercase" onClick={() => setAtajadoSelected(true)}>🛡️ ATAJADO</button>
-                              <button className="text-xs font-black text-onSurfaceVariant text-left py-4 px-5 rounded-xl bg-surface border border-surfaceVariant flex items-center gap-4 uppercase" onClick={() => updateLastEvent('DISPARO (DESVIADO)', `DESVIADO${foulPlayer ? ` - Jugador #${foulPlayer}` : ''}`, undefined, possession === Possession.HOME ? Possession.AWAY : Possession.HOME)}>💨 DESVIADO</button>
-                            </div>
-                          ) : (
-                            <div className="flex flex-col gap-2 animate-in slide-in-from-right duration-200">
-                              <p className="text-[9px] font-black text-dark uppercase mb-1">¿Qué sucede con la posesión?</p>
-                              <button className="text-xs font-black text-green-600 text-left py-4 px-5 rounded-xl bg-green-50 border border-green-100 flex items-center gap-4 uppercase" onClick={() => updateLastEvent('DISPARO (ATAJADO)', `ATAJADO${foulPlayer ? ` (#${foulPlayer})` : ''} | Mantiene posesión`, undefined, possession)}>📈 MANTIENE</button>
-                              <button className="text-xs font-black text-red-600 text-left py-4 px-5 rounded-xl bg-red-50 border border-red-100 flex items-center gap-4 uppercase" onClick={() => updateLastEvent('DISPARO (ATAJADO)', `ATAJADO${foulPlayer ? ` (#${foulPlayer})` : ''} | Pierde posesión`, undefined, possession === Possession.HOME ? Possession.AWAY : Possession.HOME)}>📉 PIERDE</button>
-                              <button className="text-[8px] font-black text-onSurfaceVariant uppercase mt-1 text-center py-1 hover:text-primary transition-colors" onClick={() => setAtajadoSelected(false)}>ATRÁS</button>
-                            </div>
-                          )}
+                          <button 
+                            className={`w-full py-4 mt-2 rounded-xl font-black text-xs uppercase shadow-md transition-all ${
+                              (selectedShotAction && (selectedShotAction !== 'ATAJADO' || atajadoPossession))
+                              ? 'bg-primary text-white active:scale-95'
+                              : 'bg-surfaceVariant text-onSurfaceVariant/50 opacity-50 cursor-not-allowed'
+                            }`}
+                            disabled={!selectedShotAction || (selectedShotAction === 'ATAJADO' && !atajadoPossession)}
+                            onClick={() => {
+                              if (selectedShotAction === 'GOL') {
+                                handleGoalConfirmation(showPopup.targetGoal === 'TOP' ? { home: 1, away: 0 } : { home: 0, away: 1 }, showPopup.targetGoal === 'TOP' ? Possession.AWAY : Possession.HOME);
+                              } else if (selectedShotAction === 'ATAJADO') {
+                                if (atajadoPossession === 'MANTIENE') {
+                                  updateLastEvent('DISPARO (ATAJADO)', `ATAJADO${foulPlayer ? ` (#${foulPlayer})` : ''} | Mantiene posesión`, undefined, possession);
+                                } else {
+                                  updateLastEvent('DISPARO (ATAJADO)', `ATAJADO${foulPlayer ? ` (#${foulPlayer})` : ''} | Pierde posesión`, undefined, possession === Possession.HOME ? Possession.AWAY : Possession.HOME);
+                                }
+                              } else if (selectedShotAction === 'DESVIADO') {
+                                updateLastEvent('DISPARO (DESVIADO)', `DESVIADO${foulPlayer ? ` - Jugador #${foulPlayer}` : ''}`, undefined, possession === Possession.HOME ? Possession.AWAY : Possession.HOME);
+                              }
+                            }}
+                          >
+                            Continuar
+                          </button>
                         </div>
                       )}
 
-                      <button className="text-[8px] font-black text-onSurfaceVariant uppercase mt-4 text-center py-2 hover:text-primary transition-colors border-t border-surfaceVariant/50" onClick={() => { setShowPopup(null); setFoulCardType('NONE'); }}>Cerrar</button>
+                      <button className="text-[8px] font-black text-onSurfaceVariant uppercase mt-4 text-center py-2 hover:text-primary transition-colors border-t border-surfaceVariant/50" onClick={handleClosePopup}>Cerrar</button>
                     </div>
                   </div>
                 </Portal>
