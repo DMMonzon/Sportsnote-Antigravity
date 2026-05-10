@@ -422,24 +422,55 @@ const LiveGameView: React.FC<{
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
     if (id) {
-      const activeGame = StorageService.getActiveGame();
+      setIsLoading(true);
+      setLoadError(null);
 
-      if (activeGame) {
-        setPendingActiveGame(activeGame);
-        setShowResumePrompt(true);
-      } else {
-        // Load fresh from DB if not active locally
-        const data = PersistenceManager.getGame(id);
-        if (data) {
-          setGame(data);
-          if (data.activeTacticId) setActiveTacticId(data.activeTacticId);
+      // Fail-safe de 5 segundos
+      timeoutId = setTimeout(() => {
+        setIsLoading(false);
+        setLoadError('Hubo un problema al cargar los datos. El tiempo de espera se agotó.');
+        console.error("Error al recuperar partido: Timeout de 5 segundos excedido");
+      }, 5000);
+
+      try {
+        const activeGame = StorageService.getActiveGame();
+
+        if (activeGame) {
+          setPendingActiveGame(activeGame);
+          setShowResumePrompt(true);
+          setIsLoading(false);
+          clearTimeout(timeoutId);
+        } else {
+          // Load fresh from DB if not active locally
+          const data = PersistenceManager.getGame(id);
+          if (data) {
+            setGame(data);
+            if (data.activeTacticId) setActiveTacticId(data.activeTacticId);
+            setIsLoading(false);
+            clearTimeout(timeoutId);
+          } else {
+            console.error(`Error al recuperar partido: No se encontró el juego con id ${id}`);
+            setLoadError('No se encontró el partido solicitado en el dispositivo.');
+            setIsLoading(false);
+            clearTimeout(timeoutId);
+          }
         }
+      } catch (err: any) {
+        console.error("Error al recuperar partido:", err);
+        setLoadError(`Data corrupta o error al leer almacenamiento: ${err.message}`);
+        setIsLoading(false);
+        clearTimeout(timeoutId);
       }
-
-      // Cargar tácticas - now handled via props
     }
+
+    return () => clearTimeout(timeoutId);
   }, [id]);
 
   // Autosave current match to StorageService in real-time
@@ -541,7 +572,80 @@ const LiveGameView: React.FC<{
     return { statsArea, stats23 };
   }, [game?.events, periodFilter]);
 
-  if (!game) return <div className="p-8 text-center text-onSurfaceVariant font-bold">Cargando datos...</div>;
+  if (isLoading) {
+    return <div className="p-8 text-center text-onSurfaceVariant font-bold flex flex-col items-center justify-center h-screen bg-surface">
+      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+      Cargando datos...
+    </div>;
+  }
+
+  if (loadError) {
+    return <div className="p-8 text-center text-onSurfaceVariant font-bold flex flex-col items-center justify-center h-screen bg-surface">
+      <span className="text-4xl mb-4">⚠️</span>
+      <p className="mb-6">{loadError}</p>
+      <button 
+        onClick={() => {
+          StorageService.clearActiveGame();
+          window.location.reload();
+        }}
+        className="bg-primary text-white px-6 py-3 rounded-xl font-black uppercase tracking-widest text-xs shadow-md"
+      >
+        Reiniciar Aplicación
+      </button>
+    </div>;
+  }
+
+  if (!game) {
+    if (showResumePrompt) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', backgroundColor: '#f4f4f7' }}>
+          <Portal>
+            <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-brandDark/40 backdrop-blur-sm">
+              <div className="relative w-full max-w-sm bg-white border border-surfaceVariant p-8 rounded-[40px] shadow-2xl animate-in zoom-in duration-200 text-center">
+                <div className="text-4xl mb-4">⏳</div>
+                <h3 className="contrail-font text-2xl text-dark uppercase mb-2">Partido en Curso</h3>
+                <p className="text-[11px] font-bold text-onSurfaceVariant uppercase leading-relaxed mb-8">
+                  Tienes un partido sin finalizar guardado localmente. ¿Deseas continuar el partido anterior o empezar uno nuevo?
+                </p>
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={() => {
+                      if (pendingActiveGame) {
+                        setGame(pendingActiveGame.game);
+                        setSeconds(pendingActiveGame.seconds);
+                        setPeriod(pendingActiveGame.period);
+                        setPossession(pendingActiveGame.possession);
+                        setLocalPossessionTime(pendingActiveGame.localPossessionTime);
+                        setAwayPossessionTime(pendingActiveGame.awayPossessionTime);
+                        setPassCount(pendingActiveGame.passCount);
+                        setIsRunning(pendingActiveGame.isRunning);
+                        if (pendingActiveGame.game.activeTacticId) setActiveTacticId(pendingActiveGame.game.activeTacticId);
+                      }
+                      setShowResumePrompt(false);
+                    }}
+                    className="w-full bg-primary text-white font-black py-4 rounded-2xl active:scale-95 text-xs uppercase shadow-lg shadow-primary/20 transition-all"
+                  >
+                    CONTINUAR PARTIDO
+                  </button>
+                  <button
+                    onClick={() => {
+                      StorageService.clearActiveGame();
+                      onAnnulGame();
+                      navigate('/new-game');
+                    }}
+                    className="w-full bg-red-50 text-red-600 font-black py-4 rounded-2xl active:scale-95 text-xs uppercase border border-red-200 transition-all hover:bg-red-100"
+                  >
+                    EMPEZAR UNO NUEVO
+                  </button>
+                </div>
+              </div>
+            </div>
+          </Portal>
+        </div>
+      );
+    }
+    return <div className="p-8 text-center text-onSurfaceVariant font-bold flex flex-col items-center justify-center h-screen">No se encontró el partido.</div>;
+  }
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
@@ -1125,8 +1229,8 @@ const LiveGameView: React.FC<{
 
   return (
     <div
-      className="h-[100dvh] w-full flex flex-col bg-surface overflow-hidden select-none transition-all duration-500"
-      style={{ overscrollBehavior: 'none' }}
+      className="w-full bg-surface select-none transition-all duration-500"
+      style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', overscrollBehavior: 'none' }}
     >
 
       {snackbar.visible && (
@@ -1376,7 +1480,7 @@ const LiveGameView: React.FC<{
         </Portal>
       )}
 
-      <header className="h-16 md:h-20 flex items-center justify-between px-4 md:px-6 bg-white shrink-0 border-b border-surfaceVariant shadow-sm z-[200]">
+      <header className="h-16 md:h-20 flex items-center justify-between px-4 md:px-6 bg-white border-b border-surfaceVariant shadow-sm z-[200]" style={{ flexShrink: 0 }}>
         <button onClick={() => setIsMenuOpen(true)} className="w-8 h-8 flex flex-col items-center justify-center gap-1.5 group">
           <div className="w-6 h-0.5 bg-black" />
           <div className="w-6 h-0.5 bg-black" />
@@ -1466,7 +1570,7 @@ const LiveGameView: React.FC<{
         </div>
       </header>
 
-      <main className="flex-1 flex overflow-hidden bg-surface min-h-0">
+      <main className="bg-surface overflow-hidden" style={{ flexGrow: 1, display: 'flex', minHeight: 0 }}>
         {!isLandscape && (
           <aside className="hidden lg:flex w-[320px] flex-col p-5 bg-white border-r border-surfaceVariant overflow-y-auto no-scrollbar">
             <div className="flex flex-col gap-6 pb-10">
@@ -1624,7 +1728,7 @@ const LiveGameView: React.FC<{
             </aside>
           )}
 
-          <div className="flex-1 relative overflow-hidden flex items-center justify-center bg-surfaceVariant/10 min-h-0 min-w-0">
+          <div className="relative bg-surfaceVariant/10 overflow-hidden" style={{ flexGrow: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 0, minWidth: 0 }}>
             {activeView === 'list' ? (
               <div className={`relative ${isLandscape ? 'w-[92%] h-[92%]' : 'w-full h-full'}`}>
                 <div className="w-full h-full bg-white rounded-[32px] border-2 border-surfaceVariant flex flex-col p-6 animate-in slide-in-from-bottom duration-300 overflow-hidden shadow-xl">
@@ -2316,7 +2420,7 @@ const LiveGameView: React.FC<{
         }
       </main >
 
-      <footer className="h-20 md:h-24 bg-white flex flex-wrap items-center justify-between px-4 md:px-10 shrink-0 border-t border-surfaceVariant shadow-lg relative z-[200] gap-2">
+      <footer className="h-20 md:h-24 bg-white flex flex-wrap items-center justify-between px-4 md:px-10 border-t border-surfaceVariant shadow-lg relative z-[200] gap-2" style={{ flexShrink: 0 }}>
         <div className="relative">
           <button className="w-11 h-11 md:w-14 md:h-14 rounded-full bg-red-50 text-red-600 text-xl flex items-center justify-center border border-red-100 active:scale-90 shadow-sm" onClick={() => setUndoModal(true)}>↩</button>
           {undoModal && (

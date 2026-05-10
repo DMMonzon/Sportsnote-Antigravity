@@ -22,9 +22,14 @@ export const StorageService = {
     const data = localStorage.getItem(ACTIVE_GAME_KEY);
     if (!data) return null;
     try {
-      return JSON.parse(data) as ActiveGameState;
+      const parsed = JSON.parse(data);
+      if (!parsed || typeof parsed !== 'object' || !parsed.game) {
+        throw new Error("Formato de juego activo inválido o corrupto");
+      }
+      return parsed as ActiveGameState;
     } catch (e) {
-      console.error("Error parsing active game from local storage", e);
+      console.error("Error al recuperar partido activo desde local storage:", e);
+      StorageService.clearActiveGame();
       return null;
     }
   },
