@@ -82,6 +82,7 @@ export interface Game {
   isFavorite?: boolean;
   ownerId?: string;
   userId?: string;
+  authorId?: string;
 }
 
 

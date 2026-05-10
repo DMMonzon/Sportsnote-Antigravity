@@ -1,5 +1,5 @@
 import { AppState, Game, TacticalScheme } from '../types';
-import { db, collection, doc, setDoc, getDocs, query, where, deleteDoc } from './firebase';
+import { db, collection, doc, setDoc, getDocs, query, where, deleteDoc, serverTimestamp } from './firebase';
 
 const STORAGE_KEY = 'sportsnote_db';
 const SYNC_QUEUE_KEY = 'sportsnote_sync_queue';
@@ -179,7 +179,20 @@ export const PersistenceManager = {
             if (item.action === 'DELETE') {
               await deleteDoc(gameRef);
             } else {
-              await setDoc(gameRef, item.data, { merge: true });
+              const payload = {
+                ...item.data,
+                authorId: item.data.authorId || item.data.userId || item.data.ownerId,
+                timestamp: serverTimestamp(),
+                localTeam: item.data.teamHome?.name || '',
+                visitorTeam: item.data.teamAway?.name || '',
+                stats: {
+                  scoreHome: item.data.scoreHome || 0,
+                  scoreAway: item.data.scoreAway || 0,
+                  eventsCount: item.data.events?.length || 0
+                },
+                isFavorite: item.data.isFavorite || false
+              };
+              await setDoc(gameRef, payload, { merge: true });
             }
         } else if (item.type === 'TACTIC') {
             const tacticRef = doc(db, 'tactics', item.data.id);
@@ -204,7 +217,20 @@ export const PersistenceManager = {
     try {
       // Direct push to Firestore bypassing queue to ensure immediate final save
       const gameRef = doc(db, 'matches', game.id);
-      await setDoc(gameRef, game, { merge: true });
+      const payload = {
+        ...game,
+        authorId: game.authorId || game.userId || game.ownerId,
+        timestamp: serverTimestamp(),
+        localTeam: game.teamHome?.name || '',
+        visitorTeam: game.teamAway?.name || '',
+        stats: {
+          scoreHome: game.scoreHome || 0,
+          scoreAway: game.scoreAway || 0,
+          eventsCount: game.events?.length || 0
+        },
+        isFavorite: game.isFavorite || false
+      };
+      await setDoc(gameRef, payload, { merge: true });
       console.log(`Successfully forced sync for final game ${game.id}`);
     } catch (e) {
       console.error("Error forcing sync for game:", e);
@@ -244,12 +270,14 @@ export const PersistenceManager = {
 
       const matchesRef = collection(db, 'matches');
       // Fetch both new and legacy records
-      const qMatches = query(matchesRef, where('userId', '==', userId));
-      const qMatchesLegacy = query(matchesRef, where('ownerId', '==', userId));
+      const qMatches = query(matchesRef, where('authorId', '==', userId));
+      const qMatchesLegacyUser = query(matchesRef, where('userId', '==', userId));
+      const qMatchesLegacyOwner = query(matchesRef, where('ownerId', '==', userId));
       
-      const [matchesSnap, matchesLegacySnap] = await Promise.all([
+      const [matchesSnap, matchesLegacyUserSnap, matchesLegacyOwnerSnap] = await Promise.all([
         getDocs(qMatches),
-        getDocs(qMatchesLegacy)
+        getDocs(qMatchesLegacyUser),
+        getDocs(qMatchesLegacyOwner)
       ]);
 
       const cloudMatches: Game[] = [];
@@ -266,7 +294,8 @@ export const PersistenceManager = {
       };
 
       processSnap(matchesSnap);
-      processSnap(matchesLegacySnap);
+      processSnap(matchesLegacyUserSnap);
+      processSnap(matchesLegacyOwnerSnap);
 
       await PersistenceManager.processSyncQueue();
       const finalQueue = PersistenceManager.getSyncQueue();

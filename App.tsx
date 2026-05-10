@@ -50,7 +50,7 @@ const AppContent: React.FC = () => {
   const handleLogout = () => {
     PersistenceManager.clearLocalData();
     // Also clear the active game resume data specifically
-    localStorage.removeItem('sportsnote_current_game');
+    localStorage.removeItem('active_match');
     setState({ ...state, currentUser: null, activeGameId: null, matches: [], tacticalSchemes: [], players: [] });
     navigate('/');
   };
@@ -59,7 +59,8 @@ const AppContent: React.FC = () => {
     const newGame = {
       ...game,
       userId: state.currentUser?.uid, // Used for legacy sync
-      ownerId: state.currentUser?.uid // Used for tactics and ownership
+      ownerId: state.currentUser?.uid, // Used for tactics and ownership
+      authorId: state.currentUser?.uid // Used for proper Firestore filtering
     };
     
     // Ensure it is saved locally AND queued for sync immediately

@@ -4,6 +4,7 @@ import { UserRole, SportType, Game } from '../types';
 import { Button } from '../components/Button';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { telemetryService, TelemetryEvent } from '../services/telemetryService';
+import { db, collection, doc } from '../services/firebase';
 
 interface NewGameViewProps {
   role: UserRole;
@@ -97,8 +98,9 @@ const NewGameView: React.FC<NewGameViewProps> = ({ role, onCreate }) => {
   const [teamAwaySecondary, setTeamAwaySecondary] = useState(template?.teamAway.secondaryColor || '#FFFFFF');
 
   const handleStart = () => {
+    const newGameId = doc(collection(db, 'matches')).id;
     const newGame: Game = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: newGameId,
       sportType: SportType.HOCKEY,
       teamHome: {
         id: 'th',

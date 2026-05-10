@@ -1,6 +1,6 @@
 import { Game, Possession } from '../types';
 
-const ACTIVE_GAME_KEY = 'sportsnote_current_game';
+const ACTIVE_GAME_KEY = 'active_match';
 
 export interface ActiveGameState {
   game: Game;

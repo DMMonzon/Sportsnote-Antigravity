@@ -14,7 +14,7 @@ import { PersistenceManager } from '../services/PersistenceManager';
 import { aiService } from '../services/aiService';
 import { StorageService } from '../services/StorageService';
 import { PitchMap } from '../components/PitchMap';
-import { db, auth, doc, setDoc } from '../services/firebase';
+import { db, auth, doc, setDoc, serverTimestamp } from '../services/firebase';
 const NSeparator = () => (
   <div className="hidden md:flex w-8 h-8 md:w-10 md:h-10 items-center justify-center shrink-0">
     <img
@@ -385,6 +385,8 @@ const LiveGameView: React.FC<{
   const [isFlipped, setIsFlipped] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showFinishConfirm, setShowFinishConfirm] = useState(false);
+  const [showResumePrompt, setShowResumePrompt] = useState(false);
+  const [pendingActiveGame, setPendingActiveGame] = useState<any>(null);
   const [syncQueueLength, setSyncQueueLength] = useState(PersistenceManager.getSyncQueueLength());
   const [orientationTrigger, setOrientationTrigger] = useState(0);
 
@@ -421,17 +423,9 @@ const LiveGameView: React.FC<{
     if (id) {
       const activeGame = StorageService.getActiveGame();
 
-      if (activeGame && activeGame.game.id === id) {
-        // Resume game fully
-        setGame(activeGame.game);
-        setSeconds(activeGame.seconds);
-        setPeriod(activeGame.period);
-        setPossession(activeGame.possession);
-        setLocalPossessionTime(activeGame.localPossessionTime);
-        setAwayPossessionTime(activeGame.awayPossessionTime);
-        setPassCount(activeGame.passCount);
-        setIsRunning(activeGame.isRunning);
-        if (activeGame.game.activeTacticId) setActiveTacticId(activeGame.game.activeTacticId);
+      if (activeGame) {
+        setPendingActiveGame(activeGame);
+        setShowResumePrompt(true);
       } else {
         // Load fresh from DB if not active locally
         const data = PersistenceManager.getGame(id);
@@ -461,9 +455,7 @@ const LiveGameView: React.FC<{
     }
   }, [game, seconds, period, possession, localPossessionTime, awayPossessionTime, passCount, isRunning, id]);
 
-  useEffect(() => {
-    if (game) PersistenceManager.updateGame(game);
-  }, [game]);
+  // PersistenceManager.updateGame in real-time has been removed to reduce Firebase writes.
 
   useEffect(() => {
     if (isRunning) {
@@ -998,26 +990,30 @@ const LiveGameView: React.FC<{
 
   const confirmFinishGame = async () => {
     setShowFinishConfirm(false);
-    if (id) {
-      PersistenceManager.forceSyncGame(id);
-
+    if (id && game && auth.currentUser) {
       try {
-        if (auth.currentUser && game) {
-          const userId = auth.currentUser.uid;
-          const gameData = { ...game, userId };
-          await setDoc(doc(db, 'matches', id), gameData, { merge: true });
-          console.log('Partido guardado en Firebase');
-        } else {
-          console.error('No se pudo guardar: Usuario o partido no válido');
-        }
+        const payload = {
+          ...game,
+          authorId: auth.currentUser.uid,
+          timestamp: serverTimestamp(),
+          localTeam: game.teamHome.name,
+          visitorTeam: game.teamAway.name,
+          stats: {
+            scoreHome: game.scoreHome,
+            scoreAway: game.scoreAway,
+            eventsCount: game.events.length
+          },
+          isFavorite: game.isFavorite || false
+        };
+        await setDoc(doc(db, 'matches', id), payload, { merge: true });
+        console.log('Partido guardado en Firebase exitosamente');
+        
+        StorageService.clearActiveGame();
+        onExitGame(game);
+        navigate(`/summary/${game.id}`);
       } catch (error) {
         console.error('Error al guardar el partido en Firebase:', error);
       }
-    }
-    StorageService.clearActiveGame();
-    onExitGame(game);
-    if (game) {
-      navigate(`/summary/${game.id}`);
     }
   };
 
@@ -1233,6 +1229,52 @@ const LiveGameView: React.FC<{
                   className="w-full bg-surface text-onSurfaceVariant font-black py-4 rounded-2xl active:scale-95 text-xs uppercase border border-surfaceVariant transition-all"
                 >
                   CONTINUAR JUGANDO
+                </button>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* Modal Reanudar Partido */}
+      {showResumePrompt && (
+        <Portal>
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-brandDark/40 backdrop-blur-sm">
+            <div className="relative w-full max-w-sm bg-white border border-surfaceVariant p-8 rounded-[40px] shadow-2xl animate-in zoom-in duration-200 text-center">
+              <div className="text-4xl mb-4">⏳</div>
+              <h3 className="contrail-font text-2xl text-dark uppercase mb-2">Partido en Curso</h3>
+              <p className="text-[11px] font-bold text-onSurfaceVariant uppercase leading-relaxed mb-8">
+                Tienes un partido sin finalizar guardado localmente. ¿Deseas continuar el partido anterior o empezar uno nuevo?
+              </p>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => {
+                    if (pendingActiveGame) {
+                      setGame(pendingActiveGame.game);
+                      setSeconds(pendingActiveGame.seconds);
+                      setPeriod(pendingActiveGame.period);
+                      setPossession(pendingActiveGame.possession);
+                      setLocalPossessionTime(pendingActiveGame.localPossessionTime);
+                      setAwayPossessionTime(pendingActiveGame.awayPossessionTime);
+                      setPassCount(pendingActiveGame.passCount);
+                      setIsRunning(pendingActiveGame.isRunning);
+                      if (pendingActiveGame.game.activeTacticId) setActiveTacticId(pendingActiveGame.game.activeTacticId);
+                    }
+                    setShowResumePrompt(false);
+                  }}
+                  className="w-full bg-primary text-white font-black py-4 rounded-2xl active:scale-95 text-xs uppercase shadow-lg shadow-primary/20 transition-all"
+                >
+                  CONTINUAR PARTIDO
+                </button>
+                <button
+                  onClick={() => {
+                    StorageService.clearActiveGame();
+                    onAnnulGame();
+                    navigate('/new-game');
+                  }}
+                  className="w-full bg-red-50 text-red-600 font-black py-4 rounded-2xl active:scale-95 text-xs uppercase border border-red-200 transition-all hover:bg-red-100"
+                >
+                  EMPEZAR UNO NUEVO
                 </button>
               </div>
             </div>
