@@ -2198,7 +2198,7 @@ const LiveGameView: React.FC<{
                             Continuar
                           </button>
                         </div>
-                      )}
+                      ) : null}
 
                       <button className="text-[8px] font-black text-onSurfaceVariant uppercase mt-4 text-center py-2 hover:text-primary transition-colors border-t border-surfaceVariant/50" onClick={handleClosePopup}>Cerrar</button>
                     </div>
