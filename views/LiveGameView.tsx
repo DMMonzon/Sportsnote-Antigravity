@@ -572,80 +572,7 @@ const LiveGameView: React.FC<{
     return { statsArea, stats23 };
   }, [game?.events, periodFilter]);
 
-  if (isLoading) {
-    return <div className="p-8 text-center text-onSurfaceVariant font-bold flex flex-col items-center justify-center h-screen bg-surface">
-      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-      Cargando datos...
-    </div>;
-  }
-
-  if (loadError) {
-    return <div className="p-8 text-center text-onSurfaceVariant font-bold flex flex-col items-center justify-center h-screen bg-surface">
-      <span className="text-4xl mb-4">⚠️</span>
-      <p className="mb-6">{loadError}</p>
-      <button 
-        onClick={() => {
-          StorageService.clearActiveGame();
-          window.location.reload();
-        }}
-        className="bg-primary text-white px-6 py-3 rounded-xl font-black uppercase tracking-widest text-xs shadow-md"
-      >
-        Reiniciar Aplicación
-      </button>
-    </div>;
-  }
-
-  if (!game) {
-    if (showResumePrompt) {
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', backgroundColor: '#f4f4f7' }}>
-          <Portal>
-            <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-brandDark/40 backdrop-blur-sm">
-              <div className="relative w-full max-w-sm bg-white border border-surfaceVariant p-8 rounded-[40px] shadow-2xl animate-in zoom-in duration-200 text-center">
-                <div className="text-4xl mb-4">⏳</div>
-                <h3 className="contrail-font text-2xl text-dark uppercase mb-2">Partido en Curso</h3>
-                <p className="text-[11px] font-bold text-onSurfaceVariant uppercase leading-relaxed mb-8">
-                  Tienes un partido sin finalizar guardado localmente. ¿Deseas continuar el partido anterior o empezar uno nuevo?
-                </p>
-                <div className="flex flex-col gap-3">
-                  <button
-                    onClick={() => {
-                      if (pendingActiveGame) {
-                        setGame(pendingActiveGame.game);
-                        setSeconds(pendingActiveGame.seconds);
-                        setPeriod(pendingActiveGame.period);
-                        setPossession(pendingActiveGame.possession);
-                        setLocalPossessionTime(pendingActiveGame.localPossessionTime);
-                        setAwayPossessionTime(pendingActiveGame.awayPossessionTime);
-                        setPassCount(pendingActiveGame.passCount);
-                        setIsRunning(pendingActiveGame.isRunning);
-                        if (pendingActiveGame.game.activeTacticId) setActiveTacticId(pendingActiveGame.game.activeTacticId);
-                      }
-                      setShowResumePrompt(false);
-                    }}
-                    className="w-full bg-primary text-white font-black py-4 rounded-2xl active:scale-95 text-xs uppercase shadow-lg shadow-primary/20 transition-all"
-                  >
-                    CONTINUAR PARTIDO
-                  </button>
-                  <button
-                    onClick={() => {
-                      StorageService.clearActiveGame();
-                      onAnnulGame();
-                      navigate('/new-game');
-                    }}
-                    className="w-full bg-red-50 text-red-600 font-black py-4 rounded-2xl active:scale-95 text-xs uppercase border border-red-200 transition-all hover:bg-red-100"
-                  >
-                    EMPEZAR UNO NUEVO
-                  </button>
-                </div>
-              </div>
-            </div>
-          </Portal>
-        </div>
-      );
-    }
-    return <div className="p-8 text-center text-onSurfaceVariant font-bold flex flex-col items-center justify-center h-screen">No se encontró el partido.</div>;
-  }
+  // Early returns removed to ensure layout is ALWAYS rendered
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
@@ -1229,7 +1156,7 @@ const LiveGameView: React.FC<{
 
   return (
     <div
-      className="w-full bg-surface select-none transition-all duration-500"
+      className="bg-surface select-none transition-all duration-500 fixed inset-0 z-50 w-full"
       style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', overscrollBehavior: 'none' }}
     >
 
@@ -1495,12 +1422,12 @@ const LiveGameView: React.FC<{
               : 'scale-95 opacity-50 border-transparent'
               } ${!isRunning && possession === Possession.NONE && seconds === 0 ? 'animate-pulse border-white/40' : ''}`}
             style={{
-              backgroundColor: game.teamHome.primaryColor || '#6d5dfc',
-              color: game.teamHome.secondaryColor || '#ffffff'
+              backgroundColor: game?.teamHome?.primaryColor || '#6d5dfc',
+              color: game?.teamHome?.secondaryColor || '#ffffff'
             }}
           >
-            <span className="hidden sm:block text-[10px] md:text-sm font-black uppercase tracking-wider">{game.teamHome.name}</span>
-            <span className="text-2xl md:text-4xl font-black leading-none">{game.scoreHome}</span>
+            <span className="text-[10px] md:text-sm font-black uppercase tracking-wider max-w-[80px] truncate">{game?.teamHome?.name || 'Local'}</span>
+            <span className="text-2xl md:text-4xl font-black leading-none">{game?.scoreHome || 0}</span>
           </button>
 
           <NSeparator />
@@ -1513,12 +1440,12 @@ const LiveGameView: React.FC<{
               : 'scale-95 opacity-50 border-transparent'
               } ${!isRunning && possession === Possession.NONE && seconds === 0 ? 'animate-pulse border-white/40' : ''}`}
             style={{
-              backgroundColor: game.teamAway.primaryColor || '#ef4444',
-              color: game.teamAway.secondaryColor || '#ffffff'
+              backgroundColor: game?.teamAway?.primaryColor || '#ef4444',
+              color: game?.teamAway?.secondaryColor || '#ffffff'
             }}
           >
-            <span className="hidden sm:block text-[10px] md:text-sm font-black uppercase tracking-wider">{game.teamAway.name}</span>
-            <span className="text-2xl md:text-4xl font-black leading-none">{game.scoreAway}</span>
+            <span className="text-[10px] md:text-sm font-black uppercase tracking-wider max-w-[80px] truncate">{game?.teamAway?.name || 'Visita'}</span>
+            <span className="text-2xl md:text-4xl font-black leading-none">{game?.scoreAway || 0}</span>
           </button>
         </div>
 
@@ -1571,7 +1498,32 @@ const LiveGameView: React.FC<{
       </header>
 
       <main className="bg-surface overflow-hidden" style={{ flexGrow: 1, display: 'flex', minHeight: 0 }}>
-        {!isLandscape && (
+        {isLoading || loadError || !game ? (
+          <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-surfaceVariant/10">
+            {loadError ? (
+              <>
+                <span className="text-4xl mb-4">⚠️</span>
+                <p className="mb-6 font-bold text-onSurfaceVariant text-center">{loadError}</p>
+                <button 
+                  onClick={() => {
+                    StorageService.clearActiveGame();
+                    window.location.reload();
+                  }}
+                  className="bg-primary text-white px-6 py-3 rounded-xl font-black uppercase tracking-widest text-xs shadow-md"
+                >
+                  Reiniciar Aplicación
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p className="font-bold text-onSurfaceVariant uppercase tracking-widest text-xs animate-pulse">Cargando datos...</p>
+              </>
+            )}
+          </div>
+        ) : (
+          <>
+            {!isLandscape && (
           <aside className="hidden lg:flex w-[320px] flex-col p-5 bg-white border-r border-surfaceVariant overflow-y-auto no-scrollbar">
             <div className="flex flex-col gap-6 pb-10">
               <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest border-b border-surfaceVariant pb-2 italic">Análisis en Tiempo Real</h3>
@@ -2418,6 +2370,8 @@ const LiveGameView: React.FC<{
             </aside>
           )
         }
+        </>
+      )}
       </main >
 
       <footer className="h-20 md:h-24 bg-white flex flex-wrap items-center justify-between px-4 md:px-10 border-t border-surfaceVariant shadow-lg relative z-[200] gap-2" style={{ flexShrink: 0 }}>
