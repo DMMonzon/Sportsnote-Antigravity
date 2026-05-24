@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Game, UserRole, GameEvent, TacticalScheme } from '../types';
 import { PersistenceManager } from '../services/PersistenceManager';
 import { Button } from '../components/Button';
+import { Breadcrumb } from '../components/Breadcrumb';
+import { GlassCard } from '../components/GlassCard';
 import { GameField } from '../components/GameField';
 import {
   XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -12,28 +14,28 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 const EntryAnalysisCard: React.FC<{
-  title: string;
+  title: React.ReactNode | string;
   homeTotal: number;
   awayTotal: number;
   icon?: string;
   children: React.ReactNode;
 }> = ({ title, homeTotal, awayTotal, icon, children }) => (
-  <div className="bg-surface/50 p-5 rounded-[28px] border border-surfaceVariant shadow-sm flex flex-col gap-4">
-    <div className="flex justify-between items-center border-b border-surfaceVariant pb-3">
+  <GlassCard className="p-5 flex flex-col gap-4">
+    <div className="flex justify-between items-center border-b border-white/10 pb-3">
       <div className="flex items-center gap-2">
         {icon && <span className="text-xs">{icon}</span>}
-        <h4 className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">{title}</h4>
+        <h4 className="text-[9px] font-black text-white/50 uppercase tracking-widest">{title}</h4>
       </div>
       <div className="flex items-center gap-2">
-        <span className="text-xl font-black text-dark">{homeTotal}</span>
-        <span className="text-[10px] font-bold text-onSurfaceVariant/40">/</span>
-        <span className="text-xl font-black text-dark">{awayTotal}</span>
+        <span className="text-xl font-black text-white">{homeTotal}</span>
+        <span className="text-[10px] font-bold text-white/40">/</span>
+        <span className="text-xl font-black text-white">{awayTotal}</span>
       </div>
     </div>
     <div className="flex-1 flex flex-col gap-6 py-2">
       {children}
     </div>
-  </div>
+  </GlassCard>
 );
 
 const SectorRectangle: React.FC<{
@@ -50,10 +52,10 @@ const SectorRectangle: React.FC<{
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-tighter opacity-70">{label}</p>
+      <p className="text-[9px] font-black text-white/70 uppercase tracking-tighter opacity-70">{label}</p>
       <div className={`w-full overflow-hidden flex flex-col ${borderPosition === 'top' ? 'flex-col-reverse' : 'flex-col'}`}>
         <div 
-          className={`w-full h-12 bg-surfaceVariant/5 border border-surfaceVariant flex overflow-hidden ${
+          className={`w-full h-12 bg-white/5 border border-white/10 flex overflow-hidden ${
             type === 'zone23'
               ? 'rounded-none'
               : borderPosition === 'top' ? 'rounded-b-[40px] rounded-t-md' : 'rounded-t-[40px] rounded-b-md'
@@ -84,9 +86,9 @@ const SectorRectangle: React.FC<{
             return (
               <div
                 key={sect}
-                className={`flex-1 border-r last:border-r-0 border-surfaceVariant/20 flex flex-col items-center justify-center transition-all ${cellRoundedClass} ${active ? 'bg-primary/10' : ''}`}
+                className={`flex-1 border-r last:border-r-0 border-white/10 flex flex-col items-center justify-center transition-all ${cellRoundedClass} ${active ? 'bg-[#00fe00]/20' : ''}`}
               >
-                <span className={`text-[10px] font-black ${active ? 'text-primary' : 'text-dark/40'}`}>
+                <span className={`text-[10px] font-black ${active ? 'text-[#00fe00]' : 'text-white/40'}`}>
                   {val}
                 </span>
               </div>
@@ -224,8 +226,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
   }, [game?.events, periodFilter]);
 
   if (!game) return (
-    <div className="flex-1 flex items-center justify-center bg-surface">
-      <p className="text-onSurfaceVariant font-black uppercase tracking-widest animate-pulse">Cargando Reporte...</p>
+    <div className="flex-1 flex items-center justify-center min-h-screen relative z-10">
+      <p className="text-white/50 font-black uppercase tracking-widest animate-pulse">Cargando Reporte...</p>
     </div>
   );
 
@@ -261,11 +263,11 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
   };
 
   const PeriodRow = ({ periods }: { periods: { q1: number, q2: number, q3: number, q4: number } }) => (
-    <div className="flex justify-between items-center mt-3 pt-2 border-t border-surfaceVariant/30 text-[7px] font-black text-onSurfaceVariant/50 uppercase tracking-widest">
+    <div className="flex justify-between items-center mt-3 pt-2 border-t border-white/10 text-[7px] font-black text-white/50 uppercase tracking-widest">
       {['1', '2', '3', '4'].map(q => (
         <div key={q} className="flex flex-col items-center">
           <span>Q{q}</span>
-          <span className="text-[9px] text-dark">{(periods as any)[`q${q}`]}</span>
+          <span className="text-[9px] text-white">{(periods as any)[`q${q}`]}</span>
         </div>
       ))}
     </div>
@@ -321,135 +323,130 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
   const getPct = (val: number, total: number) => total > 0 ? Math.round((val / total) * 100) : 0;
 
   return (
-    <div className="min-h-screen w-full flex flex-col bg-surface overflow-y-auto no-scrollbar pb-16 relative">
-      <header className="sticky top-0 z-50 flex justify-between items-center px-6 py-3 bg-white/80 backdrop-blur-xl border-b border-surfaceVariant shrink-0 mb-8">
-        <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/dashboard')} className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-surfaceVariant shadow-sm hover:scale-110 transition-transform">
-            <span className="text-primary font-black">←</span>
-          </button>
-          <img src="./assets/logoLargoSN.svg" alt="SportNotes Logo" className="h-8 md:h-9 w-auto" />
-        </div>
-      </header>
+    <div className="min-h-screen w-full flex flex-col overflow-y-auto no-scrollbar pb-16 relative z-10">
+      <div className="pt-6 px-4 md:px-8 max-w-6xl mx-auto w-full mb-8">
+        <Breadcrumb paths={[{ label: 'Dashboard', url: '/dashboard' }, { label: 'Reporte Final' }]} />
+      </div>
 
       <main className="flex-1 max-w-6xl mx-auto w-full flex flex-col gap-8 px-4 md:px-8">
         <div ref={reportRef} className="flex flex-col gap-8">
           <header className="text-center pt-4">
-            <h2 className="contrail-font text-dark text-4xl mb-1 uppercase tracking-tighter">Reporte Final</h2>
-            <p className="text-[10px] text-onSurfaceVariant font-black uppercase tracking-[4px] opacity-60">Data Report SportNotes • ID: {game.id}</p>
+            <h2 className="contrail-font text-white text-4xl mb-1 uppercase tracking-tighter">Reporte Final</h2>
+            <p className="text-[10px] text-white/50 font-black uppercase tracking-[4px] opacity-60">Data Report SportNotes • ID: {game.id}</p>
           </header>
 
-          <div className="bg-white rounded-[40px] p-8 shadow-xl border border-surfaceVariant relative overflow-hidden">
+          <GlassCard className="p-8 shadow-xl relative overflow-hidden">
             <div className="flex justify-between items-start gap-6 relative z-10">
               <div className="flex-1 text-center md:text-left">
-                <div className="text-[10px] text-onSurfaceVariant uppercase font-black mb-1 truncate">{game.teamHome.name}</div>
-                <div className="text-6xl contrail-font text-primary drop-shadow-sm mb-4">{game.scoreHome}</div>
-                <div className="space-y-1.5 border-t border-surfaceVariant pt-3">
+                <div className="text-[10px] text-white/50 uppercase font-black mb-1 truncate">{game.teamHome.name}</div>
+                <div className="text-6xl contrail-font text-[#00fe00] drop-shadow-sm mb-4">{game.scoreHome}</div>
+                <div className="space-y-1.5 border-t border-white/10 pt-3">
                   {getGoals(game.teamHome.id).map(g => (
-                    <div key={g.id} className="text-[9px] font-bold text-onSurfaceVariant flex items-center gap-2 justify-center md:justify-start">
-                      <span className="text-primary">⚽</span>
+                    <div key={g.id} className="text-[9px] font-bold text-white/70 flex items-center gap-2 justify-center md:justify-start">
+                      <span className="text-[#00fe00]"><i className="fa-solid fa-futbol"></i></span>
                       <span>{g.gameTime} • {getGoalMode(g)}</span>
                     </div>
                   ))}
                 </div>
               </div>
               <div className="flex flex-col items-center justify-center h-full pt-8">
-                <div className="w-10 h-10 rounded-full bg-surface flex items-center justify-center font-black text-onSurfaceVariant text-xs border border-surfaceVariant">VS</div>
+                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center font-black text-white/50 text-xs border border-white/10">VS</div>
               </div>
               <div className="flex-1 text-center md:text-right">
-                <div className="text-[10px] text-onSurfaceVariant uppercase font-black mb-1 truncate">{game.teamAway.name}</div>
-                <div className="text-6xl contrail-font text-dark drop-shadow-sm mb-4">{game.scoreAway}</div>
-                <div className="space-y-1.5 border-t border-surfaceVariant pt-3 flex flex-col items-center md:items-end">
+                <div className="text-[10px] text-white/50 uppercase font-black mb-1 truncate">{game.teamAway.name}</div>
+                <div className="text-6xl contrail-font text-white drop-shadow-sm mb-4">{game.scoreAway}</div>
+                <div className="space-y-1.5 border-t border-white/10 pt-3 flex flex-col items-center md:items-end">
                   {getGoals(game.teamAway.id).map(g => (
-                    <div key={g.id} className="text-[9px] font-bold text-onSurfaceVariant flex items-center gap-2 justify-center md:justify-end">
+                    <div key={g.id} className="text-[9px] font-bold text-white/70 flex items-center gap-2 justify-center md:justify-end">
                       <span>{g.gameTime} • {getGoalMode(g)}</span>
-                      <span className="text-dark">⚽</span>
+                      <span className="text-white"><i className="fa-solid fa-futbol"></i></span>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
-          </div>
+          </GlassCard>
 
-          <section className="bg-white p-6 rounded-[32px] shadow-sm border border-surfaceVariant">
+          <GlassCard className="p-6">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xs font-black uppercase text-onSurfaceVariant flex items-center gap-2 italic">
-                <span className="text-sm">🥅</span> Remates Totales
+              <h3 className="text-xs font-black uppercase text-white/70 flex items-center gap-2 italic">
+                <span className="text-sm"><i className="fa-solid fa-bullseye"></i></span> Remates Totales
               </h3>
-              <div className="text-2xl font-black text-dark">
-                {homeShots.total} <span className="text-onSurfaceVariant/40">-</span> {awayShots.total}
+              <div className="text-2xl font-black text-white">
+                {homeShots.total} <span className="text-white/40">-</span> {awayShots.total}
               </div>
             </div>
             
             <div className="flex flex-col gap-4">
               {/* Local */}
-              <div className="bg-surface/50 rounded-[20px] p-4 border border-surfaceVariant/50 flex flex-col md:flex-row justify-between items-center gap-4">
+              <div className="bg-white/5 rounded-[20px] p-4 border border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
                 <div className="flex items-center gap-3 w-full md:w-1/4">
-                  <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
-                  <span className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest">{game.teamHome.name}</span>
+                  <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: game.teamHome.primaryColor || '#00fe00' }}></div>
+                  <span className="text-[10px] font-black text-white/70 uppercase tracking-widest">{game.teamHome.name}</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2 md:gap-4 flex-1 w-full">
-                  <div className="text-center bg-white p-2 rounded-xl shadow-sm border border-surfaceVariant/30">
-                    <p className="text-[7px] uppercase opacity-60 mb-0.5">Gol</p>
-                    <p className="text-sm font-black text-dark">{homeShots.goals} <span className="text-[9px] opacity-50">({getPct(homeShots.goals, homeShots.total)}%)</span></p>
+                  <div className="text-center bg-white/5 p-2 rounded-xl shadow-sm border border-white/10">
+                    <p className="text-[7px] text-white/50 uppercase opacity-60 mb-0.5">Gol</p>
+                    <p className="text-sm font-black text-white">{homeShots.goals} <span className="text-[9px] opacity-50">({getPct(homeShots.goals, homeShots.total)}%)</span></p>
                   </div>
-                  <div className="text-center bg-white p-2 rounded-xl shadow-sm border border-surfaceVariant/30">
-                    <p className="text-[7px] uppercase opacity-60 mb-0.5">Atajado</p>
-                    <p className="text-sm font-black text-dark">{homeShots.saved} <span className="text-[9px] opacity-50">({getPct(homeShots.saved, homeShots.total)}%)</span></p>
+                  <div className="text-center bg-white/5 p-2 rounded-xl shadow-sm border border-white/10">
+                    <p className="text-[7px] text-white/50 uppercase opacity-60 mb-0.5">Atajado</p>
+                    <p className="text-sm font-black text-white">{homeShots.saved} <span className="text-[9px] opacity-50">({getPct(homeShots.saved, homeShots.total)}%)</span></p>
                   </div>
-                  <div className="text-center bg-white p-2 rounded-xl shadow-sm border border-surfaceVariant/30">
-                    <p className="text-[7px] uppercase opacity-60 mb-0.5">Desv.</p>
-                    <p className="text-sm font-black text-dark">{homeShots.missed} <span className="text-[9px] opacity-50">({getPct(homeShots.missed, homeShots.total)}%)</span></p>
+                  <div className="text-center bg-white/5 p-2 rounded-xl shadow-sm border border-white/10">
+                    <p className="text-[7px] text-white/50 uppercase opacity-60 mb-0.5">Desv.</p>
+                    <p className="text-sm font-black text-white">{homeShots.missed} <span className="text-[9px] opacity-50">({getPct(homeShots.missed, homeShots.total)}%)</span></p>
                   </div>
                 </div>
               </div>
 
               {/* Visitante */}
-              <div className="bg-surface/50 rounded-[20px] p-4 border border-surfaceVariant/50 flex flex-col md:flex-row justify-between items-center gap-4">
+              <div className="bg-white/5 rounded-[20px] p-4 border border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
                 <div className="flex items-center gap-3 w-full md:w-1/4">
                   <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
-                  <span className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest">{game.teamAway.name}</span>
+                  <span className="text-[10px] font-black text-white/70 uppercase tracking-widest">{game.teamAway.name}</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2 md:gap-4 flex-1 w-full">
-                  <div className="text-center bg-white p-2 rounded-xl shadow-sm border border-surfaceVariant/30">
-                    <p className="text-[7px] uppercase opacity-60 mb-0.5">Gol</p>
-                    <p className="text-sm font-black text-dark">{awayShots.goals} <span className="text-[9px] opacity-50">({getPct(awayShots.goals, awayShots.total)}%)</span></p>
+                  <div className="text-center bg-white/5 p-2 rounded-xl shadow-sm border border-white/10">
+                    <p className="text-[7px] text-white/50 uppercase opacity-60 mb-0.5">Gol</p>
+                    <p className="text-sm font-black text-white">{awayShots.goals} <span className="text-[9px] opacity-50">({getPct(awayShots.goals, awayShots.total)}%)</span></p>
                   </div>
-                  <div className="text-center bg-white p-2 rounded-xl shadow-sm border border-surfaceVariant/30">
-                    <p className="text-[7px] uppercase opacity-60 mb-0.5">Atajado</p>
-                    <p className="text-sm font-black text-dark">{awayShots.saved} <span className="text-[9px] opacity-50">({getPct(awayShots.saved, awayShots.total)}%)</span></p>
+                  <div className="text-center bg-white/5 p-2 rounded-xl shadow-sm border border-white/10">
+                    <p className="text-[7px] text-white/50 uppercase opacity-60 mb-0.5">Atajado</p>
+                    <p className="text-sm font-black text-white">{awayShots.saved} <span className="text-[9px] opacity-50">({getPct(awayShots.saved, awayShots.total)}%)</span></p>
                   </div>
-                  <div className="text-center bg-white p-2 rounded-xl shadow-sm border border-surfaceVariant/30">
-                    <p className="text-[7px] uppercase opacity-60 mb-0.5">Desv.</p>
-                    <p className="text-sm font-black text-dark">{awayShots.missed} <span className="text-[9px] opacity-50">({getPct(awayShots.missed, awayShots.total)}%)</span></p>
+                  <div className="text-center bg-white/5 p-2 rounded-xl shadow-sm border border-white/10">
+                    <p className="text-[7px] text-white/50 uppercase opacity-60 mb-0.5">Desv.</p>
+                    <p className="text-sm font-black text-white">{awayShots.missed} <span className="text-[9px] opacity-50">({getPct(awayShots.missed, awayShots.total)}%)</span></p>
                   </div>
                 </div>
               </div>
             </div>
-          </section>
+          </GlassCard>
 
-          <section className="bg-white p-6 rounded-[32px] shadow-sm border border-surfaceVariant">
+          <GlassCard className="p-6">
             <div className="flex flex-col gap-6">
               <div className="w-full">
-                <h3 className="text-xs font-black uppercase text-onSurfaceVariant mb-4 italic">Balance de Acciones (Local)</h3>
+                <h3 className="text-xs font-black uppercase text-white/70 mb-4 italic">Balance de Acciones (Local)</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {[
-                    { label: 'Pérdidas', icon: '📉', types: ['PÉRDIDA', 'PERDIDA', 'TURNOVER'], color: 'text-orange-600' },
-                    { label: 'Recuperos', icon: '📈', types: ['RECUPERO'], color: 'text-emerald-600' },
-                    { label: 'Faltas', icon: '⚠️', types: ['FALTA'], color: 'text-red-600' }
+                    { label: 'Pérdidas', icon: <i className="fa-solid fa-arrow-trend-down"></i>, types: ['PÉRDIDA', 'PERDIDA', 'TURNOVER'], color: 'text-orange-500' },
+                    { label: 'Recuperos', icon: <i className="fa-solid fa-arrow-trend-up"></i>, types: ['RECUPERO'], color: 'text-[#00fe00]' },
+                    { label: 'Faltas', icon: <i className="fa-solid fa-triangle-exclamation"></i>, types: ['FALTA'], color: 'text-red-500' }
                   ].map(stat => {
                     const data = getDetailedStat(stat.types, game.teamHome.id);
                     return (
-                      <div key={stat.label} className="bg-surface/30 p-4 rounded-[24px] border border-surfaceVariant flex flex-col gap-2 shadow-sm">
-                        <div className="flex justify-between items-center border-b border-surfaceVariant pb-2">
+                      <div key={stat.label} className="bg-white/5 p-4 rounded-[24px] border border-white/10 flex flex-col gap-2 shadow-sm">
+                        <div className="flex justify-between items-center border-b border-white/10 pb-2">
                           <div className="flex items-center gap-2">
                             {stat.icon && <span className="text-[10px]">{stat.icon}</span>}
-                            <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">{stat.label}</p>
+                            <p className="text-[9px] font-black text-white/70 uppercase tracking-widest">{stat.label}</p>
                           </div>
                           <span className={`text-xl font-black ${stat.color}`}>{data.total}</span>
                         </div>
                         <div className="grid grid-cols-2 gap-2 mt-1">
-                          <div className="flex items-center gap-2 p-2 rounded-xl bg-white border border-surfaceVariant/30"><span className="text-blue-500 text-[10px]">↓</span><div className="flex flex-col"><span className="text-[8px] font-bold opacity-60">Propio</span><span className="text-[11px] font-black">{data.own}</span></div></div>
-                          <div className="flex items-center gap-2 p-2 rounded-xl bg-white border border-surfaceVariant/30"><span className="text-orange-500 text-[10px]">↑</span><div className="flex flex-col"><span className="text-[8px] font-bold opacity-60">Rival</span><span className="text-[11px] font-black">{data.rival}</span></div></div>
+                          <div className="flex items-center gap-2 p-2 rounded-xl bg-white/5 border border-white/5"><span className="text-blue-400 text-[10px]">↓</span><div className="flex flex-col"><span className="text-[8px] font-bold opacity-60 text-white">Propio</span><span className="text-[11px] font-black text-white">{data.own}</span></div></div>
+                          <div className="flex items-center gap-2 p-2 rounded-xl bg-white/5 border border-white/5"><span className="text-orange-400 text-[10px]">↑</span><div className="flex flex-col"><span className="text-[8px] font-bold opacity-60 text-white">Rival</span><span className="text-[11px] font-black text-white">{data.rival}</span></div></div>
                         </div>
                         <PeriodRow periods={data.periods} />
                       </div>
@@ -458,17 +455,17 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
                 </div>
               </div>
             </div>
-          </section>
+          </GlassCard>
 
           {/* Tactical Performance section removed for MVP */}
 
 
-          <section className="bg-white p-6 rounded-[32px] shadow-sm border border-surfaceVariant">
-            <h3 className="text-xs font-black uppercase text-onSurfaceVariant mb-6 flex items-center gap-2 italic">Ingresos y Accesos Ofensivos <div className="h-px flex-1 bg-surfaceVariant/50"></div></h3>
+          <GlassCard className="p-6">
+            <h3 className="text-xs font-black uppercase text-white/70 mb-6 flex items-center gap-2 italic">Ingresos y Accesos Ofensivos <div className="h-px flex-1 bg-white/10"></div></h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <EntryAnalysisCard
                 title="Ingresos al Área"
-                icon="📥"
+                icon={<i className="fa-solid fa-arrow-right-to-bracket"></i>}
                 homeTotal={Object.values(statsArea.home).reduce((a: number, b: number) => a + b, 0)}
                 awayTotal={Object.values(statsArea.away).reduce((a: number, b: number) => a + b, 0)}
               >
@@ -481,7 +478,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
                 />
                 <SectorRectangle
                   label="Ingresos del rival a mi área"
-                  teamColor={game.teamHome.primaryColor || '#6d5dfc'}
+                  teamColor={game.teamHome.primaryColor || '#00fe00'}
                   stats={statsArea.away}
                   sectors={['Extremo Izquierdo', 'Centro Izquierda', 'Centro', 'Centro Derecha', 'Extremo Derecho']}
                   borderPosition="bottom"
@@ -490,7 +487,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
 
               <EntryAnalysisCard
                 title="Ingresos a 23 Yardas"
-                icon="2️⃣3️⃣"
+                icon={<span className="font-black italic">23y</span>}
                 homeTotal={Object.values(stats23.home).reduce((a: number, b: number) => a + b, 0)}
                 awayTotal={Object.values(stats23.away).reduce((a: number, b: number) => a + b, 0)}
               >
@@ -504,7 +501,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
                 />
                 <SectorRectangle
                   label="Ingresos del rival a mis 23 yardas"
-                  teamColor={game.teamHome.primaryColor || '#6d5dfc'}
+                  teamColor={game.teamHome.primaryColor || '#00fe00'}
                   stats={stats23.away}
                   sectors={['Izquierda', 'Centro', 'Derecha']}
                   borderPosition="bottom"
@@ -512,35 +509,35 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
                 />
               </EntryAnalysisCard>
             </div>
-          </section>
+          </GlassCard>
 
 
 
-          <section className="bg-white p-6 rounded-[32px] shadow-sm border border-surfaceVariant">
-            <h3 className="text-xs font-black uppercase text-onSurfaceVariant mb-6 flex items-center gap-2 italic">
-              <span className="text-sm">⏱️</span> Fluctuación de Pases por Período <div className="h-px flex-1 bg-surfaceVariant/50"></div>
+          <GlassCard className="p-6">
+            <h3 className="text-xs font-black uppercase text-white/70 mb-6 flex items-center gap-2 italic">
+              <span className="text-sm"><i className="fa-solid fa-stopwatch"></i></span> Fluctuación de Pases por Período <div className="h-px flex-1 bg-white/10"></div>
             </h3>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={passTrendData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={10} />
-                  <YAxis axisLine={false} tickLine={false} fontSize={10} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={10} fill="#ffffff" />
+                  <YAxis axisLine={false} tickLine={false} fontSize={10} fill="#ffffff" />
                   <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '10px' }} />
-                  <Line type="monotone" dataKey="pases" stroke="#6d5dfc" strokeWidth={4} dot={{ r: 6, fill: '#6d5dfc', strokeWidth: 2, stroke: '#fff' }} />
+                  <Line type="monotone" dataKey="pases" stroke="#00fe00" strokeWidth={4} dot={{ r: 6, fill: '#00fe00', strokeWidth: 2, stroke: '#1a1a1a' }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
-          </section>
+          </GlassCard>
         </div>
 
         <div className="flex flex-col gap-4">
           <div className="flex gap-3">
-            <Button variant="outline" className="flex-1 bg-white border-surfaceVariant h-14" onClick={handleDownloadPDF} disabled={isGeneratingPDF}>{isGeneratingPDF ? '⏳ GENERANDO...' : '💾 PDF REPORT'}</Button>
-            <Button variant="outline" className="flex-1 bg-white border-primary/20 text-primary h-14" onClick={handleCopySummary}>📋 COPIAR RESUMEN</Button>
-            <Button variant="outline" className="flex-1 bg-white border-surfaceVariant h-14" onClick={downloadCSV}>📊 DATA CSV</Button>
+            <Button variant="outline" className="flex-1 bg-white/5 border-white/10 text-white hover:bg-white/10 h-14" onClick={handleDownloadPDF} disabled={isGeneratingPDF}>{isGeneratingPDF ? '⏳ GENERANDO...' : '💾 PDF REPORT'}</Button>
+            <Button variant="outline" className="flex-1 bg-[#00fe00]/10 border-[#00fe00]/30 text-[#00fe00] hover:bg-[#00fe00]/20 h-14" onClick={handleCopySummary}>📋 COPIAR RESUMEN</Button>
+            <Button variant="outline" className="flex-1 bg-white/5 border-white/10 text-white hover:bg-white/10 h-14" onClick={downloadCSV}>📊 DATA CSV</Button>
           </div>
-          <Button className="w-full h-14 rounded-[24px] shadow-lg shadow-primary/20 font-black uppercase tracking-widest" onClick={() => navigate('/dashboard')}>🏠 REGRESAR AL DASHBOARD</Button>
+          <Button className="w-full h-14 bg-[#00fe00] text-black hover:bg-[#00fe00]/80 rounded-[24px] shadow-[0_0_20px_rgba(0,254,0,0.3)] font-black uppercase tracking-widest" onClick={() => navigate('/dashboard')}>🏠 REGRESAR AL DASHBOARD</Button>
         </div>
       </main>
     </div>

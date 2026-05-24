@@ -27,7 +27,7 @@ const NSeparator = () => (
 
 const TacticIcon = ({ active, animated = false }: { active: boolean, animated?: boolean }) => (
   <div className="relative flex items-center justify-center">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={`transition-all ${active ? 'text-primary scale-110' : 'text-onSurfaceVariant/40'}`}>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={`transition-all ${active ? 'text-primary scale-110' : 'text-white/40'}`}>
       <path d="M4 4L8 8M8 4L4 8" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" />
       <path d="M16 16L20 20M20 16L16 20" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" />
       <path d="M6 19C6 19 7 13 15 13" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" />
@@ -55,17 +55,17 @@ const EntryAnalysisCard: React.FC<{
   const [isExpanded, setIsExpanded] = useState(true);
 
   return (
-    <div className="bg-surface/50 p-5 rounded-[28px] border border-surfaceVariant shadow-sm flex flex-col gap-4">
-      <div className="flex justify-between items-center border-b border-surfaceVariant pb-3">
+    <div className="border-white/10 p-5 rounded-[28px] border border-white/10 shadow-sm flex flex-col gap-4">
+      <div className="flex justify-between items-center border-b border-white/10 pb-3">
         <div className="flex items-center gap-2">
           {icon && <span className="text-xs">{icon}</span>}
-          <h4 className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">{title}</h4>
+          <h4 className="contrail-font text-[9px] font-black text-white uppercase tracking-widest">{title}</h4>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xl font-black text-dark">{homeTotal}/{awayTotal}</span>
+          <span className="text-xl font-black text-white">{homeTotal}/{awayTotal}</span>
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className={`w-6 h-6 flex items-center justify-center rounded-full bg-surfaceVariant/10 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
+            className={`w-6 h-6 flex items-center justify-center rounded-full bg-white/5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
           >
             <span className="text-[10px]">▼</span>
           </button>
@@ -101,18 +101,18 @@ const StatDetailCard = ({ title, data, colorClass, showDetails = true, compact =
   const isMaxLane = (val: number) => val > 0 && val === maxLaneVal;
 
   return (
-    <div className={`bg-surface/50 ${compact ? 'p-3 rounded-2xl' : 'p-5 rounded-[28px]'} border border-surfaceVariant shadow-sm flex flex-col ${compact ? 'gap-2' : 'gap-3'}`}>
-      <div className={`flex justify-between items-center ${showDetails && isExpanded ? 'border-b border-surfaceVariant pb-2' : ''}`}>
+    <div className={`border-white/10 ${compact ? 'p-3 rounded-2xl' : 'p-5 rounded-[28px]'} border border-white/10 shadow-sm flex flex-col ${compact ? 'gap-2' : 'gap-3'}`}>
+      <div className={`flex justify-between items-center ${showDetails && isExpanded ? 'border-b border-white/10 pb-2' : ''}`}>
         <div className="flex items-center gap-2">
           {icon && <span className="text-xs">{icon}</span>}
-          <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">{title}</p>
+          <p className="contrail-font text-[9px] font-black text-white uppercase tracking-widest">{title}</p>
         </div>
         <div className="flex items-center gap-3">
-          <span className={`${compact ? 'text-xl' : 'text-2xl'} font-black text-dark`}>{data.total}</span>
+          <span className={`${compact ? 'text-xl' : 'text-2xl'} font-black text-white`}>{data.total}</span>
           {showDetails && (
             <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className={`w-6 h-6 flex items-center justify-center rounded-full bg-surfaceVariant/10 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
+              className={`w-6 h-6 flex items-center justify-center rounded-full bg-white/5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
             >
               <span className="text-[10px]">▼</span>
             </button>
@@ -123,34 +123,34 @@ const StatDetailCard = ({ title, data, colorClass, showDetails = true, compact =
       {showDetails && isExpanded && (
         <div className="animate-in slide-in-from-top duration-300 flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-2">
-            <div className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${isMaxHalf(data.own) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-white/40 border-surfaceVariant/30'}`}>
+            <div className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${isMaxHalf(data.own) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10/40 border-white/10/30'}`}>
               <span className={`${isMaxHalf(data.own) ? style.accent : 'text-blue-500'} text-[10px]`}>↓</span>
               <div className="flex flex-col">
-                <span className={`text-[8px] font-bold uppercase ${isMaxHalf(data.own) ? style.text : 'text-onSurfaceVariant opacity-60'} leading-none`}>En Campo Propio</span>
-                <span className="text-[11px] font-black leading-none text-dark">{data.own}</span>
+                <span className={`text-[8px] font-bold uppercase ${isMaxHalf(data.own) ? style.text : 'text-white opacity-60'} leading-none`}>En Campo Propio</span>
+                <span className="text-[11px] font-black leading-none text-white">{data.own}</span>
               </div>
             </div>
-            <div className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${isMaxHalf(data.rival) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-white/40 border-surfaceVariant/30'}`}>
+            <div className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${isMaxHalf(data.rival) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10/40 border-white/10/30'}`}>
               <span className={`${isMaxHalf(data.rival) ? style.accent : 'text-orange-500'} text-[10px]`}>↑</span>
               <div className="flex flex-col">
-                <span className={`text-[8px] font-bold uppercase ${isMaxHalf(data.rival) ? style.text : 'text-onSurfaceVariant opacity-60'} leading-none`}>En Campo Rival</span>
-                <span className="text-[11px] font-black leading-none text-dark">{data.rival}</span>
+                <span className={`text-[8px] font-bold uppercase ${isMaxHalf(data.rival) ? style.text : 'text-white opacity-60'} leading-none`}>En Campo Rival</span>
+                <span className="text-[11px] font-black leading-none text-white">{data.rival}</span>
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-1.5 pt-1">
-            <div className={`flex flex-col items-center p-1.5 rounded-xl border transition-all ${isMaxLane(data.left) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-white/40 border-surfaceVariant/30'}`}>
-              <span className={`text-[7px] font-black uppercase mb-0.5 ${isMaxLane(data.left) ? style.text : 'text-onSurfaceVariant opacity-60'}`}>Izquierda</span>
-              <span className="text-[10px] font-black text-dark">{data.left}</span>
+            <div className={`flex flex-col items-center p-1.5 rounded-xl border transition-all ${isMaxLane(data.left) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10/40 border-white/10/30'}`}>
+              <span className={`text-[7px] font-black uppercase mb-0.5 ${isMaxLane(data.left) ? style.text : 'text-white opacity-60'}`}>Izquierda</span>
+              <span className="text-[10px] font-black text-white">{data.left}</span>
             </div>
-            <div className={`flex flex-col items-center p-1.5 rounded-xl border transition-all ${isMaxLane(data.center) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-white/40 border-surfaceVariant/30'}`}>
-              <span className={`text-[7px] font-black uppercase mb-0.5 ${isMaxLane(data.center) ? style.text : 'text-onSurfaceVariant opacity-60'}`}>Centro</span>
-              <span className="text-[10px] font-black text-dark">{data.center}</span>
+            <div className={`flex flex-col items-center p-1.5 rounded-xl border transition-all ${isMaxLane(data.center) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10/40 border-white/10/30'}`}>
+              <span className={`text-[7px] font-black uppercase mb-0.5 ${isMaxLane(data.center) ? style.text : 'text-white opacity-60'}`}>Centro</span>
+              <span className="text-[10px] font-black text-white">{data.center}</span>
             </div>
-            <div className={`flex flex-col items-center p-1.5 rounded-xl border transition-all ${isMaxLane(data.right) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-white/40 border-surfaceVariant/30'}`}>
-              <span className={`text-[7px] font-black uppercase mb-0.5 ${isMaxLane(data.right) ? style.text : 'text-onSurfaceVariant opacity-60'}`}>Derecha</span>
-              <span className="text-[10px] font-black text-dark">{data.right}</span>
+            <div className={`flex flex-col items-center p-1.5 rounded-xl border transition-all ${isMaxLane(data.right) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10/40 border-white/10/30'}`}>
+              <span className={`text-[7px] font-black uppercase mb-0.5 ${isMaxLane(data.right) ? style.text : 'text-white opacity-60'}`}>Derecha</span>
+              <span className="text-[10px] font-black text-white">{data.right}</span>
             </div>
           </div>
         </div>
@@ -182,17 +182,17 @@ const StatComparisonCard = ({ title, icon, homeData, awayData, allEvents, homeCo
   const awayOutcomes = getOutcomes(awayData.events);
 
   return (
-    <div className="bg-surface/50 p-5 rounded-[28px] border border-surfaceVariant shadow-sm flex flex-col gap-4">
-      <div className={`flex justify-between items-center ${isExpanded ? 'border-b border-surfaceVariant pb-3' : ''}`}>
+    <div className="border-white/10 p-5 rounded-[28px] border border-white/10 shadow-sm flex flex-col gap-4">
+      <div className={`flex justify-between items-center ${isExpanded ? 'border-b border-white/10 pb-3' : ''}`}>
         <div className="flex items-center gap-2">
           <span className="text-xs">{icon}</span>
-          <h4 className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">{title}</h4>
+          <h4 className="contrail-font text-[9px] font-black text-white uppercase tracking-widest">{title}</h4>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xl font-black text-dark">{homeData.total}/{awayData.total}</span>
+          <span className="text-xl font-black text-white">{homeData.total}/{awayData.total}</span>
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className={`w-6 h-6 flex items-center justify-center rounded-full bg-surfaceVariant/10 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
+            className={`w-6 h-6 flex items-center justify-center rounded-full bg-white/5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
           >
             <span className="text-[10px]">▼</span>
           </button>
@@ -200,24 +200,24 @@ const StatComparisonCard = ({ title, icon, homeData, awayData, allEvents, homeCo
       </div>
       {isExpanded && (
         <div className="flex flex-col gap-3 animate-in slide-in-from-top duration-300">
-          <div className="flex items-center gap-3 py-1 border-b border-surfaceVariant/30">
+          <div className="flex items-center gap-3 py-1 border-b border-white/10/30">
             <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: homeColor }}></div>
             <div className="grid grid-cols-4 flex-1 gap-1">
               <div className="flex items-center gap-1">
-                <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Gol:</span>
-                <span className="text-[10px] font-black text-dark leading-none">{homeOutcomes.gol}</span>
+                <span className="text-[7px] font-black text-white uppercase">Gol:</span>
+                <span className="text-[10px] font-black text-white leading-none">{homeOutcomes.gol}</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Ata:</span>
-                <span className="text-[10px] font-black text-dark leading-none">{homeOutcomes.atajado}</span>
+                <span className="text-[7px] font-black text-white uppercase">Ata:</span>
+                <span className="text-[10px] font-black text-white leading-none">{homeOutcomes.atajado}</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Des:</span>
-                <span className="text-[10px] font-black text-dark leading-none">{homeOutcomes.desviado}</span>
+                <span className="text-[7px] font-black text-white uppercase">Des:</span>
+                <span className="text-[10px] font-black text-white leading-none">{homeOutcomes.desviado}</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Pér:</span>
-                <span className="text-[10px] font-black text-dark leading-none">{homeOutcomes.perdida}</span>
+                <span className="text-[7px] font-black text-white uppercase">Pér:</span>
+                <span className="text-[10px] font-black text-white leading-none">{homeOutcomes.perdida}</span>
               </div>
             </div>
           </div>
@@ -225,20 +225,20 @@ const StatComparisonCard = ({ title, icon, homeData, awayData, allEvents, homeCo
             <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: awayColor }}></div>
             <div className="grid grid-cols-4 flex-1 gap-1">
               <div className="flex items-center gap-1">
-                <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Gol:</span>
-                <span className="text-[10px] font-black text-dark leading-none">{awayOutcomes.gol}</span>
+                <span className="text-[7px] font-black text-white uppercase">Gol:</span>
+                <span className="text-[10px] font-black text-white leading-none">{awayOutcomes.gol}</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Ata:</span>
-                <span className="text-[10px] font-black text-dark leading-none">{awayOutcomes.atajado}</span>
+                <span className="text-[7px] font-black text-white uppercase">Ata:</span>
+                <span className="text-[10px] font-black text-white leading-none">{awayOutcomes.atajado}</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Des:</span>
-                <span className="text-[10px] font-black text-dark leading-none">{awayOutcomes.desviado}</span>
+                <span className="text-[7px] font-black text-white uppercase">Des:</span>
+                <span className="text-[10px] font-black text-white leading-none">{awayOutcomes.desviado}</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Pér:</span>
-                <span className="text-[10px] font-black text-dark leading-none">{awayOutcomes.perdida}</span>
+                <span className="text-[7px] font-black text-white uppercase">Pér:</span>
+                <span className="text-[10px] font-black text-white leading-none">{awayOutcomes.perdida}</span>
               </div>
             </div>
           </div>
@@ -262,10 +262,10 @@ const SectorRectangle: React.FC<{
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-tighter opacity-70">{label}</p>
+      <p className="text-[9px] font-black text-white uppercase tracking-tighter opacity-70">{label}</p>
       <div className={`w-full overflow-hidden flex flex-col ${borderPosition === 'top' ? 'flex-col-reverse' : 'flex-col'}`}>
         <div
-          className={`w-full h-12 bg-surfaceVariant/5 border border-surfaceVariant flex overflow-hidden ${type === 'zone23'
+          className={`w-full h-12 bg-white/5 border border-white/10 flex overflow-hidden ${type === 'zone23'
             ? 'rounded-none'
             : borderPosition === 'top' ? 'rounded-b-[40px] rounded-t-md' : 'rounded-t-[40px] rounded-b-md'
             }`}
@@ -295,9 +295,9 @@ const SectorRectangle: React.FC<{
             return (
               <div
                 key={sect}
-                className={`flex-1 border-r last:border-r-0 border-surfaceVariant/20 flex flex-col items-center justify-center transition-all ${cellRoundedClass} ${active ? 'bg-primary/10' : ''}`}
+                className={`flex-1 border-r last:border-r-0 border-white/10/20 flex flex-col items-center justify-center transition-all ${cellRoundedClass} ${active ? 'bg-primary/10' : ''}`}
               >
-                <span className={`text-[10px] font-black ${active ? 'text-primary' : 'text-dark/40'}`}>
+                <span className={`text-[10px] font-black ${active ? 'text-primary' : 'text-white'}`}>
                   {val}
                 </span>
               </div>
@@ -311,15 +311,15 @@ const SectorRectangle: React.FC<{
 
 const getActionIcon = (type: string) => {
   const t = type.toUpperCase();
-  if (t.includes('CÓRNER CORTO')) return '🏑';
-  if (t.includes('PENAL')) return '🎯';
-  if (t.includes('GOL')) return '⚽';
-  if (t.includes('DISPARO') || t.includes('ATAJADO') || t.includes('DESVIADO')) return '🥅';
+  if (t.includes('CÓRNER CORTO')) return (<i className="fa-hockey-puck fa-solid text-white"></i>);
+  if (t.includes('PENAL')) return (<i className="fa-bullseye fa-solid text-white"></i>);
+  if (t.includes('GOL')) return (<i className="fa-futbol fa-solid text-white"></i>);
+  if (t.includes('DISPARO') || t.includes('ATAJADO') || t.includes('DESVIADO')) return (<i className="fa-futbol fa-solid text-white"></i>);
   if (t.includes('FALTA')) return '⚠️';
-  if (t.includes('PÉRDIDA')) return '📉';
-  if (t.includes('RECUPERO')) return '📈';
-  if (t.includes('INGRESO')) return '📥';
-  return '📌';
+  if (t.includes('PÉRDIDA')) return (<i className="fa-arrow-trend-down fa-solid text-white"></i>);
+  if (t.includes('RECUPERO')) return (<i className="fa-arrow-trend-up fa-solid text-white"></i>);
+  if (t.includes('INGRESO')) return (<i className="fa-arrow-right-to-bracket fa-solid text-white"></i>);
+  return (<i className="fa-thumbtack fa-solid text-white"></i>);
 };
 
 const LiveGameView: React.FC<{
@@ -626,7 +626,7 @@ const LiveGameView: React.FC<{
 
   const showPassSnackbar = (count: number, isRecord: boolean) => {
     if (!isRecord) return;
-    const message = `🏆 ¡Nuevo récord: ${count} pases!`;
+    const message = `<i className="fa-solid fa-trophy"></i> ¡Nuevo récord: ${count} pases!`;
     setSnackbar({ message, visible: true });
     setTimeout(() => setSnackbar(prev => ({ ...prev, visible: false })), 2500);
   };
@@ -1068,6 +1068,80 @@ const LiveGameView: React.FC<{
     audio.play();
   };
 
+  if (isLoading || (!game && !showResumePrompt)) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#0c0a21] text-white gap-4">
+        {loadError ? (
+          <div className="text-red-400 text-center px-6">
+            <div className="text-4xl mb-4 text-white"><i className="fa-solid fa-triangle-exclamation"></i></div>
+            <p className="font-bold text-sm uppercase">{loadError}</p>
+            <button 
+              onClick={() => navigate('/dashboard')}
+              className="mt-6 px-6 py-3 bg-[#1e293b]/45 backdrop-blur-md border border-white/10/10 rounded-full font-black text-xs uppercase hover:bg-[#1e293b]/45 backdrop-blur-md border border-white/10/20 transition-colors"
+            >
+              Volver al inicio
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            <p className="contrail-font font-black text-xs uppercase tracking-widest text-white/50 animate-pulse">Cargando partido...</p>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // Si showResumePrompt es true y game es null, renderizamos solo el modal usando un div vacío como base
+  if (!game && showResumePrompt) {
+    return (
+      <div className="min-h-screen bg-[#0c0a21]">
+        <Portal>
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+            <div className="relative w-full max-w-sm bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 p-8 rounded-[40px] shadow-2xl animate-in zoom-in duration-200 text-center">
+              <div className="text-4xl mb-4 text-white"><i className="fa-solid fa-hourglass-half"></i></div>
+              <h3 className="contrail-font contrail-font text-2xl text-white uppercase mb-2">Partido en Curso</h3>
+              <p className="text-[11px] font-bold text-white uppercase leading-relaxed mb-8">
+                Tienes un partido sin finalizar guardado localmente. ¿Deseas continuar el partido anterior o empezar uno nuevo?
+              </p>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => {
+                    if (pendingActiveGame) {
+                      setGame(pendingActiveGame.game);
+                      setSeconds(pendingActiveGame.seconds);
+                      setPeriod(pendingActiveGame.period);
+                      setPossession(pendingActiveGame.possession);
+                      setLocalPossessionTime(pendingActiveGame.localPossessionTime);
+                      setAwayPossessionTime(pendingActiveGame.awayPossessionTime);
+                      setPassCount(pendingActiveGame.passCount);
+                      setIsRunning(pendingActiveGame.isRunning);
+                      if (pendingActiveGame.game.activeTacticId) setActiveTacticId(pendingActiveGame.game.activeTacticId);
+                    }
+                    setShowResumePrompt(false);
+                  }}
+                  className="w-full bg-primary text-white font-black py-4 rounded-2xl active:scale-95 text-xs uppercase shadow-lg shadow-primary/20 transition-all"
+                >
+                  CONTINUAR PARTIDO
+                </button>
+                <button
+                  onClick={() => {
+                    StorageService.clearActiveGame();
+                    onAnnulGame();
+                    navigate('/new-game');
+                  }}
+                  className="w-full bg-red-50 text-red-600 font-black py-4 rounded-2xl active:scale-95 text-xs uppercase border border-red-200 transition-all hover:bg-red-100"
+                >
+                  EMPEZAR UNO NUEVO
+                </button>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      </div>
+    );
+  }
+
   const hasPasses = game.passChains.length > 0;
   const pAvg = hasPasses ? (game.passChains.reduce((a, b) => a + b, 0) / game.passChains.length).toFixed(1) : 0;
   const pMax = hasPasses ? Math.max(...game.passChains) : 0;
@@ -1094,18 +1168,18 @@ const LiveGameView: React.FC<{
     <div className="flex flex-col gap-3 mb-4 shrink-0">
       <div className="flex flex-wrap gap-1.5">
         {[
-          { id: 'ALL', label: 'Todo', icon: '📝' },
-          { id: 'DISPARO', label: 'Remate', icon: '🥅' },
+          { id: 'ALL', label: 'Todo', icon: (<i className="fa-clipboard-list fa-solid text-white"></i>) },
+          { id: 'DISPARO', label: 'Remate', icon: (<i className="fa-futbol fa-solid text-white"></i>) },
           { id: 'FALTA', label: 'Falta', icon: '⚠️' },
-          { id: 'PÉRDIDA', label: 'Pérdida', icon: '📉' },
-          { id: 'RECUPERO', label: 'Recupero', icon: '📈' },
+          { id: 'PÉRDIDA', label: 'Pérdida', icon: (<i className="fa-arrow-trend-down fa-solid text-white"></i>) },
+          { id: 'RECUPERO', label: 'Recupero', icon: (<i className="fa-arrow-trend-up fa-solid text-white"></i>) },
         ].map(f => (
           <button
             key={f.id}
             onClick={() => setEventFilter(f.id as ActionFilter)}
             className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all border ${eventFilter === f.id
               ? 'bg-primary text-white border-primary shadow-sm'
-              : 'bg-surface text-onSurfaceVariant/60 border-surfaceVariant hover:border-primary/40'
+              : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white/60 border-white/10 hover:border-primary/40'
               }`}
           >
             <span>{f.icon}</span>
@@ -1120,7 +1194,7 @@ const LiveGameView: React.FC<{
             onClick={() => setPeriodFilter(p.id as PeriodFilter)}
             className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all border ${periodFilter === p.id
               ? 'bg-primary text-white border-primary shadow-md'
-              : 'bg-surface text-onSurfaceVariant/60 border-surfaceVariant hover:border-primary/40'
+              : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white/60 border-white/10 hover:border-primary/40'
               }`}
           >
             {p.label}
@@ -1156,8 +1230,8 @@ const LiveGameView: React.FC<{
 
   return (
     <div
-      className="bg-surface select-none transition-all duration-500 fixed inset-0 z-50 w-full"
-      style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', overscrollBehavior: 'none' }}
+      className="bg-[#020617] select-none transition-all duration-500 fixed inset-0 z-50 w-full bg-cover bg-center"
+      style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', overscrollBehavior: 'none', backgroundImage: 'linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url(./assets/dashboard-bg.jpg)' }}
     >
 
       {snackbar.visible && (
@@ -1173,14 +1247,14 @@ const LiveGameView: React.FC<{
       {/* Modal de Confirmación de Período */}
       {periodToConfirm !== null && (
         <Portal>
-          <div className="fixed inset-0 z-[600] flex items-center justify-center p-6 bg-brandDark/40 backdrop-blur-md animate-in fade-in duration-200">
-            <div className="relative w-full max-w-sm bg-white border border-surfaceVariant p-8 rounded-[40px] shadow-2xl flex flex-col items-center text-center animate-in zoom-in duration-200">
-              <div className="w-16 h-16 bg-primary/10 rounded-3xl flex items-center justify-center text-primary text-3xl mb-6">⏱️</div>
-              <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-[4px] mb-2">Finalizar Tiempo Actual</h3>
-              <h2 className="contrail-font text-2xl text-dark uppercase tracking-tighter leading-tight mb-6">
+          <div className="fixed inset-0 z-[600] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="relative w-full max-w-sm bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 p-8 rounded-[40px] shadow-2xl flex flex-col items-center text-center animate-in zoom-in duration-200">
+              <div className="w-16 h-16 bg-primary/10 rounded-3xl flex items-center justify-center text-primary text-3xl mb-6"><i className="fa-solid fa-stopwatch"></i></div>
+              <h3 className="contrail-font text-[10px] font-black text-white uppercase tracking-[4px] mb-2">Finalizar Tiempo Actual</h3>
+              <h2 className="contrail-font text-2xl text-white uppercase tracking-tighter leading-tight mb-6">
                 ¿Deseas finalizar el período actual y comenzar el {periodToConfirm}Q?
               </h2>
-              <p className="text-[11px] text-onSurfaceVariant/60 font-bold mb-8 leading-relaxed">
+              <p className="text-[11px] text-white/60 font-bold mb-8 leading-relaxed">
                 El cronómetro se reiniciará a 0:00 y se pausará automáticamente para que inicies el nuevo tiempo cuando estés listo.
               </p>
               <div className="flex flex-col w-full gap-3">
@@ -1192,7 +1266,7 @@ const LiveGameView: React.FC<{
                 </button>
                 <button
                   onClick={() => setPeriodToConfirm(null)}
-                  className="w-full bg-surface text-onSurfaceVariant font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest"
+                  className="w-full bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest"
                 >
                   Mantener período actual
                 </button>
@@ -1204,13 +1278,13 @@ const LiveGameView: React.FC<{
 
       {showNoteModal && (
         <Portal>
-          <div className="fixed inset-0 z-[500] flex items-center justify-center p-6 bg-brandDark/40 backdrop-blur-sm">
-            <div className="relative w-full max-w-sm bg-white border border-surfaceVariant p-6 rounded-[32px] shadow-2xl">
-              <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest mb-4">Nueva Observación</h3>
-              <textarea autoFocus className="w-full h-32 bg-surfaceVariant/20 border border-surfaceVariant p-4 rounded-2xl text-onSurface outline-none focus:border-primary transition-colors text-sm" placeholder="Escribe aquí..." value={noteText} onChange={(e) => setNoteText(e.target.value)} />
+          <div className="fixed inset-0 z-[500] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+            <div className="relative w-full max-w-sm bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 p-6 rounded-[32px] shadow-2xl">
+              <h3 className="contrail-font text-[10px] font-black text-white uppercase tracking-widest mb-4">Nueva Observación</h3>
+              <textarea autoFocus className="w-full h-32 bg-white/5 border border-white/10 p-4 rounded-2xl text-white outline-none focus:border-primary transition-colors text-sm" placeholder="Escribe aquí..." value={noteText} onChange={(e) => setNoteText(e.target.value)} />
               <div className="flex gap-3 mt-6">
                 <button onClick={handleSaveTextNote} className="flex-1 bg-primary text-white font-black py-4 rounded-2xl active:scale-95 text-xs uppercase">GUARDAR</button>
-                <button onClick={() => setShowNoteModal(false)} className="px-6 bg-surfaceVariant text-onSurfaceVariant font-bold rounded-2xl text-[10px] uppercase">Cerrar</button>
+                <button onClick={() => setShowNoteModal(false)} className="px-6 bg-white/10 text-white font-bold rounded-2xl text-[10px] uppercase">Cerrar</button>
               </div>
             </div>
           </div>
@@ -1220,13 +1294,13 @@ const LiveGameView: React.FC<{
       {/* Modal Editar Acción */}
       {eventToEdit && (
         <Portal>
-          <div className="fixed inset-0 z-[500] flex items-center justify-center p-6 bg-brandDark/40 backdrop-blur-sm">
-            <div className="relative w-full max-w-sm bg-white border border-surfaceVariant p-6 rounded-[32px] shadow-2xl">
-              <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest mb-2">Editar Acción</h3>
+          <div className="fixed inset-0 z-[500] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+            <div className="relative w-full max-w-sm bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 p-6 rounded-[32px] shadow-2xl">
+              <h3 className="contrail-font text-[10px] font-black text-white uppercase tracking-widest mb-2">Editar Acción</h3>
               <p className="text-[9px] font-black text-primary mb-4 uppercase">{eventToEdit.type} - {eventToEdit.gameTime}</p>
               <textarea
                 autoFocus
-                className="w-full h-32 bg-surfaceVariant/20 border border-surfaceVariant p-4 rounded-2xl text-onSurface outline-none focus:border-primary transition-colors text-sm"
+                className="w-full h-32 bg-white/5 border border-white/10 p-4 rounded-2xl text-white outline-none focus:border-primary transition-colors text-sm"
                 placeholder="Editar detalles..."
                 defaultValue={eventToEdit.transcription || eventToEdit.details}
                 onBlur={(e) => eventToEdit && (eventToEdit.details = e.target.value)}
@@ -1240,7 +1314,7 @@ const LiveGameView: React.FC<{
                 </button>
                 <button
                   onClick={() => setEventToEdit(null)}
-                  className="px-6 bg-surfaceVariant text-onSurfaceVariant font-bold rounded-2xl text-[10px] uppercase"
+                  className="px-6 bg-white/10 text-white font-bold rounded-2xl text-[10px] uppercase"
                 >
                   Cancelar
                 </button>
@@ -1253,11 +1327,11 @@ const LiveGameView: React.FC<{
       {/* Modal Confirmar Salida (Anular Juego) */}
       {showExitConfirm && (
         <Portal>
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-brandDark/40 backdrop-blur-sm">
-            <div className="relative w-full max-w-sm bg-white border border-surfaceVariant p-8 rounded-[40px] shadow-2xl animate-in zoom-in duration-200 text-center">
-              <div className="text-4xl mb-4">⚠️</div>
-              <h3 className="contrail-font text-2xl text-dark uppercase mb-2">¿Anular Juego?</h3>
-              <p className="text-[11px] font-bold text-onSurfaceVariant uppercase leading-relaxed mb-8">
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+            <div className="relative w-full max-w-sm bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 p-8 rounded-[40px] shadow-2xl animate-in zoom-in duration-200 text-center">
+              <div className="text-4xl mb-4 text-white"><i className="fa-solid fa-triangle-exclamation"></i></div>
+              <h3 className="contrail-font contrail-font text-2xl text-white uppercase mb-2">¿Anular Juego?</h3>
+              <p className="text-[11px] font-bold text-white uppercase leading-relaxed mb-8">
                 Si regresas al dashboard ahora, el progreso actual se perderá y el juego no se guardará en el historial.
               </p>
               <div className="flex flex-col gap-3">
@@ -1272,7 +1346,7 @@ const LiveGameView: React.FC<{
                 </button>
                 <button
                   onClick={() => setShowExitConfirm(false)}
-                  className="w-full bg-surface text-onSurfaceVariant font-black py-4 rounded-2xl active:scale-95 text-xs uppercase border border-surfaceVariant transition-all"
+                  className="w-full bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white font-black py-4 rounded-2xl active:scale-95 text-xs uppercase border border-white/10 transition-all"
                 >
                   CONTINUAR JUGANDO
                 </button>
@@ -1285,11 +1359,11 @@ const LiveGameView: React.FC<{
       {/* Modal Reanudar Partido */}
       {showResumePrompt && (
         <Portal>
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-brandDark/40 backdrop-blur-sm">
-            <div className="relative w-full max-w-sm bg-white border border-surfaceVariant p-8 rounded-[40px] shadow-2xl animate-in zoom-in duration-200 text-center">
-              <div className="text-4xl mb-4">⏳</div>
-              <h3 className="contrail-font text-2xl text-dark uppercase mb-2">Partido en Curso</h3>
-              <p className="text-[11px] font-bold text-onSurfaceVariant uppercase leading-relaxed mb-8">
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+            <div className="relative w-full max-w-sm bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 p-8 rounded-[40px] shadow-2xl animate-in zoom-in duration-200 text-center">
+              <div className="text-4xl mb-4 text-white"><i className="fa-solid fa-hourglass-half"></i></div>
+              <h3 className="contrail-font contrail-font text-2xl text-white uppercase mb-2">Partido en Curso</h3>
+              <p className="text-[11px] font-bold text-white uppercase leading-relaxed mb-8">
                 Tienes un partido sin finalizar guardado localmente. ¿Deseas continuar el partido anterior o empezar uno nuevo?
               </p>
               <div className="flex flex-col gap-3">
@@ -1331,11 +1405,11 @@ const LiveGameView: React.FC<{
       {/* Modal Confirmar Finalizar Juego */}
       {showFinishConfirm && (
         <Portal>
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-brandDark/40 backdrop-blur-sm">
-            <div className="relative w-full max-w-sm bg-white border border-surfaceVariant p-8 rounded-[40px] shadow-2xl animate-in zoom-in duration-200 text-center">
-              <div className="text-4xl mb-4">🏁</div>
-              <h3 className="contrail-font text-2xl text-dark uppercase mb-2">¿Finalizar Partido?</h3>
-              <p className="text-[11px] font-bold text-onSurfaceVariant uppercase leading-relaxed mb-8">
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+            <div className="relative w-full max-w-sm bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 p-8 rounded-[40px] shadow-2xl animate-in zoom-in duration-200 text-center">
+              <div className="text-4xl mb-4 text-white"><i className="fa-solid fa-flag-checkered"></i></div>
+              <h3 className="contrail-font contrail-font text-2xl text-white uppercase mb-2">¿Finalizar Partido?</h3>
+              <p className="text-[11px] font-bold text-white uppercase leading-relaxed mb-8">
                 Esta acción cerrará el registro actual y generará el reporte final de estadísticas. ¿Estás seguro de proceder?
               </p>
               <div className="flex flex-col gap-3">
@@ -1347,7 +1421,7 @@ const LiveGameView: React.FC<{
                 </button>
                 <button
                   onClick={() => setShowFinishConfirm(false)}
-                  className="w-full bg-surface text-onSurfaceVariant font-black py-4 rounded-2xl active:scale-95 text-xs uppercase border border-surfaceVariant transition-all"
+                  className="w-full bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white font-black py-4 rounded-2xl active:scale-95 text-xs uppercase border border-white/10 transition-all"
                 >
                   CONTINUAR JUGANDO
                 </button>
@@ -1361,45 +1435,45 @@ const LiveGameView: React.FC<{
         <Portal>
           <div className="fixed inset-0 z-[400] flex">
             <div className="absolute inset-0 bg-brandDark/20 backdrop-blur-md" onClick={() => setIsMenuOpen(false)} />
-            <aside className="relative w-72 h-full bg-white border-r border-surfaceVariant shadow-2xl flex flex-col p-8 animate-in slide-in-from-left duration-300">
+            <aside className="relative w-72 h-full bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border-r border-white/10 shadow-2xl flex flex-col p-8 animate-in slide-in-from-left duration-300">
               <div className="flex justify-between items-center mb-10">
-                <h2 className="text-lg font-black text-dark uppercase tracking-[4px]">Menú</h2>
-                <button onClick={() => setIsMenuOpen(false)} className="text-onSurfaceVariant p-2 hover:bg-surfaceVariant rounded-full transition-colors">✕</button>
+                <h2 className="text-lg font-black text-white uppercase tracking-[4px]">Menú</h2>
+                <button onClick={() => setIsMenuOpen(false)} className="text-white p-2 hover:bg-white/10 rounded-full transition-colors">✕</button>
               </div>
               <nav className="flex-1 space-y-2 overflow-y-auto no-scrollbar">
                 <button
                   onClick={handleFinishGame}
                   className="w-full text-left p-4 rounded-xl bg-primary/10 text-primary font-black text-[11px] uppercase tracking-widest flex items-center gap-3 transition-all active:scale-95 mb-4 hover:bg-primary/20"
                 >
-                  <span>🏁</span> Finalizar Match
+                  <i className="fa-solid fa-flag-checkered text-white"></i> Finalizar Match
                 </button>
 
-                <div className="py-2 border-b border-surfaceVariant mb-2">
-                  <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest mb-3 px-4">Configuración de Vista</p>
+                <div className="py-2 border-b border-white/10 mb-2">
+                  <p className="contrail-font text-[9px] font-black text-white uppercase tracking-widest mb-3 px-4">Configuración de Vista</p>
                   <button
                     onClick={() => setIsLandscape(!isLandscape)}
-                    className={`w-full text-left p-4 rounded-xl flex items-center justify-between font-bold text-[11px] uppercase tracking-widest transition-all active:scale-95 ${isLandscape ? 'bg-primary/5 text-primary' : 'hover:bg-surface text-onSurface'}`}
+                    className={`w-full text-left p-4 rounded-xl flex items-center justify-between font-bold text-[11px] uppercase tracking-widest transition-all active:scale-95 ${isLandscape ? 'bg-primary/5 text-primary' : 'hover:bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white'}`}
                   >
                     <span>{isLandscape ? 'Cancha Vertical' : 'Cancha Horizontal'}</span>
                   </button>
                   <button
                     onClick={() => setIsFlipped(!isFlipped)}
-                    className={`w-full text-left p-4 rounded-xl flex items-center justify-between font-bold text-[11px] uppercase tracking-widest transition-all active:scale-95 ${isFlipped ? 'bg-primary/5 text-primary' : 'hover:bg-surface text-onSurface'}`}
+                    className={`w-full text-left p-4 rounded-xl flex items-center justify-between font-bold text-[11px] uppercase tracking-widest transition-all active:scale-95 ${isFlipped ? 'bg-primary/5 text-primary' : 'hover:bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white'}`}
                   >
                     <span>Invertir arcos</span>
                   </button>
                 </div>
 
                 {["1: Configurar juego", "2: Configurar plantel", "3: Configurar acciones"].map((opt, i) => (
-                  <button key={i} className="w-full text-left p-4 rounded-xl hover:bg-surface text-onSurface font-bold text-[11px] uppercase tracking-widest transition-all active:scale-95" onClick={() => setIsMenuOpen(false)}>{opt}</button>
+                  <button key={i} className="w-full text-left p-4 rounded-xl hover:bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white font-bold text-[11px] uppercase tracking-widest transition-all active:scale-95" onClick={() => setIsMenuOpen(false)}>{opt}</button>
                 ))}
               </nav>
-              <div className="pt-6 mt-6 border-t border-surfaceVariant">
+              <div className="pt-6 mt-6 border-t border-white/10">
                 <button
                   onClick={() => setShowExitConfirm(true)}
                   className="w-full text-left p-4 bg-red-50 text-red-600 rounded-xl font-black text-[11px] uppercase tracking-widest flex items-center gap-3 transition-all hover:bg-red-100 active:scale-95"
                 >
-                  <span>🏠</span> Regresar al dashboard
+                  <i className="fa-solid fa-house text-white"></i> Regresar al dashboard
                 </button>
               </div>
             </aside>
@@ -1407,7 +1481,7 @@ const LiveGameView: React.FC<{
         </Portal>
       )}
 
-      <header className="h-16 md:h-20 flex items-center justify-between px-4 md:px-6 bg-white border-b border-surfaceVariant shadow-sm z-[200]" style={{ flexShrink: 0 }}>
+      <header className="h-16 md:h-20 flex items-center justify-between px-4 md:px-6 bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border-b border-white/10 shadow-sm z-[200]" style={{ flexShrink: 0 }}>
         <button onClick={() => setIsMenuOpen(true)} className="w-8 h-8 flex flex-col items-center justify-center gap-1.5 group">
           <div className="w-6 h-0.5 bg-black" />
           <div className="w-6 h-0.5 bg-black" />
@@ -1458,12 +1532,12 @@ const LiveGameView: React.FC<{
               {period}Q
             </button>
             {showPeriodMenu && (
-              <div className="absolute top-full right-0 mt-2 bg-white border border-surfaceVariant shadow-2xl rounded-2xl p-1.5 z-[300] flex flex-col min-w-[60px] animate-in zoom-in duration-150">
+              <div className="absolute top-full right-0 mt-2 bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 shadow-2xl rounded-2xl p-1.5 z-[300] flex flex-col min-w-[60px] animate-in zoom-in duration-150">
                 {[1, 2, 3, 4].map(q => (
                   <button
                     key={q}
                     onClick={() => handlePeriodRequest(q)}
-                    className={`px-4 py-2.5 text-[10px] font-black rounded-xl transition-colors ${period === q ? 'bg-primary text-white shadow-md' : 'text-onSurfaceVariant hover:bg-surface'}`}
+                    className={`px-4 py-2.5 text-[10px] font-black rounded-xl transition-colors ${period === q ? 'bg-primary text-white shadow-md' : 'text-white hover:bg-[#1e293b]/45 backdrop-blur-md border border-white/10'}`}
                   >
                     {q}Q
                   </button>
@@ -1471,8 +1545,8 @@ const LiveGameView: React.FC<{
               </div>
             )}
           </div>
-          <div className="bg-surface px-3 py-1.5 rounded-xl border border-surfaceVariant flex items-center gap-3">
-            <div className="hidden md:flex flex-col items-center gap-1.5 px-0.5 border-r border-surfaceVariant pr-2">
+          <div className="bg-[#1e293b]/45 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-xl border border-white/10 flex items-center gap-3">
+            <div className="hidden md:flex flex-col items-center gap-1.5 px-0.5 border-r border-white/10 pr-2">
               <div
                 className={`w-2 h-2 rounded-full shadow-sm transition-all duration-500 ${!navigator.onLine
                   ? 'bg-red-500 animate-pulse'
@@ -1482,7 +1556,7 @@ const LiveGameView: React.FC<{
                   }`}
                 title={!navigator.onLine ? 'Desconectado' : syncQueueLength > 0 ? 'Sincronizando...' : 'Sincronizado'}
               />
-              <span className="text-[6px] font-black text-onSurfaceVariant/40 uppercase tracking-tighter leading-none">
+              <span className="text-[6px] font-black text-white/40 uppercase tracking-tighter leading-none">
                 {!navigator.onLine ? 'Off' : syncQueueLength > 0 ? 'Sync' : 'Cloud'}
               </span>
             </div>
@@ -1497,13 +1571,13 @@ const LiveGameView: React.FC<{
         </div>
       </header>
 
-      <main className="bg-surface overflow-hidden" style={{ flexGrow: 1, display: 'flex', minHeight: 0 }}>
+      <main className="bg-[#1e293b]/45 backdrop-blur-md border border-white/10 overflow-hidden" style={{ flexGrow: 1, display: 'flex', minHeight: 0 }}>
         {isLoading || loadError || !game ? (
-          <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-surfaceVariant/10">
+          <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-white/5">
             {loadError ? (
               <>
                 <span className="text-4xl mb-4">⚠️</span>
-                <p className="mb-6 font-bold text-onSurfaceVariant text-center">{loadError}</p>
+                <p className="mb-6 font-bold text-white text-center">{loadError}</p>
                 <button 
                   onClick={() => {
                     StorageService.clearActiveGame();
@@ -1517,20 +1591,20 @@ const LiveGameView: React.FC<{
             ) : (
               <>
                 <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-                <p className="font-bold text-onSurfaceVariant uppercase tracking-widest text-xs animate-pulse">Cargando datos...</p>
+                <p className="contrail-font font-bold text-white uppercase tracking-widest text-xs animate-pulse">Cargando datos...</p>
               </>
             )}
           </div>
         ) : (
           <>
             {!isLandscape && (
-          <aside className="hidden lg:flex w-[320px] flex-col p-5 bg-white border-r border-surfaceVariant overflow-y-auto no-scrollbar">
+          <aside className="hidden lg:flex w-[320px] flex-col p-5 bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border-r border-white/10 overflow-y-auto no-scrollbar">
             <div className="flex flex-col gap-6 pb-10">
-              <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest border-b border-surfaceVariant pb-2 italic">Análisis en Tiempo Real</h3>
+              <h3 className="contrail-font text-[10px] font-black text-white uppercase tracking-widest border-b border-white/10 pb-2 italic">Análisis en Tiempo Real</h3>
 
               <EntryAnalysisCard
                 title="Ingresos al Área"
-                icon="📥"
+                icon={<i className="fa-solid fa-arrow-right-to-bracket"></i>}
                 homeTotal={Object.values(statsArea.home).reduce((a: number, b: number) => a + b, 0)}
                 awayTotal={Object.values(statsArea.away).reduce((a: number, b: number) => a + b, 0)}
               >
@@ -1576,7 +1650,7 @@ const LiveGameView: React.FC<{
 
               <StatComparisonCard
                 title="Córners Cortos"
-                icon="🏑"
+                icon={<i className="fa-solid fa-hockey-puck"></i>}
                 homeData={getDetailedStat(['CÓRNER CORTO'], game.teamHome.id)}
                 awayData={getDetailedStat(['CÓRNER CORTO'], game.teamAway.id)}
                 allEvents={game.events}
@@ -1585,7 +1659,7 @@ const LiveGameView: React.FC<{
               />
               <StatComparisonCard
                 title="Penales"
-                icon="🎯"
+                icon={<i className="fa-solid fa-bullseye"></i>}
                 homeData={getDetailedStat(['PENAL'], game.teamHome.id)}
                 awayData={getDetailedStat(['PENAL'], game.teamAway.id)}
                 allEvents={game.events}
@@ -1594,17 +1668,17 @@ const LiveGameView: React.FC<{
               />
 
               {/* Remates Totales Sidebar - MOVED FROM RIGHT */}
-              <div className="bg-surface/50 p-4 rounded-[24px] border border-surfaceVariant shadow-sm flex flex-col gap-3">
-                <div className={`flex justify-between items-center ${shotsTotalSidebarExpanded ? 'border-b border-surfaceVariant pb-2' : ''}`}>
+              <div className="border-white/10 p-4 rounded-[24px] border border-white/10 shadow-sm flex flex-col gap-3">
+                <div className={`flex justify-between items-center ${shotsTotalSidebarExpanded ? 'border-b border-white/10 pb-2' : ''}`}>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs">🥅</span>
-                    <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest leading-none">Remates Totales</p>
+                    <span className="text-xs"><i className="fa-solid fa-futbol"></i></span>
+                    <p className="contrail-font text-[9px] font-black text-white uppercase tracking-widest leading-none">Remates Totales</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-xl font-black text-dark">{landscapeShots.home}/{landscapeShots.away}</span>
+                    <span className="text-xl font-black text-white">{landscapeShots.home}/{landscapeShots.away}</span>
                     <button
                       onClick={() => setShotsTotalSidebarExpanded(!shotsTotalSidebarExpanded)}
-                      className={`w-5 h-5 flex items-center justify-center rounded-full bg-surfaceVariant/10 transition-transform duration-300 ${shotsTotalSidebarExpanded ? 'rotate-180' : ''}`}
+                      className={`w-5 h-5 flex items-center justify-center rounded-full bg-white/5 transition-transform duration-300 ${shotsTotalSidebarExpanded ? 'rotate-180' : ''}`}
                     >
                       <span className="text-[8px]">▼</span>
                     </button>
@@ -1613,20 +1687,20 @@ const LiveGameView: React.FC<{
 
                 {shotsTotalSidebarExpanded && (
                   <div className="flex flex-col gap-3 animate-in slide-in-from-top duration-300">
-                    <div className="flex items-center gap-3 py-1 border-b border-surfaceVariant/30">
+                    <div className="flex items-center gap-3 py-1 border-b border-white/10/30">
                       <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
                       <div className="grid grid-cols-3 flex-1 gap-2">
                         <div className="flex items-center gap-1">
-                          <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Gol:</span>
-                          <span className="text-[10px] font-black text-dark leading-none">{getStat(['GOL'], game.teamHome.id)}</span>
+                          <span className="text-[7px] font-black text-white uppercase">Gol:</span>
+                          <span className="text-[10px] font-black text-white leading-none">{getStat(['GOL'], game.teamHome.id)}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Ata:</span>
-                          <span className="text-[10px] font-black text-dark leading-none">{getStat(['ATAJADO'], game.teamHome.id)}</span>
+                          <span className="text-[7px] font-black text-white uppercase">Ata:</span>
+                          <span className="text-[10px] font-black text-white leading-none">{getStat(['ATAJADO'], game.teamHome.id)}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Des:</span>
-                          <span className="text-[10px] font-black text-dark leading-none">{getStat(['DESVIADO'], game.teamHome.id)}</span>
+                          <span className="text-[7px] font-black text-white uppercase">Des:</span>
+                          <span className="text-[10px] font-black text-white leading-none">{getStat(['DESVIADO'], game.teamHome.id)}</span>
                         </div>
                       </div>
                     </div>
@@ -1634,16 +1708,16 @@ const LiveGameView: React.FC<{
                       <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
                       <div className="grid grid-cols-3 flex-1 gap-2">
                         <div className="flex items-center gap-1">
-                          <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Gol:</span>
-                          <span className="text-[10px] font-black text-dark leading-none">{getStat(['GOL'], game.teamAway.id)}</span>
+                          <span className="text-[7px] font-black text-white uppercase">Gol:</span>
+                          <span className="text-[10px] font-black text-white leading-none">{getStat(['GOL'], game.teamAway.id)}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Ata:</span>
-                          <span className="text-[10px] font-black text-dark leading-none">{getStat(['ATAJADO'], game.teamAway.id)}</span>
+                          <span className="text-[7px] font-black text-white uppercase">Ata:</span>
+                          <span className="text-[10px] font-black text-white leading-none">{getStat(['ATAJADO'], game.teamAway.id)}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="text-[7px] font-black text-onSurfaceVariant uppercase">Des:</span>
-                          <span className="text-[10px] font-black text-dark leading-none">{getStat(['DESVIADO'], game.teamAway.id)}</span>
+                          <span className="text-[7px] font-black text-white uppercase">Des:</span>
+                          <span className="text-[10px] font-black text-white leading-none">{getStat(['DESVIADO'], game.teamAway.id)}</span>
                         </div>
                       </div>
                     </div>
@@ -1656,36 +1730,36 @@ const LiveGameView: React.FC<{
 
         <div className={`flex-1 relative ${isLandscape ? 'p-0' : 'p-2'} flex gap-0 overflow-hidden min-w-0 min-h-0`}>
           {isLandscape && (
-            <aside className="hidden md:flex w-[80px] bg-white border-r border-surfaceVariant flex-col items-center py-4 gap-6 z-50 shadow-lg shrink-0">
+            <aside className="hidden md:flex w-[80px] bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border-r border-white/10 flex-col items-center py-4 gap-6 z-50 shadow-lg shrink-0">
               <div className="flex flex-col items-center gap-1">
-                <span className="text-xl">🥅</span>
+                <span className="text-xl"><i className="fa-solid fa-futbol"></i></span>
                 <span className="text-[12px] font-black">{landscapeShots.home}/{landscapeShots.away}</span>
-                <span className="text-[8px] font-bold text-onSurfaceVariant uppercase tracking-tighter">Tiros</span>
+                <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Tiros</span>
               </div>
               <div className="flex flex-col items-center gap-1">
                 <span className="text-xl">⚠️</span>
                 <span className="text-[12px] font-black">{landscapeFouls.home}/{landscapeFouls.away}</span>
-                <span className="text-[8px] font-bold text-onSurfaceVariant uppercase tracking-tighter">Faltas</span>
+                <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Faltas</span>
               </div>
               <div className="flex flex-col items-center gap-1">
-                <span className="text-xl">📉</span>
+                <span className="text-xl"><i className="fa-solid fa-arrow-trend-down"></i></span>
                 <span className="text-[12px] font-black">{turnoversHome}</span>
-                <span className="text-[8px] font-bold text-onSurfaceVariant uppercase tracking-tighter">Pérd.</span>
+                <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Pérd.</span>
               </div>
               <div className="flex flex-col items-center gap-1">
-                <span className="text-xl">📈</span>
+                <span className="text-xl"><i className="fa-solid fa-arrow-trend-up"></i></span>
                 <span className="text-[12px] font-black">{stealsHome}</span>
-                <span className="text-[8px] font-bold text-onSurfaceVariant uppercase tracking-tighter">Recup.</span>
+                <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Recup.</span>
               </div>
             </aside>
           )}
 
-          <div className="relative bg-surfaceVariant/10 overflow-hidden" style={{ flexGrow: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 0, minWidth: 0 }}>
+          <div className="relative bg-white/5 overflow-hidden" style={{ flexGrow: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 0, minWidth: 0 }}>
             {activeView === 'list' ? (
               <div className={`relative ${isLandscape ? 'w-[92%] h-[92%]' : 'w-full h-full'}`}>
-                <div className="w-full h-full bg-white rounded-[32px] border-2 border-surfaceVariant flex flex-col p-6 animate-in slide-in-from-bottom duration-300 overflow-hidden shadow-xl">
+                <div className="w-full h-full bg-[#1e293b]/45 backdrop-blur-md border border-white/10 rounded-[32px] border-2 border-white/10 flex flex-col p-6 animate-in slide-in-from-bottom duration-300 overflow-hidden shadow-xl">
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-sm font-black text-dark uppercase tracking-widest">Listado de Acciones</h3>
+                    <h3 className="contrail-font text-sm font-black text-white uppercase tracking-widest">Listado de Acciones</h3>
                     <button onClick={() => setActiveView('field')} className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/5 px-4 py-2 rounded-full">Cerrar</button>
                   </div>
                   <FilterChips />
@@ -1714,7 +1788,7 @@ const LiveGameView: React.FC<{
                       }
 
                       return (
-                        <div key={e.id} className="bg-surface/60 border border-surfaceVariant p-4 rounded-2xl flex flex-col gap-2">
+                        <div key={e.id} className="bg-[#1e293b]/45 backdrop-blur-md border border-white/10/60 border border-white/10 p-4 rounded-2xl flex flex-col gap-2">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                               <span className="text-primary font-black text-xs bg-primary/10 px-2 py-1 rounded shrink-0">{e.gameTime}</span>
@@ -1731,7 +1805,7 @@ const LiveGameView: React.FC<{
                                     {isOwn ? 'L' : 'V'}
                                   </span>
                                 )}
-                                <p className="text-dark text-sm font-bold uppercase">{title}</p>
+                                <p className="text-white text-sm font-bold uppercase">{title}</p>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -1745,7 +1819,7 @@ const LiveGameView: React.FC<{
                               <span className="text-xs font-bold text-primary animate-pulse tracking-widest uppercase">Transcribiendo...</span>
                             </div>
                           ) : subtitle ? (
-                            <p className={`text-[10px] font-black uppercase ${e.transcription ? 'text-dark italic bg-primary/5 p-3 rounded-xl border border-primary/10' : 'text-onSurfaceVariant'}`}>
+                            <p className={`text-[10px] font-black uppercase ${e.transcription ? 'text-white italic bg-primary/5 p-3 rounded-xl border border-primary/10' : 'text-white'}`}>
                               {subtitle}
                             </p>
                           ) : null}
@@ -1757,9 +1831,9 @@ const LiveGameView: React.FC<{
               </div>
             ) : activeView === 'stats' ? (
               <div className={`relative ${isLandscape ? 'w-[92%] h-[92%]' : 'w-full h-full'}`}>
-                <div className="w-full h-full bg-white rounded-[32px] border-2 border-surfaceVariant flex flex-col p-6 animate-in slide-in-from-bottom duration-300 overflow-hidden shadow-xl">
+                <div className="w-full h-full bg-[#1e293b]/45 backdrop-blur-md border border-white/10 rounded-[32px] border-2 border-white/10 flex flex-col p-6 animate-in slide-in-from-bottom duration-300 overflow-hidden shadow-xl">
                   <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-sm font-black text-dark uppercase tracking-widest">Estadísticas Detalladas</h3>
+                    <h3 className="contrail-font text-sm font-black text-white uppercase tracking-widest">Estadísticas Detalladas</h3>
                     <button onClick={() => setActiveView('field')} className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/5 px-4 py-2 rounded-full">Cerrar</button>
                   </div>
 
@@ -1771,7 +1845,7 @@ const LiveGameView: React.FC<{
                           onClick={() => setPeriodFilter(p.id as PeriodFilter)}
                           className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border ${periodFilter === p.id
                             ? 'bg-primary text-white border-primary shadow-md'
-                            : 'bg-surface text-onSurfaceVariant/60 border-surfaceVariant hover:border-primary/40'
+                            : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white/60 border-white/10 hover:border-primary/40'
                             }`}
                         >
                           {p.label}
@@ -1779,17 +1853,17 @@ const LiveGameView: React.FC<{
                       ))}
                     </div>
 
-                    <div className="bg-surface/50 p-6 rounded-[24px] border border-surfaceVariant mb-6 shadow-inner flex flex-col gap-4">
-                      <div className={`flex justify-between items-center ${possessionExpanded ? 'border-b border-surfaceVariant pb-3' : ''}`}>
+                    <div className="border-white/10 p-6 rounded-[24px] border border-white/10 mb-6 shadow-inner flex flex-col gap-4">
+                      <div className={`flex justify-between items-center ${possessionExpanded ? 'border-b border-white/10 pb-3' : ''}`}>
                         <div className="flex items-center gap-2">
                           <span className="text-xs">⏱️</span>
-                          <h4 className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">Posesión</h4>
+                          <h4 className="contrail-font text-[9px] font-black text-white uppercase tracking-widest">Posesión</h4>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="text-sm font-black text-dark">{localPct}% / {awayPct}%</span>
+                          <span className="text-sm font-black text-white">{localPct}% / {awayPct}%</span>
                           <button
                             onClick={() => setPossessionExpanded(!possessionExpanded)}
-                            className={`w-6 h-6 flex items-center justify-center rounded-full bg-surfaceVariant/10 transition-transform duration-300 ${possessionExpanded ? 'rotate-180' : ''}`}
+                            className={`w-6 h-6 flex items-center justify-center rounded-full bg-white/5 transition-transform duration-300 ${possessionExpanded ? 'rotate-180' : ''}`}
                           >
                             <span className="text-[10px]">▼</span>
                           </button>
@@ -1801,14 +1875,14 @@ const LiveGameView: React.FC<{
                           <div className="flex justify-between items-center mb-3">
                             <div className="flex items-center gap-2">
                               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
-                              <span className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">Posesión Local</span>
+                              <span className="text-[9px] font-black text-white uppercase tracking-widest">Posesión Local</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">Posesión Visita</span>
+                              <span className="text-[9px] font-black text-white uppercase tracking-widest">Posesión Visita</span>
                               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
                             </div>
                           </div>
-                          <div className="w-full h-10 bg-surfaceVariant/20 rounded-2xl overflow-hidden flex shadow-inner border border-surfaceVariant/50">
+                          <div className="w-full h-10 bg-white/5 rounded-2xl overflow-hidden flex shadow-inner border border-white/10">
                             <div
                               className="h-full transition-all duration-700 ease-out flex items-center justify-center text-[11px] font-black text-white drop-shadow-sm"
                               style={{ width: `${localPct}%`, backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}
@@ -1828,58 +1902,58 @@ const LiveGameView: React.FC<{
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {/* Remates Totales Unificados */}
-                      <div className="bg-surface/50 p-5 rounded-[28px] border border-surfaceVariant shadow-sm flex flex-col gap-4">
+                      <div className="border-white/10 p-5 rounded-[28px] border border-white/10 shadow-sm flex flex-col gap-4">
                         <div className="flex justify-between items-center mb-2">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs">🥅</span>
-                            <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">Remates Totales</p>
+                            <span className="text-xs"><i className="fa-solid fa-futbol"></i></span>
+                            <p className="contrail-font text-[9px] font-black text-white uppercase tracking-widest">Remates Totales</p>
                           </div>
-                          <div className="text-xl font-black text-dark">
-                            {getStat(['DISPARO'], game.teamHome.id)} <span className="text-onSurfaceVariant/40">-</span> {getStat(['DISPARO'], game.teamAway.id)}
+                          <div className="text-xl font-black text-white">
+                            {getStat(['DISPARO'], game.teamHome.id)} <span className="text-white/40">-</span> {getStat(['DISPARO'], game.teamAway.id)}
                           </div>
                         </div>
                         
                         <div className="flex flex-col gap-4">
                           {/* Local */}
-                          <div className="bg-white rounded-[20px] p-4 border border-surfaceVariant/50 flex flex-col md:flex-row justify-between items-center gap-4">
+                          <div className="bg-[#1e293b]/45 backdrop-blur-md border border-white/10 rounded-[20px] p-4 border border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-3 w-full md:w-1/4">
                               <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
-                              <span className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest">{game.teamHome.name}</span>
+                              <span className="text-[10px] font-black text-white uppercase tracking-widest">{game.teamHome.name}</span>
                             </div>
                             <div className="grid grid-cols-3 gap-2 md:gap-4 flex-1 w-full">
-                              <div className="text-center bg-surface/30 p-2 rounded-xl shadow-sm border border-surfaceVariant/30">
+                              <div className="text-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10/30 p-2 rounded-xl shadow-sm border border-white/10/30">
                                 <p className="text-[7px] uppercase opacity-60 mb-0.5">Gol</p>
-                                <p className="text-sm font-black text-dark">{getStat(['GOL'], game.teamHome.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['GOL'], game.teamHome.id) / (getStat(['DISPARO'], game.teamHome.id) || 1)) * 100)}%)</span></p>
+                                <p className="text-sm font-black text-white">{getStat(['GOL'], game.teamHome.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['GOL'], game.teamHome.id) / (getStat(['DISPARO'], game.teamHome.id) || 1)) * 100)}%)</span></p>
                               </div>
-                              <div className="text-center bg-surface/30 p-2 rounded-xl shadow-sm border border-surfaceVariant/30">
+                              <div className="text-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10/30 p-2 rounded-xl shadow-sm border border-white/10/30">
                                 <p className="text-[7px] uppercase opacity-60 mb-0.5">Atajado</p>
-                                <p className="text-sm font-black text-dark">{getStat(['ATAJADO'], game.teamHome.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['ATAJADO'], game.teamHome.id) / (getStat(['DISPARO'], game.teamHome.id) || 1)) * 100)}%)</span></p>
+                                <p className="text-sm font-black text-white">{getStat(['ATAJADO'], game.teamHome.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['ATAJADO'], game.teamHome.id) / (getStat(['DISPARO'], game.teamHome.id) || 1)) * 100)}%)</span></p>
                               </div>
-                              <div className="text-center bg-surface/30 p-2 rounded-xl shadow-sm border border-surfaceVariant/30">
+                              <div className="text-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10/30 p-2 rounded-xl shadow-sm border border-white/10/30">
                                 <p className="text-[7px] uppercase opacity-60 mb-0.5">Desv.</p>
-                                <p className="text-sm font-black text-dark">{getStat(['DESVIADO'], game.teamHome.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['DESVIADO'], game.teamHome.id) / (getStat(['DISPARO'], game.teamHome.id) || 1)) * 100)}%)</span></p>
+                                <p className="text-sm font-black text-white">{getStat(['DESVIADO'], game.teamHome.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['DESVIADO'], game.teamHome.id) / (getStat(['DISPARO'], game.teamHome.id) || 1)) * 100)}%)</span></p>
                               </div>
                             </div>
                           </div>
 
                           {/* Visitante */}
-                          <div className="bg-white rounded-[20px] p-4 border border-surfaceVariant/50 flex flex-col md:flex-row justify-between items-center gap-4">
+                          <div className="bg-[#1e293b]/45 backdrop-blur-md border border-white/10 rounded-[20px] p-4 border border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-3 w-full md:w-1/4">
                               <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
-                              <span className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest">{game.teamAway.name}</span>
+                              <span className="text-[10px] font-black text-white uppercase tracking-widest">{game.teamAway.name}</span>
                             </div>
                             <div className="grid grid-cols-3 gap-2 md:gap-4 flex-1 w-full">
-                              <div className="text-center bg-surface/30 p-2 rounded-xl shadow-sm border border-surfaceVariant/30">
+                              <div className="text-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10/30 p-2 rounded-xl shadow-sm border border-white/10/30">
                                 <p className="text-[7px] uppercase opacity-60 mb-0.5">Gol</p>
-                                <p className="text-sm font-black text-dark">{getStat(['GOL'], game.teamAway.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['GOL'], game.teamAway.id) / (getStat(['DISPARO'], game.teamAway.id) || 1)) * 100)}%)</span></p>
+                                <p className="text-sm font-black text-white">{getStat(['GOL'], game.teamAway.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['GOL'], game.teamAway.id) / (getStat(['DISPARO'], game.teamAway.id) || 1)) * 100)}%)</span></p>
                               </div>
-                              <div className="text-center bg-surface/30 p-2 rounded-xl shadow-sm border border-surfaceVariant/30">
+                              <div className="text-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10/30 p-2 rounded-xl shadow-sm border border-white/10/30">
                                 <p className="text-[7px] uppercase opacity-60 mb-0.5">Atajado</p>
-                                <p className="text-sm font-black text-dark">{getStat(['ATAJADO'], game.teamAway.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['ATAJADO'], game.teamAway.id) / (getStat(['DISPARO'], game.teamAway.id) || 1)) * 100)}%)</span></p>
+                                <p className="text-sm font-black text-white">{getStat(['ATAJADO'], game.teamAway.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['ATAJADO'], game.teamAway.id) / (getStat(['DISPARO'], game.teamAway.id) || 1)) * 100)}%)</span></p>
                               </div>
-                              <div className="text-center bg-surface/30 p-2 rounded-xl shadow-sm border border-surfaceVariant/30">
+                              <div className="text-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10/30 p-2 rounded-xl shadow-sm border border-white/10/30">
                                 <p className="text-[7px] uppercase opacity-60 mb-0.5">Desv.</p>
-                                <p className="text-sm font-black text-dark">{getStat(['DESVIADO'], game.teamAway.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['DESVIADO'], game.teamAway.id) / (getStat(['DISPARO'], game.teamAway.id) || 1)) * 100)}%)</span></p>
+                                <p className="text-sm font-black text-white">{getStat(['DESVIADO'], game.teamAway.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['DESVIADO'], game.teamAway.id) / (getStat(['DISPARO'], game.teamAway.id) || 1)) * 100)}%)</span></p>
                               </div>
                             </div>
                           </div>
@@ -1888,17 +1962,17 @@ const LiveGameView: React.FC<{
 
                       <div className="grid grid-cols-1 gap-4">
                         <div className="flex flex-col gap-4">
-                          <h4 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest px-2 italic">Local</h4>
-                          <StatDetailCard title="Pérdidas 📉" data={getDetailedStat(['PÉRDIDA', 'PERDIDA', 'TURNOVER'], game.teamHome.id)} colorClass="text-orange-600" />
-                          <StatDetailCard title="Recuperos 📈" data={getDetailedStat(['RECUPERO'], game.teamHome.id)} colorClass="text-emerald-600" />
-                          <StatDetailCard title="Faltas ⚠️" data={getDetailedStat(['FALTA'], game.teamHome.id)} colorClass="text-red-600" />
+                          <h4 className="contrail-font text-[10px] font-black text-white uppercase tracking-widest px-2 italic">Local</h4>
+                          <StatDetailCard title={<>Pérdidas <i className="fa-solid fa-arrow-trend-down"></i></>} data={getDetailedStat(['PÉRDIDA', 'PERDIDA', 'TURNOVER'], game.teamHome.id)} colorClass="text-orange-600" />
+                          <StatDetailCard title={<>Recuperos <i className="fa-solid fa-arrow-trend-up"></i></>} data={getDetailedStat(['RECUPERO'], game.teamHome.id)} colorClass="text-emerald-600" />
+                          <StatDetailCard title={<>Faltas <i className="fa-solid fa-triangle-exclamation"></i></>} data={getDetailedStat(['FALTA'], game.teamHome.id)} colorClass="text-red-600" />
                         </div>
                       </div>
 
                       {/* Ingresos al Área */}
                       <EntryAnalysisCard
                         title="Ingresos al Área"
-                        icon="🎯"
+                        icon={<i className="fa-solid fa-bullseye"></i>}
                         homeTotal={Object.values(statsArea.home).reduce((a: number, b: number) => a + b, 0)}
                         awayTotal={Object.values(statsArea.away).reduce((a: number, b: number) => a + b, 0)}
                       >
@@ -1945,7 +2019,7 @@ const LiveGameView: React.FC<{
 
                       <StatComparisonCard
                         title="Córners Cortos"
-                        icon="🏑"
+                        icon={<i className="fa-solid fa-hockey-puck"></i>}
                         homeData={getDetailedStat(['CÓRNER CORTO'], game.teamHome.id)}
                         awayData={getDetailedStat(['CÓRNER CORTO'], game.teamAway.id)}
                         allEvents={game.events}
@@ -1954,7 +2028,7 @@ const LiveGameView: React.FC<{
                       />
                       <StatComparisonCard
                         title="Penales"
-                        icon="🎯"
+                        icon={<i className="fa-solid fa-bullseye"></i>}
                         homeData={getDetailedStat(['PENAL'], game.teamHome.id)}
                         awayData={getDetailedStat(['PENAL'], game.teamAway.id)}
                         allEvents={game.events}
@@ -1964,14 +2038,14 @@ const LiveGameView: React.FC<{
                     </div>
 
                     <div className="mt-8 mb-6">
-                      <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest mb-4 border-b border-surfaceVariant pb-2 italic">Análisis de Pases</h3>
+                      <h3 className="contrail-font text-[10px] font-black text-white uppercase tracking-widest mb-4 border-b border-white/10 pb-2 italic">Análisis de Pases</h3>
 
                       <div className="flex flex-row items-stretch gap-3">
-                        <div className="flex-1 bg-surface/50 p-4 rounded-[24px] border border-surfaceVariant text-center shadow-inner flex flex-col justify-center min-h-[100px]">
-                          <p className="text-[8px] font-black text-onSurfaceVariant uppercase mb-1">Mínimo</p>
-                          <p className="text-2xl font-black text-dark leading-none">{pMin}</p>
+                        <div className="flex-1 border-white/10 p-4 rounded-[24px] border border-white/10 text-center shadow-inner flex flex-col justify-center min-h-[100px]">
+                          <p className="text-[8px] font-black text-white uppercase mb-1">Mínimo</p>
+                          <p className="text-2xl font-black text-white leading-none">{pMin}</p>
                           {minPassEvent && (
-                            <p className="text-[7px] font-bold text-onSurfaceVariant/50 uppercase mt-1 leading-tight">
+                            <p className="text-[7px] font-bold text-white/50 uppercase mt-1 leading-tight">
                               {minPassEvent.gameTime}
                             </p>
                           )}
@@ -1980,14 +2054,14 @@ const LiveGameView: React.FC<{
                         <div className="flex-[1.2] bg-primary p-4 rounded-[28px] shadow-xl shadow-primary/20 text-center flex flex-col justify-center border-2 border-white/20 min-h-[110px]">
                           <p className="text-[9px] font-black text-white/70 uppercase mb-1">Promedio</p>
                           <p className="text-4xl font-black text-white leading-none">{pAvg}</p>
-                          <p className="text-[7px] font-bold text-white/40 uppercase mt-1 tracking-widest">Pases / Cadena</p>
+                          <p className="contrail-font text-[7px] font-bold text-white uppercase mt-1 tracking-widest">Pases / Cadena</p>
                         </div>
 
-                        <div className="flex-1 bg-surface/50 p-4 rounded-[24px] border border-surfaceVariant text-center shadow-inner flex flex-col justify-center min-h-[100px]">
-                          <p className="text-[8px] font-black text-onSurfaceVariant uppercase mb-1">Máximo</p>
-                          <p className="text-2xl font-black text-dark leading-none">{pMax}</p>
+                        <div className="flex-1 border-white/10 p-4 rounded-[24px] border border-white/10 text-center shadow-inner flex flex-col justify-center min-h-[100px]">
+                          <p className="text-[8px] font-black text-white uppercase mb-1">Máximo</p>
+                          <p className="text-2xl font-black text-white leading-none">{pMax}</p>
                           {maxPassEvent && (
-                            <p className="text-[7px] font-bold text-onSurfaceVariant/50 uppercase mt-1 leading-tight">
+                            <p className="text-[7px] font-bold text-white/50 uppercase mt-1 leading-tight">
                               {maxPassEvent.gameTime}
                             </p>
                           )}
@@ -2000,13 +2074,13 @@ const LiveGameView: React.FC<{
             ) : (
               <div
                 key={`pitch-wrapper-${orientationTrigger}`}
-                className="relative flex items-center justify-center"
+                className="relative flex items-center justify-center mx-auto"
                 style={{
-                  aspectRatio: isLandscape ? '91.4 / 55' : '55 / 91.4',
-                  maxHeight: '100%',
+                  aspectRatio: isLandscape ? '5 / 3' : '3 / 5',
+                  height: '100%',
                   maxWidth: '100%',
-                  height: isLandscape ? '100%' : 'auto',
-                  width: isLandscape ? 'auto' : '100%'
+                  maxHeight: '100%',
+                  margin: 'auto'
                 }}
               >
                 <PitchMap
@@ -2057,9 +2131,9 @@ const LiveGameView: React.FC<{
                         transform: feedback.fading ? 'scale(0.95)' : 'scale(1)',
                       }}
                     >
-                      <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-md border border-white/50 shadow-lg ${hTransform} ${isNearTop ? 'translate-y-4' : '-translate-y-10'} ${feedback.fading ? '' : 'animate-in zoom-in slide-in-from-bottom-2 duration-200'}`}>
+                      <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1e293b]/45 backdrop-blur-md border border-white/10/80 backdrop-blur-md border border-white/50 shadow-lg ${hTransform} ${isNearTop ? 'translate-y-4' : '-translate-y-10'} ${feedback.fading ? '' : 'animate-in zoom-in slide-in-from-bottom-2 duration-200'}`}>
                         <span className="text-sm">{feedback.icon}</span>
-                        <span className="text-[10px] font-black text-dark uppercase tracking-wider whitespace-nowrap">{feedback.text}</span>
+                        <span className="text-[10px] font-black text-white uppercase tracking-wider whitespace-nowrap">{feedback.text}</span>
                       </div>
                     </div>
                   );
@@ -2067,23 +2141,23 @@ const LiveGameView: React.FC<{
 
                 {showPopup && (
                   <Portal>
-                    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-brandDark/40 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
                       <div
-                        className="relative bg-white shadow-2xl rounded-[40px] p-8 flex flex-col gap-4 min-w-[300px] max-w-sm border border-surfaceVariant animate-in zoom-in duration-200 text-center"
+                        className="relative bg-[#1e293b]/45 backdrop-blur-md border border-white/10 shadow-2xl rounded-[40px] p-8 flex flex-col gap-4 min-w-[300px] max-w-sm border border-white/10 animate-in zoom-in duration-200 text-center"
                         onClick={e => e.stopPropagation()}
                       >
-                        <p className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest border-b border-surfaceVariant pb-3 mb-2">Resultado de Acción</p>
+                        <p className="contrail-font text-[10px] font-black text-white uppercase tracking-widest border-b border-white/10 pb-3 mb-2">Resultado de Acción</p>
                       {showPopup.type === 'FOUL' ? (
                         <div className="flex flex-col gap-3">
                           {foulCardType === 'AMARILLA' ? (
                             <div className="flex flex-col gap-3 animate-in fade-in zoom-in duration-200">
                               <div className="flex flex-col gap-2">
-                                <label className="text-[8px] font-bold text-onSurfaceVariant uppercase">Jugador #</label>
+                                <label className="text-[8px] font-bold text-white uppercase">Jugador #</label>
                                 <input
                                   type="text"
                                   value={foulPlayer}
                                   onChange={(e) => setFoulPlayer(e.target.value)}
-                                  className="w-full bg-surface border border-surfaceVariant rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:border-primary"
+                                  className="w-full bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:border-primary"
                                   placeholder="Ej: 8"
                                 />
                               </div>
@@ -2093,7 +2167,7 @@ const LiveGameView: React.FC<{
                                   type="text"
                                   value={foulMinutes}
                                   onChange={(e) => setFoulMinutes(e.target.value)}
-                                  className="w-full bg-white border border-yellow-200 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:border-yellow-400"
+                                  className="w-full bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-yellow-200 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:border-yellow-400"
                                   placeholder="Ej: 5"
                                 />
                               </div>
@@ -2104,7 +2178,7 @@ const LiveGameView: React.FC<{
                                 Confirmar Amarilla
                               </button>
                               <button
-                                className="text-[8px] font-black text-onSurfaceVariant uppercase text-center py-1 hover:text-primary transition-colors"
+                                className="text-[8px] font-black text-white uppercase text-center py-1 hover:text-primary transition-colors"
                                 onClick={() => setFoulCardType('NONE')}
                               >
                                 Atrás
@@ -2113,24 +2187,24 @@ const LiveGameView: React.FC<{
                           ) : (
                             <div className="flex flex-col gap-3">
                               <div className="grid grid-cols-2 gap-2">
-                                <button className="text-[10px] font-black text-onSurface py-3 rounded-xl bg-surface border border-surfaceVariant flex flex-col items-center justify-center gap-1.5 hover:bg-green-50 transition-colors" onClick={() => updateLastEvent('FALTA (VERDE)', 'VERDE')}>
+                                <button className="text-[10px] font-black text-white py-3 rounded-xl bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 flex flex-col items-center justify-center gap-1.5 hover:bg-green-50 transition-colors" onClick={() => updateLastEvent('FALTA (VERDE)', 'VERDE')}>
                                   <span className="w-5 h-7 bg-green-500 rounded-sm shadow-sm"></span>
                                   <span>VERDE</span>
                                 </button>
-                                <button className="text-[10px] font-black text-onSurface py-3 rounded-xl bg-surface border border-surfaceVariant flex flex-col items-center justify-center gap-1.5 hover:bg-yellow-50 transition-colors" onClick={() => setFoulCardType('AMARILLA')}>
+                                <button className="text-[10px] font-black text-white py-3 rounded-xl bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 flex flex-col items-center justify-center gap-1.5 hover:bg-yellow-50 transition-colors" onClick={() => setFoulCardType('AMARILLA')}>
                                   <span className="w-5 h-7 bg-yellow-400 rounded-sm shadow-sm"></span>
                                   <span>AMARILLA</span>
                                 </button>
-                                <button className="text-[10px] font-black text-onSurface py-3 rounded-xl bg-surface border border-surfaceVariant flex flex-col items-center justify-center gap-1.5 hover:bg-red-50 transition-colors" onClick={() => updateLastEvent('FALTA (ROJA)', 'ROJA')}>
+                                <button className="text-[10px] font-black text-white py-3 rounded-xl bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 flex flex-col items-center justify-center gap-1.5 hover:bg-red-50 transition-colors" onClick={() => updateLastEvent('FALTA (ROJA)', 'ROJA')}>
                                   <span className="w-5 h-7 bg-red-600 rounded-sm shadow-sm"></span>
                                   <span>ROJA</span>
                                 </button>
                                 <button
-                                  className="text-[10px] font-black text-onSurface py-3 rounded-xl bg-surface border border-surfaceVariant flex flex-col items-center justify-center gap-1.5 hover:bg-surfaceVariant/20 transition-colors"
+                                  className="text-[10px] font-black text-white py-3 rounded-xl bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 flex flex-col items-center justify-center gap-1.5 hover:bg-white/5 transition-colors"
                                   onClick={() => updateLastEvent('FALTA COMETIDA', 'Sin tarjeta')}
                                 >
                                   <div className="w-5 h-7 border-2 border-dashed border-onSurfaceVariant/30 rounded-sm flex items-center justify-center">
-                                    <span className="text-[8px] text-onSurfaceVariant/40">✕</span>
+                                    <span className="text-[8px] text-white/40">✕</span>
                                   </div>
                                   <span>SIN TARJETA</span>
                                 </button>
@@ -2140,43 +2214,43 @@ const LiveGameView: React.FC<{
                         </div>
                       ) : showPopup.type === 'CORTO_PENAL' ? (
                         <div className="flex flex-col gap-2">
-                          <button className="text-[10px] font-black text-indigo-600 py-3 rounded-xl bg-indigo-50 border border-indigo-100 uppercase flex items-center justify-center gap-2" onClick={() => registerEvent('CÓRNER CORTO', possession, showPopup.x, showPopup.y, "Córner Corto a Favor")}>🏑 C. CORTO</button>
-                          <button className="text-[10px] font-black text-purple-600 py-3 rounded-xl bg-purple-50 border border-purple-100 uppercase flex items-center justify-center gap-2" onClick={() => registerEvent('PENAL', possession, showPopup.x, showPopup.y, "Penal a Favor")}>🎯 PENAL</button>
+                          <button className="text-[10px] font-black text-indigo-600 py-3 rounded-xl bg-indigo-50 border border-indigo-100 uppercase flex items-center justify-center gap-2" onClick={() => registerEvent('CÓRNER CORTO', possession, showPopup.x, showPopup.y, "Córner Corto a Favor")}><i className="fa-solid fa-hockey-puck"></i> C. CORTO</button>
+                          <button className="text-[10px] font-black text-purple-600 py-3 rounded-xl bg-purple-50 border border-purple-100 uppercase flex items-center justify-center gap-2" onClick={() => registerEvent('PENAL', possession, showPopup.x, showPopup.y, "Penal a Favor")}><i className="fa-solid fa-bullseye"></i> PENAL</button>
                         </div>
                       ) : showPopup.type === 'SHOT' ? (
                         <div className="flex flex-col gap-3 relative">
                           <button
                             onClick={handleClosePopup}
-                            className="absolute -top-3 -right-3 w-8 h-8 flex items-center justify-center bg-surfaceVariant/20 rounded-full text-onSurfaceVariant hover:bg-surfaceVariant transition-colors font-black"
+                            className="absolute -top-3 -right-3 w-8 h-8 flex items-center justify-center bg-white/5 rounded-full text-white hover:bg-white/10 transition-colors font-black"
                           >
                             ✕
                           </button>
-                          <p className="text-[9px] font-black text-dark uppercase mb-1">Resultado del Remate</p>
+                          <p className="text-[9px] font-black text-white uppercase mb-1">Resultado del Remate</p>
                           
                           <div className="grid grid-cols-3 gap-2 mb-1">
                             <button 
-                              className={`py-3 rounded-xl text-[10px] font-black uppercase flex flex-col items-center gap-1 transition-all border ${selectedShotAction === 'GOL' ? 'bg-primary text-white border-primary shadow-md' : 'bg-surface text-dark border-surfaceVariant'}`}
+                              className={`py-3 rounded-xl text-[10px] font-black uppercase flex flex-col items-center gap-1 transition-all border ${selectedShotAction === 'GOL' ? 'bg-primary text-white border-primary shadow-md' : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white border-white/10'}`}
                               onClick={() => setSelectedShotAction('GOL')}
                             >
-                              <span className="text-sm">🥅</span> GOL
+                              <span className="text-sm"><i className="fa-solid fa-futbol"></i></span> GOL
                             </button>
                             <button 
-                              className={`py-3 rounded-xl text-[10px] font-black uppercase flex flex-col items-center gap-1 transition-all border ${selectedShotAction === 'ATAJADO' ? 'bg-primary text-white border-primary shadow-md' : 'bg-surface text-dark border-surfaceVariant'}`}
+                              className={`py-3 rounded-xl text-[10px] font-black uppercase flex flex-col items-center gap-1 transition-all border ${selectedShotAction === 'ATAJADO' ? 'bg-primary text-white border-primary shadow-md' : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white border-white/10'}`}
                               onClick={() => setSelectedShotAction('ATAJADO')}
                             >
-                              <span className="text-sm">🛡️</span> ATAJADO
+                              <span className="text-sm"><i className="fa-solid fa-shield-halved"></i></span> ATAJADO
                             </button>
                             <button 
-                              className={`py-3 rounded-xl text-[10px] font-black uppercase flex flex-col items-center gap-1 transition-all border ${selectedShotAction === 'DESVIADO' ? 'bg-primary text-white border-primary shadow-md' : 'bg-surface text-dark border-surfaceVariant'}`}
+                              className={`py-3 rounded-xl text-[10px] font-black uppercase flex flex-col items-center gap-1 transition-all border ${selectedShotAction === 'DESVIADO' ? 'bg-primary text-white border-primary shadow-md' : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white border-white/10'}`}
                               onClick={() => setSelectedShotAction('DESVIADO')}
                             >
-                              <span className="text-sm">💨</span> DESV.
+                              <span className="text-sm"><i className="fa-solid fa-wind"></i></span> DESV.
                             </button>
                           </div>
 
                           {selectedShotAction === 'ATAJADO' && (
                             <div className="flex flex-col gap-2 mb-1 animate-in slide-in-from-top duration-200">
-                              <p className="text-[8px] font-bold text-onSurfaceVariant uppercase">Posesión tras el atajo:</p>
+                              <p className="text-[8px] font-bold text-white uppercase">Posesión tras el atajo:</p>
                               <div className="grid grid-cols-2 gap-2">
                                 <button 
                                   className={`py-2 rounded-lg text-[9px] font-black uppercase transition-all border ${atajadoPossession === 'MANTIENE' ? 'bg-green-500 text-white border-green-600' : 'bg-green-50 text-green-700 border-green-200'}`}
@@ -2195,20 +2269,20 @@ const LiveGameView: React.FC<{
                           )}
 
                           <div className="flex flex-col gap-2 mt-2">
-                            <label className="text-[8px] font-bold text-onSurfaceVariant uppercase">Jugador #</label>
+                            <label className="text-[8px] font-bold text-white uppercase">Jugador #</label>
                             <input
                               type="number"
                               inputMode="numeric"
                               pattern="[0-9]*"
                               value={foulPlayer}
                               onChange={(e) => setFoulPlayer(e.target.value)}
-                              className="w-full bg-surface border border-surfaceVariant rounded-lg px-2 py-2 text-xs font-bold focus:outline-none focus:border-primary"
+                              className="w-full bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 rounded-lg px-2 py-2 text-xs font-bold focus:outline-none focus:border-primary"
                               placeholder="Ej: 8"
                             />
                           </div>
                           
                           <div className="flex flex-col gap-2 mb-2">
-                            <label className="text-[8px] font-bold text-onSurfaceVariant uppercase">Origen de la jugada</label>
+                            <label className="text-[8px] font-bold text-white uppercase">Origen de la jugada</label>
                             <div className="grid grid-cols-4 gap-1.5">
                               {[
                                 { id: 'Individual', label: 'Indiv.' },
@@ -2221,7 +2295,7 @@ const LiveGameView: React.FC<{
                                   onClick={() => setGoalType(type.id as any)}
                                   className={`py-2 rounded-lg text-[8px] font-black uppercase transition-all ${goalType === type.id
                                     ? 'bg-primary text-white shadow-sm'
-                                    : 'bg-surface border border-surfaceVariant text-onSurfaceVariant'
+                                    : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 text-white'
                                     }`}
                                 >
                                   {type.label}
@@ -2234,7 +2308,7 @@ const LiveGameView: React.FC<{
                             className={`w-full py-4 mt-2 rounded-xl font-black text-xs uppercase shadow-md transition-all ${
                               (selectedShotAction && (selectedShotAction !== 'ATAJADO' || atajadoPossession))
                               ? 'bg-primary text-white active:scale-95'
-                              : 'bg-surfaceVariant text-onSurfaceVariant/50 opacity-50 cursor-not-allowed'
+                              : 'bg-white/10 text-white/50 opacity-50 cursor-not-allowed'
                             }`}
                             disabled={!selectedShotAction || (selectedShotAction === 'ATAJADO' && !atajadoPossession)}
                             onClick={() => {
@@ -2256,20 +2330,20 @@ const LiveGameView: React.FC<{
                         </div>
                       ) : null}
 
-                      <button className="text-[8px] font-black text-onSurfaceVariant uppercase mt-4 text-center py-2 hover:text-primary transition-colors border-t border-surfaceVariant/50" onClick={handleClosePopup}>Cerrar</button>
+                      <button className="text-[8px] font-black text-white uppercase mt-4 text-center py-2 hover:text-primary transition-colors border-t border-white/10" onClick={handleClosePopup}>Cerrar</button>
                     </div>
                   </div>
                 </Portal>
                 )}
 
                 {!isRunning && possession === Possession.NONE && seconds === 0 && (
-                  <div className="absolute inset-0 bg-brandDark/40 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500 z-50">
+                  <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500 z-50">
                     <div
-                      className="bg-white p-8 rounded-[40px] shadow-2xl border border-surfaceVariant max-w-xs transform animate-bounce-short"
+                      className="bg-[#1e293b]/45 backdrop-blur-md border border-white/10 p-8 rounded-[40px] shadow-2xl border border-white/10 max-w-xs transform animate-bounce-short"
                     >
-                      <div className="text-4xl mb-4">🏑</div>
-                      <h3 className="contrail-font text-2xl text-dark uppercase mb-2">¡Casi Listos!</h3>
-                      <p className="text-[11px] font-bold text-onSurfaceVariant uppercase leading-relaxed">Selecciona qué equipo inicia con la posesión haciendo click en su marcador arriba.</p>
+                      <div className="text-4xl mb-4 text-white"><i className="fa-solid fa-hockey-puck"></i></div>
+                      <h3 className="contrail-font contrail-font text-2xl text-white uppercase mb-2">¡Casi Listos!</h3>
+                      <p className="text-[13px] font-bold text-white uppercase leading-relaxed tracking-wider">Selecciona qué equipo inicia con la posesión haciendo click en su marcador arriba.</p>
                     </div>
                   </div>
                 )}
@@ -2278,19 +2352,19 @@ const LiveGameView: React.FC<{
           </div>
 
           {isLandscape && (
-            <aside className="hidden md:flex w-[80px] bg-white border-l border-surfaceVariant flex-col items-center py-6 gap-6 z-50 shadow-lg shrink-0">
-              <p className="text-[8px] font-black text-onSurfaceVariant uppercase tracking-widest leading-none mb-2">Notas</p>
+            <aside className="hidden md:flex w-[80px] bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border-l border-white/10 flex-col items-center py-6 gap-6 z-50 shadow-lg shrink-0">
+              <p className="contrail-font text-[8px] font-black text-white uppercase tracking-widest leading-none mb-2">Notas</p>
               <button
                 onClick={(e) => { e.stopPropagation(); handleVoiceNote(); }}
-                className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all shadow-md border-2 ${isRecording ? 'bg-red-600 text-white animate-pulse border-red-400' : 'bg-white border-primary text-primary'}`}
+                className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all shadow-md border-2 ${isRecording ? 'bg-red-600 text-white animate-pulse border-red-400' : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border-primary text-primary'}`}
               >
-                {isRecording ? '⏺' : '🎤'}
+                {isRecording ? '⏺' : '<i className="fa-solid fa-microphone"></i>'}
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); setShowNoteModal(true); }}
-                className="w-14 h-14 rounded-2xl flex items-center justify-center bg-white text-primary border-2 border-primary active:scale-90 shadow-md text-xl"
+                className="w-14 h-14 rounded-2xl flex items-center justify-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-primary border-2 border-primary active:scale-90 shadow-md text-xl"
               >
-                📝
+                <i className="fa-solid fa-clipboard-list"></i>
               </button>
             </aside>
           )}
@@ -2298,22 +2372,22 @@ const LiveGameView: React.FC<{
 
         {
           !isLandscape && (
-            <aside className="hidden lg:flex w-[320px] flex-col p-4 bg-white border-l border-surfaceVariant overflow-y-auto no-scrollbar">
+            <aside className="hidden lg:flex w-[320px] flex-col p-4 bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border-l border-white/10 overflow-y-auto no-scrollbar">
               <div className="flex flex-col gap-4 pb-10">
-                <h3 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest border-b border-surfaceVariant pb-2 italic">Estadísticas En vivo</h3>
+                <h3 className="contrail-font text-[10px] font-black text-white uppercase tracking-widest border-b border-white/10 pb-2 italic">Estadísticas En vivo</h3>
 
                 {/* Posesión Sidebar */}
-                <div className="bg-surface/50 p-4 rounded-[24px] border border-surfaceVariant shadow-inner flex flex-col gap-2">
-                  <div className={`flex justify-between items-center ${possessionSidebarExpanded ? 'border-b border-surfaceVariant/50 pb-2 mb-1' : ''}`}>
+                <div className="border-white/10 p-4 rounded-[24px] border border-white/10 shadow-inner flex flex-col gap-2">
+                  <div className={`flex justify-between items-center ${possessionSidebarExpanded ? 'border-b border-white/10 pb-2 mb-1' : ''}`}>
                     <div className="flex items-center gap-2">
                       <span className="text-[10px]">⏱️</span>
-                      <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest leading-none">Posesión</p>
+                      <p className="contrail-font text-[9px] font-black text-white uppercase tracking-widest leading-none">Posesión</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-black text-dark">{localPct}% / {awayPct}%</span>
+                      <span className="text-sm font-black text-white">{localPct}% / {awayPct}%</span>
                       <button
                         onClick={() => setPossessionSidebarExpanded(!possessionSidebarExpanded)}
-                        className={`w-5 h-5 flex items-center justify-center rounded-full bg-surfaceVariant/10 transition-transform duration-300 ${possessionSidebarExpanded ? 'rotate-180' : ''}`}
+                        className={`w-5 h-5 flex items-center justify-center rounded-full bg-white/5 transition-transform duration-300 ${possessionSidebarExpanded ? 'rotate-180' : ''}`}
                       >
                         <span className="text-[8px]">▼</span>
                       </button>
@@ -2323,16 +2397,16 @@ const LiveGameView: React.FC<{
                   {possessionSidebarExpanded && (
                     <div className="animate-in slide-in-from-top duration-300">
                       <div className="flex justify-between items-center mb-2">
-                        <span className="text-[8px] font-black text-onSurfaceVariant uppercase tracking-widest flex items-center gap-1.5">
+                        <span className="text-[8px] font-black text-white uppercase tracking-widest flex items-center gap-1.5">
                           <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
                           {localPct}%
                         </span>
-                        <span className="text-[8px] font-black text-onSurfaceVariant uppercase tracking-widest flex items-center gap-1.5">
+                        <span className="text-[8px] font-black text-white uppercase tracking-widest flex items-center gap-1.5">
                           {awayPct}%
                           <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
                         </span>
                       </div>
-                      <div className="w-full h-4 bg-surfaceVariant/20 rounded-full overflow-hidden flex border border-surfaceVariant/50">
+                      <div className="w-full h-4 bg-white/5 rounded-full overflow-hidden flex border border-white/10">
                         <div className="h-full transition-all duration-700" style={{ width: `${localPct}%`, backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
                         <div className="h-full transition-all duration-700" style={{ width: `${awayPct}%`, backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
                       </div>
@@ -2342,27 +2416,27 @@ const LiveGameView: React.FC<{
 
 
                 {/* Desgloses Detallados Sidebar */}
-                <StatDetailCard title="Pérdidas" data={getDetailedStat(['PÉRDIDA', 'PERDIDA', 'TURNOVER'], game.teamHome.id)} colorClass="text-orange-600" compact={true} icon="📉" />
-                <StatDetailCard title="Recuperos" data={getDetailedStat(['RECUPERO'], game.teamHome.id)} colorClass="text-emerald-600" compact={true} icon="📈" />
+                <StatDetailCard title="Pérdidas" data={getDetailedStat(['PÉRDIDA', 'PERDIDA', 'TURNOVER'], game.teamHome.id)} colorClass="text-orange-600" compact={true} icon={<i className="fa-solid fa-arrow-trend-down"></i>} />
+                <StatDetailCard title="Recuperos" data={getDetailedStat(['RECUPERO'], game.teamHome.id)} colorClass="text-emerald-600" compact={true} icon={<i className="fa-solid fa-arrow-trend-up"></i>} />
                 <StatDetailCard title="Faltas" data={getDetailedStat(['FALTA'], game.teamHome.id)} colorClass="text-red-600" compact={true} icon="⚠️" />
 
                 {/* Análisis de Pases Sidebar Horizontal */}
                 <div className="mt-2">
-                  <h3 className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest mb-3 italic">Análisis de Pases</h3>
+                  <h3 className="contrail-font text-[9px] font-black text-white uppercase tracking-widest mb-3 italic">Análisis de Pases</h3>
                   <div className="flex flex-row items-stretch gap-2 h-24">
-                    <div className="flex-1 bg-surface/50 p-2 rounded-2xl border border-surfaceVariant text-center shadow-inner flex flex-col justify-center">
-                      <p className="text-[7px] font-black text-onSurfaceVariant uppercase mb-0.5">Mín</p>
-                      <p className="text-lg font-black text-dark leading-none">{pMin}</p>
-                      {minPassEvent && <p className="text-[6px] font-bold text-onSurfaceVariant/40 mt-0.5 leading-none">{minPassEvent.gameTime}</p>}
+                    <div className="flex-1 border-white/10 p-2 rounded-2xl border border-white/10 text-center shadow-inner flex flex-col justify-center">
+                      <p className="text-[7px] font-black text-white uppercase mb-0.5">Mín</p>
+                      <p className="text-lg font-black text-white leading-none">{pMin}</p>
+                      {minPassEvent && <p className="text-[6px] font-bold text-white/40 mt-0.5 leading-none">{minPassEvent.gameTime}</p>}
                     </div>
                     <div className="flex-[1.2] bg-primary p-2 rounded-[20px] shadow-lg shadow-primary/10 text-center flex flex-col justify-center border border-white/10">
                       <p className="text-[8px] font-black text-white/60 uppercase mb-0.5">Prom</p>
                       <p className="text-2xl font-black text-white leading-none">{pAvg}</p>
                     </div>
-                    <div className="flex-1 bg-surface/50 p-2 rounded-2xl border border-surfaceVariant text-center shadow-inner flex flex-col justify-center">
-                      <p className="text-[7px] font-black text-onSurfaceVariant uppercase mb-0.5">Máx</p>
-                      <p className="text-lg font-black text-dark leading-none">{pMax}</p>
-                      {maxPassEvent && <p className="text-[6px] font-bold text-onSurfaceVariant/40 mt-0.5 leading-none">{maxPassEvent.gameTime}</p>}
+                    <div className="flex-1 border-white/10 p-2 rounded-2xl border border-white/10 text-center shadow-inner flex flex-col justify-center">
+                      <p className="text-[7px] font-black text-white uppercase mb-0.5">Máx</p>
+                      <p className="text-lg font-black text-white leading-none">{pMax}</p>
+                      {maxPassEvent && <p className="text-[6px] font-bold text-white/40 mt-0.5 leading-none">{maxPassEvent.gameTime}</p>}
                     </div>
                   </div>
                 </div>
@@ -2374,15 +2448,15 @@ const LiveGameView: React.FC<{
       )}
       </main >
 
-      <footer className="h-20 md:h-24 bg-white flex flex-wrap items-center justify-between px-4 md:px-10 border-t border-surfaceVariant shadow-lg relative z-[200] gap-2" style={{ flexShrink: 0 }}>
+      <footer className="h-20 md:h-24 bg-[#1e293b]/45 backdrop-blur-md border border-white/10 flex flex-wrap items-center justify-between px-4 md:px-10 border-t border-white/10 shadow-lg relative z-[200] gap-2" style={{ flexShrink: 0 }}>
         <div className="relative">
           <button className="w-11 h-11 md:w-14 md:h-14 rounded-full bg-red-50 text-red-600 text-xl flex items-center justify-center border border-red-100 active:scale-90 shadow-sm" onClick={() => setUndoModal(true)}>↩</button>
           {undoModal && (
-            <div className="absolute bottom-16 left-0 bg-white border border-surfaceVariant p-5 rounded-[28px] shadow-2xl w-52 animate-in slide-in-from-bottom duration-200 z-[200]">
-              <p className="text-[9px] text-onSurfaceVariant font-black uppercase mb-4 text-center">¿Deshacer?</p>
+            <div className="absolute bottom-16 left-0 bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 p-5 rounded-[28px] shadow-2xl w-52 animate-in slide-in-from-bottom duration-200 z-[200]">
+              <p className="text-[9px] text-white font-black uppercase mb-4 text-center">¿Deshacer?</p>
               <div className="flex gap-2.5">
                 <button onClick={() => { if (game.events.length > 0) deleteEvent(game.events[game.events.length - 1].id); setUndoModal(false); }} className="flex-1 bg-red-600 text-white text-[9px] font-black py-3 rounded-xl uppercase">BORRAR</button>
-                <button onClick={() => setUndoModal(false)} className="flex-1 bg-surfaceVariant text-onSurfaceVariant text-[9px] font-black py-3 rounded-xl uppercase">NO</button>
+                <button onClick={() => setUndoModal(false)} className="flex-1 bg-white/10 text-white text-[9px] font-black py-3 rounded-xl uppercase">NO</button>
               </div>
             </div>
           )}
@@ -2390,8 +2464,8 @@ const LiveGameView: React.FC<{
 
         <div className="flex flex-1 items-center justify-around md:justify-center md:gap-16">
           <div className="flex items-center gap-4 md:gap-8">
-            <button className={`text-2xl transition-all ${activeView === 'list' ? 'text-primary scale-110 drop-shadow-md' : 'text-onSurfaceVariant/30'}`} onClick={() => setActiveView(activeView === 'list' ? 'field' : 'list')}>📋</button>
-            <button className={`text-2xl transition-all ${activeView === 'stats' ? 'text-primary scale-110 drop-shadow-md' : 'text-onSurfaceVariant/30'} ${!isLandscape ? 'lg:hidden' : ''}`} onClick={() => setActiveView(activeView === 'stats' ? 'field' : 'stats')}>📊</button>
+            <button className={`text-2xl transition-all ${activeView === 'list' ? 'text-primary scale-110 drop-shadow-md' : 'text-white/30'}`} onClick={() => setActiveView(activeView === 'list' ? 'field' : 'list')}><i className="fa-solid fa-list"></i></button>
+            <button className={`text-2xl transition-all ${activeView === 'stats' ? 'text-primary scale-110 drop-shadow-md' : 'text-white/30'} ${!isLandscape ? 'lg:hidden' : ''}`} onClick={() => setActiveView(activeView === 'stats' ? 'field' : 'stats')}><i className="fa-solid fa-chart-simple"></i></button>
           </div>
 
 
@@ -2401,17 +2475,17 @@ const LiveGameView: React.FC<{
             <div className="flex items-center gap-4 md:gap-8">
               <button
                 disabled
-                className="w-11 h-11 rounded-full flex items-center justify-center transition-all shadow-sm border bg-surface border-surfaceVariant text-onSurfaceVariant/20 grayscale cursor-not-allowed opacity-50"
+                className="w-11 h-11 rounded-full flex items-center justify-center transition-all shadow-sm border bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border-white/10 text-white/20 grayscale cursor-not-allowed opacity-50"
               >
-                🎤
+                <i className="fa-solid fa-microphone"></i>
               </button>
-              <button onClick={() => setShowNoteModal(true)} className="w-11 h-11 rounded-full flex items-center justify-center bg-surface text-onSurfaceVariant/40 border border-surfaceVariant active:scale-90 shadow-sm text-xl">📝</button>
+              <button onClick={() => setShowNoteModal(true)} className="w-11 h-11 rounded-full flex items-center justify-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white/40 border border-white/10 active:scale-90 shadow-sm text-xl"><i className="fa-solid fa-clipboard-list"></i></button>
             </div>
           )}
         </div>
 
         <button
-          className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center text-3xl font-black shadow-xl relative transition-all active:scale-95 border-2 ${possession === Possession.HOME ? 'bg-primary text-white border-primary translate-y-[-4px]' : 'bg-surface text-onSurfaceVariant/20 border-surfaceVariant'}`}
+          className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center text-3xl font-black shadow-xl relative transition-all active:scale-95 border-2 ${possession === Possession.HOME ? 'bg-primary text-white border-primary translate-y-[-4px]' : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white/20 border-white/10'}`}
           onClick={() => isRunning && setPassCount(c => c + 1)}
           disabled={possession !== Possession.HOME || !isRunning}
         >

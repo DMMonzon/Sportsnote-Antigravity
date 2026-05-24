@@ -12,8 +12,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Contrail+One&family=Roboto:wght@300;400;500;700&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Contrail+One&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <script>
         tailwind.config = {
             theme: {
@@ -31,7 +31,7 @@
                     },
                     fontFamily: {
                         contrail: ['Contrail One', 'cursive'],
-                        roboto: ['Roboto', 'sans-serif'],
+                        lato: ['Lato', 'sans-serif'],
                     },
                     borderRadius: {
                         'md3': '28px',
@@ -42,13 +42,15 @@
     </script>
     <style>
         body {
-            background-color: #e5e7eb;
+            background-color: #1a1a1a;
             color: #1c1b1f;
-            font-family: 'Roboto', sans-serif;
+            font-family: 'Lato', sans-serif;
             margin: 0;
             padding: 0;
-            display: flex;
-            justify-content: center;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Contrail One', cursive;
         }
 
         #root {
@@ -56,13 +58,6 @@
             min-height: 100vh;
             background-color: #f4f4f7;
             position: relative;
-        }
-
-        @media (min-width: 1024px) {
-            #root {
-                max-width: 1200px;
-                box-shadow: 0 20px 50px rgba(19, 16, 65, 0.2);
-            }
         }
 
         .glass-card {
@@ -111,13 +106,40 @@
         }
 
         @keyframes foul-pulse {
-            0% { opacity: 0.2; transform: translate(-50%, -50%) scale(1); }
-            30% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.5); }
-            100% { opacity: 0.2; transform: translate(-50%, -50%) scale(1); }
+            0% {
+                opacity: 0.2;
+                transform: translate(-50%, -50%) scale(1);
+            }
+
+            30% {
+                opacity: 0.8;
+                transform: translate(-50%, -50%) scale(1.5);
+            }
+
+            100% {
+                opacity: 0.2;
+                transform: translate(-50%, -50%) scale(1);
+            }
         }
 
         .animate-foul-pulse {
             animation: foul-pulse 0.8s ease-out;
+        }
+
+        @keyframes stagger-fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-stagger {
+            opacity: 0;
+            animation: stagger-fade-in 400ms ease-out forwards;
         }
     </style>
     <script type="importmap">

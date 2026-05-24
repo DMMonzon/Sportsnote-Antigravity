@@ -449,9 +449,9 @@ export const PitchMap: React.FC<PitchMapProps> = ({
             y = 100 - y;
         }
         if (isLandscape) {
-            return { x: y, y: 100 - x };
+            return { x: y * 10, y: (100 - x) * 6 };
         }
-        return { x, y };
+        return { x: x * 6, y: y * 10 };
     }, [isLandscape, isFlipped]);
 
     const topGoalColor = isFlipped ? homeColor : awayColor;
@@ -492,7 +492,7 @@ export const PitchMap: React.FC<PitchMapProps> = ({
             {/* Field Markings */}
             <div className={`absolute inset-0 pointer-events-none transition-transform duration-700`}>
                 {/* Tactical Reference Lines (Mathematical Exact Logic) */}
-                <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-15 z-0" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-15 z-0" viewBox={isLandscape ? "0 0 1000 600" : "0 0 600 1000"} preserveAspectRatio="xMidYMid meet">
                     <g stroke="#000000" strokeWidth="0.5" vectorEffect="non-scaling-stroke">
                         {/* Lanes */}
                         <line x1={toScreen(33.3, 0).x} y1={toScreen(33.3, 0).y} x2={toScreen(33.3, 100).x} y2={toScreen(33.3, 100).y} strokeDasharray="4,4" />

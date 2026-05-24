@@ -106,8 +106,19 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col font-lato">
-      <Routes>
+    <div className="min-h-screen flex flex-col font-lato relative overflow-hidden bg-[#020617]">
+      {/* Global Cinematic Background */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <img src="./assets/dashboard-bg.jpg" className="w-full h-full object-cover" alt="Background" />
+        <div className="absolute inset-0" style={{
+          backgroundColor: 'rgba(0,0,0,0.6)',
+          backgroundImage: 'radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.4) 100%)'
+        }}></div>
+      </div>
+      
+      {/* Main Content Layer */}
+      <div className="relative z-10 flex flex-col flex-1 h-full w-full">
+        <Routes>
         <Route path="/" element={
           state.activeGameId
             ? <Navigate to={`/live/${state.activeGameId}`} replace />
@@ -175,6 +186,7 @@ const AppContent: React.FC = () => {
         <Route path="*" element={<Navigate to="/" />} />
 
       </Routes>
+      </div>
     </div>
   );
 };

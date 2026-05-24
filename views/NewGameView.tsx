@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { UserRole, SportType, Game } from '../types';
 import { Button } from '../components/Button';
+import { GlassCard } from '../components/GlassCard';
+import { Breadcrumb } from '../components/Breadcrumb';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { telemetryService, TelemetryEvent } from '../services/telemetryService';
 import { db, collection, doc } from '../services/firebase';
@@ -36,28 +38,28 @@ const ColorDropdown: React.FC<{
 
   return (
     <div className="flex flex-col w-full relative" onBlur={() => setTimeout(() => setIsOpen(false), 200)}>
-      <label className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest mb-1.5 block">{label}</label>
+      <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">{label}</label>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-surface border border-surfaceVariant p-3 rounded-xl flex items-center justify-between text-xs font-bold text-onSurface shadow-sm hover:border-primary transition-colors"
+        className="w-full bg-white/5 border border-white/10 p-3 rounded-xl flex items-center justify-between text-xs font-bold text-white shadow-sm hover:border-[#00fe00] transition-colors"
       >
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded-full border border-black/10 shadow-sm" style={{ backgroundColor: selectedColor.hex }}></div>
           <span>{selectedColor.name}</span>
         </div>
-        <span className="text-[10px] text-primary">▼</span>
+        <span className="text-[10px] text-[#00fe00]">▼</span>
       </button>
 
       {isOpen && (
-        <div className="absolute top-[110%] left-0 w-full bg-white border border-surfaceVariant rounded-2xl shadow-2xl z-[500] max-h-48 overflow-y-auto no-scrollbar animate-in fade-in zoom-in duration-150">
+        <div className="absolute top-[110%] left-0 w-full bg-[#131041] border border-white/10 rounded-2xl shadow-2xl z-[500] max-h-48 overflow-y-auto no-scrollbar animate-in fade-in zoom-in duration-150">
           {COLOR_OPTIONS.map((c) => (
             <button
               key={c.hex}
               onClick={() => { onSelect(c.hex); setIsOpen(false); }}
-              className="w-full flex items-center gap-3 p-3 hover:bg-primary/5 transition-colors border-b border-surfaceVariant last:border-0 text-left"
+              className="w-full flex items-center gap-3 p-3 hover:bg-white/5 transition-colors border-b border-white/10 last:border-0 text-left"
             >
               <div className="w-5 h-5 rounded-full border border-black/10 shrink-0" style={{ backgroundColor: c.hex }}></div>
-              <span className={`text-xs ${selected === c.hex ? 'font-black text-primary' : 'font-medium text-onSurface'}`}>{c.name}</span>
+              <span className={`text-xs ${selected === c.hex ? 'font-black text-[#00fe00]' : 'font-medium text-white/80'}`}>{c.name}</span>
             </button>
           ))}
         </div>
@@ -72,10 +74,10 @@ const TeamPreview: React.FC<{
   secondary: string
 }> = ({ name, primary, secondary }) => (
   <div className="flex flex-col w-full">
-    <label className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest mb-1.5 block">Muestra de Equipo</label>
+    <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Muestra de Equipo</label>
     <div
       style={{ backgroundColor: primary, color: secondary }}
-      className="h-[46px] flex items-center justify-center rounded-xl border-2 border-surfaceVariant shadow-lg px-6 overflow-hidden transition-all duration-500"
+      className="h-[46px] flex items-center justify-center rounded-xl border border-white/10 shadow-lg px-6 overflow-hidden transition-all duration-500"
     >
       <span className="font-black uppercase tracking-tighter text-sm truncate drop-shadow-sm">
         {name || 'NOMBRE EQUIPO'}
@@ -138,58 +140,53 @@ const NewGameView: React.FC<NewGameViewProps> = ({ role, onCreate }) => {
   };
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col p-6 overflow-y-auto">
-      <header className="mb-8 flex items-center justify-between max-w-5xl mx-auto w-full">
-        <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/dashboard')} className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-surfaceVariant shadow-sm hover:scale-110 transition-transform">
-            <span className="text-primary font-black">←</span>
-          </button>
-          <h2 className="contrail-font text-3xl text-dark uppercase tracking-tighter">Preparar Partido</h2>
-        </div>
-        <div className="hidden sm:block">
-          <span className="text-[10px] font-black text-onSurfaceVariant uppercase bg-surfaceVariant/50 px-3 py-1 rounded-full border border-surfaceVariant">Modo: {role}</span>
+    <div className="min-h-screen flex flex-col p-6 overflow-y-auto relative z-10 w-full">
+      <header className="mb-4 flex items-center justify-between max-w-5xl mx-auto w-full">
+        <Breadcrumb paths={[{ label: 'Dashboard', url: '/dashboard' }, { label: 'Preparar Partido' }]} />
+        <div className="hidden sm:block mb-6">
+          <span className="text-[10px] font-black text-white/50 uppercase bg-white/5 px-3 py-1 rounded-full border border-white/10">Modo: {role}</span>
         </div>
       </header>
 
-      <div className="flex-1 flex flex-col gap-8 max-w-5xl mx-auto w-full pb-20">
+      <div className="flex-1 flex flex-col gap-6 max-w-5xl mx-auto w-full pb-20">
 
         {/* INFO REGLAMENTO */}
-        <section className="bg-primary/5 border border-primary/20 rounded-[32px] p-6 flex items-center justify-between gap-4 shadow-sm">
+        <GlassCard className="p-6 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg shadow-primary/20">🏑</div>
+            <div className="w-12 h-12 bg-[#00fe00]/20 rounded-2xl flex items-center justify-center text-[#00fe00] text-2xl shadow-lg border border-[#00fe00]/20"><i className="fa-solid fa-play ml-1"></i></div>
             <div>
-              <h3 className="font-black text-xs text-primary uppercase tracking-widest leading-none">Hockey sobre Césped</h3>
-              <p className="text-[10px] text-onSurfaceVariant font-bold mt-1 uppercase opacity-70">FIH Oficial • 4 x 15 min</p>
+              <h3 className="font-black text-xs text-white uppercase tracking-widest leading-none">Hockey sobre Césped</h3>
+              <p className="text-[10px] text-white/50 font-bold mt-1 uppercase">FIH Oficial • 4 x 15 min</p>
             </div>
           </div>
           <div className="hidden md:flex gap-3">
-            <div className="bg-white px-4 py-2 rounded-2xl border border-primary/10 text-center min-w-[80px]">
-              <p className="text-[8px] font-black text-onSurfaceVariant uppercase mb-0.5">Tiempos</p>
-              <p className="text-sm font-black text-primary leading-none">4</p>
+            <div className="bg-white/5 px-4 py-2 rounded-2xl border border-white/10 text-center min-w-[80px]">
+              <p className="text-[8px] font-black text-white/50 uppercase mb-0.5">Tiempos</p>
+              <p className="text-sm font-black text-[#00fe00] leading-none">4</p>
             </div>
-            <div className="bg-white px-4 py-2 rounded-2xl border border-primary/10 text-center min-w-[80px]">
-              <p className="text-[8px] font-black text-onSurfaceVariant uppercase mb-0.5">Minutos</p>
-              <p className="text-sm font-black text-primary leading-none">15'</p>
+            <div className="bg-white/5 px-4 py-2 rounded-2xl border border-white/10 text-center min-w-[80px]">
+              <p className="text-[8px] font-black text-white/50 uppercase mb-0.5">Minutos</p>
+              <p className="text-sm font-black text-[#00fe00] leading-none">15'</p>
             </div>
-            <div className="bg-white px-4 py-2 rounded-2xl border border-primary/10 text-center min-w-[100px]">
-              <p className="text-[8px] font-black text-onSurfaceVariant uppercase mb-0.5">Igualdad</p>
-              <p className="text-[10px] font-black text-primary leading-none uppercase">Sin desempate</p>
+            <div className="bg-white/5 px-4 py-2 rounded-2xl border border-white/10 text-center min-w-[100px]">
+              <p className="text-[8px] font-black text-white/50 uppercase mb-0.5">Igualdad</p>
+              <p className="text-[10px] font-black text-[#00fe00] leading-none uppercase">Sin desempate</p>
             </div>
           </div>
-        </section>
+        </GlassCard>
 
         {/* CONFIGURACIÓN EQUIPO LOCAL */}
-        <section className="bg-white border border-surfaceVariant rounded-[40px] p-6 lg:p-8 shadow-sm hover:shadow-md transition-shadow">
+        <GlassCard className="p-6 lg:p-8">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-lg">🏠</div>
-            <h3 className="font-black text-sm text-onSurface uppercase tracking-widest">Configuración Local</h3>
+            <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 text-sm"><i className="fa-solid fa-house"></i></div>
+            <h3 className="font-black text-sm text-white uppercase tracking-widest">Configuración Local</h3>
           </div>
 
           <div className="flex flex-col lg:flex-row lg:items-end gap-6">
             <div className="flex-1 lg:max-w-[240px]">
-              <label className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest mb-1.5 block">Nombre Equipo</label>
+              <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Nombre Equipo</label>
               <input
-                className="w-full bg-surface border border-surfaceVariant p-3 rounded-xl text-sm font-black text-onSurface focus:border-primary outline-none shadow-inner uppercase"
+                className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-black text-white focus:border-[#00fe00] outline-none shadow-inner uppercase"
                 value={teamHome}
                 onChange={e => setTeamHome(e.target.value)}
                 placeholder="CLUB LOCAL"
@@ -203,20 +200,20 @@ const NewGameView: React.FC<NewGameViewProps> = ({ role, onCreate }) => {
               <TeamPreview name={teamHome} primary={teamHomePrimary} secondary={teamHomeSecondary} />
             </div>
           </div>
-        </section>
+        </GlassCard>
 
         {/* CONFIGURACIÓN EQUIPO VISITANTE */}
-        <section className="bg-white border border-surfaceVariant rounded-[40px] p-6 lg:p-8 shadow-sm hover:shadow-md transition-shadow">
+        <GlassCard className="p-6 lg:p-8">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-lg">🚌</div>
-            <h3 className="font-black text-sm text-onSurface uppercase tracking-widest">Configuración Visitante</h3>
+            <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center text-red-400 text-sm"><i className="fa-solid fa-bus"></i></div>
+            <h3 className="font-black text-sm text-white uppercase tracking-widest">Configuración Visitante</h3>
           </div>
 
           <div className="flex flex-col lg:flex-row lg:items-end gap-6">
             <div className="flex-1 lg:max-w-[240px]">
-              <label className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest mb-1.5 block">Nombre Rival</label>
+              <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Nombre Rival</label>
               <input
-                className="w-full bg-surface border border-surfaceVariant p-3 rounded-xl text-sm font-black text-onSurface focus:border-primary outline-none shadow-inner uppercase"
+                className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-black text-white focus:border-[#00fe00] outline-none shadow-inner uppercase"
                 value={teamAway}
                 onChange={e => setTeamAway(e.target.value)}
                 placeholder="CLUB VISITANTE"
@@ -230,17 +227,16 @@ const NewGameView: React.FC<NewGameViewProps> = ({ role, onCreate }) => {
               <TeamPreview name={teamAway} primary={teamAwayPrimary} secondary={teamAwaySecondary} />
             </div>
           </div>
-        </section>
+        </GlassCard>
 
         {/* BOTÓN INICIAR */}
         <div className="mt-4 flex justify-center">
-          <Button
-            className="w-full lg:max-w-md h-16 text-lg rounded-[28px] shadow-2xl shadow-primary/20 group relative overflow-hidden"
+          <button
+            className="bg-[#b4b4b4] text-black px-8 py-5 font-bold text-[11px] uppercase tracking-[2px] hover:bg-[#c0c0c0] transition-all active:scale-95 flex items-center justify-center gap-3 w-full lg:max-w-md shadow-[0_0_20px_rgba(180,180,180,0.2)]"
             onClick={handleStart}
           >
-            <span className="relative z-10">🚀 COMENZAR JUEGO</span>
-            <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-          </Button>
+            COMENZAR JUEGO <i className="fa-solid fa-arrow-right"></i>
+          </button>
         </div>
       </div>
     </div>

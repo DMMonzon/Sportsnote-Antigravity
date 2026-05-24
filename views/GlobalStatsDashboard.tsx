@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Game } from '../types';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Button } from '../components/Button';
+import { Breadcrumb } from '../components/Breadcrumb';
+import { GlassCard } from '../components/GlassCard';
 
 interface GlobalStatsDashboardProps {
     matches: Game[];
@@ -137,21 +139,16 @@ const GlobalStatsDashboard: React.FC<GlobalStatsDashboardProps> = ({ matches }) 
     };
 
     return (
-        <div className="min-h-screen bg-surface flex flex-col overflow-y-auto no-scrollbar pb-16 relative">
-            <header className="sticky top-0 z-50 flex justify-between items-center px-6 py-3 bg-white/80 backdrop-blur-xl border-b border-surfaceVariant shrink-0 mb-8">
-                <div className="flex items-center gap-4">
-                    <button onClick={() => navigate('/dashboard')} className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-surfaceVariant shadow-sm hover:scale-110 transition-transform">
-                        <span className="text-primary font-black">←</span>
-                    </button>
-                    <img src="./assets/logoLargoSN.svg" alt="SportNotes Logo" className="h-8 md:h-9 w-auto" />
-                </div>
-            </header>
+        <div className="min-h-screen flex flex-col overflow-y-auto no-scrollbar pb-16 relative z-10">
+            <div className="pt-6 px-4 md:px-8 max-w-6xl mx-auto w-full mb-8">
+                <Breadcrumb paths={[{ label: 'Dashboard', url: '/dashboard' }, { label: 'Intelligence Hub' }]} />
+            </div>
 
             <main className="flex-1 max-w-6xl mx-auto w-full flex flex-col gap-8 px-4 md:px-8">
                 <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div className="flex flex-col gap-2">
-                        <h2 className="contrail-font text-3xl md:text-4xl text-dark uppercase tracking-tighter leading-none">Intelligence Hub</h2>
-                        <p className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-[4px] opacity-60">Tendencias Globales & Comparativa</p>
+                        <h2 className="contrail-font text-3xl md:text-4xl text-white uppercase tracking-tighter leading-none">Intelligence Hub</h2>
+                        <p className="text-[9px] font-black text-white/50 uppercase tracking-[4px] opacity-60">Tendencias Globales & Comparativa</p>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-4">
@@ -162,7 +159,7 @@ const GlobalStatsDashboard: React.FC<GlobalStatsDashboardProps> = ({ matches }) 
                             ⚖️ Comparar 2 Juegos
                         </button>
 
-                        <div className="bg-white border border-surfaceVariant rounded-[24px] p-1.5 flex gap-1 shadow-sm">
+                        <div className="bg-white/5 border border-white/10 rounded-[24px] p-1.5 flex gap-1 shadow-sm">
                             {[
                                 { id: '5', label: 'Últimos 5' },
                                 { id: '10', label: 'Últimos 10' },
@@ -171,7 +168,7 @@ const GlobalStatsDashboard: React.FC<GlobalStatsDashboardProps> = ({ matches }) 
                                 <button
                                     key={opt.id}
                                     onClick={() => setRange(opt.id as any)}
-                                    className={`px-4 md:px-6 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${range === opt.id ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-onSurfaceVariant hover:bg-surface'}`}
+                                    className={`px-4 md:px-6 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${range === opt.id ? 'bg-[#00fe00] text-black shadow-[0_0_15px_rgba(0,254,0,0.2)]' : 'text-white/70 hover:bg-white/10'}`}
                                 >
                                     {opt.label}
                                 </button>
@@ -183,27 +180,27 @@ const GlobalStatsDashboard: React.FC<GlobalStatsDashboardProps> = ({ matches }) 
                 {/* Promedios */}
                 <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     {[
-                        { id: 'disparos', label: 'Disparos / PJ', value: averages.disparos, color: '#6d5dfc', icon: '🥅' },
-                        { id: 'recuperos', label: 'Recuperos / PJ', value: averages.recuperos, color: '#10b981', icon: '📈' },
-                        { id: 'pérdidas', label: 'Pérdidas / PJ', value: averages.pérdidas, color: '#ef4444', icon: '📉' },
-                        { id: 'faltas', label: 'Faltas / PJ', value: averages.faltas, color: '#f59e0b', icon: '⚠️' }
+                        { id: 'disparos', label: 'Disparos / PJ', value: averages.disparos, color: '#6d5dfc', icon: <i className="fa-solid fa-bullseye"></i> },
+                        { id: 'recuperos', label: 'Recuperos / PJ', value: averages.recuperos, color: '#10b981', icon: <i className="fa-solid fa-arrow-trend-up"></i> },
+                        { id: 'pérdidas', label: 'Pérdidas / PJ', value: averages.pérdidas, color: '#ef4444', icon: <i className="fa-solid fa-arrow-trend-down"></i> },
+                        { id: 'faltas', label: 'Faltas / PJ', value: averages.faltas, color: '#f59e0b', icon: <i className="fa-solid fa-triangle-exclamation"></i> }
                     ].map(stat => (
-                        <div key={stat.id} className="bg-white border border-surfaceVariant rounded-[32px] p-6 shadow-sm hover:shadow-md transition-shadow">
+                        <GlassCard key={stat.id} className="p-6 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-shadow">
                             <div className="flex items-center gap-3 mb-4">
                                 <span className="text-2xl">{stat.icon}</span>
-                                <span className="text-[9px] font-black text-onSurfaceVariant uppercase tracking-widest">{stat.label}</span>
+                                <span className="text-[9px] font-black text-white/70 uppercase tracking-widest">{stat.label}</span>
                             </div>
-                            <p className="text-4xl font-black text-dark" style={{ color: activeLines[stat.id as keyof typeof activeLines] ? stat.color : '#e2e8f0' }}>
+                            <p className="text-4xl font-black" style={{ color: activeLines[stat.id as keyof typeof activeLines] ? stat.color : 'rgba(255,255,255,0.2)' }}>
                                 {stat.value}
                             </p>
-                        </div>
+                        </GlassCard>
                     ))}
                 </section>
 
                 {/* Gráfico */}
-                <section className="bg-white border-2 border-surfaceVariant rounded-[48px] p-6 lg:p-10 shadow-xl overflow-hidden min-h-[500px] flex flex-col w-full">
+                <GlassCard className="p-6 lg:p-10 min-h-[500px] flex flex-col w-full mb-8">
                     <div className="flex justify-between items-center mb-8 px-4">
-                        <h3 className="text-[11px] font-black text-onSurfaceVariant uppercase tracking-[3px] italic">Evolución de Performance</h3>
+                        <h3 className="text-[11px] font-black text-white/50 uppercase tracking-[3px] italic">Evolución de Performance</h3>
                     </div>
 
                     <div className="flex-1 w-full min-h-[350px]">
@@ -226,39 +223,39 @@ const GlobalStatsDashboard: React.FC<GlobalStatsDashboardProps> = ({ matches }) 
                                                     className={`flex items-center gap-2 transition-all ${activeLines[entry.dataKey as keyof typeof activeLines] ? 'opacity-100' : 'opacity-20 grayscale'}`}
                                                 >
                                                     <div className="w-4 h-1 rounded-full" style={{ backgroundColor: entry.color }} />
-                                                    <span className="text-[10px] font-black text-dark uppercase tracking-widest">{entry.value}</span>
+                                                    <span className="text-[10px] font-black text-white uppercase tracking-widest">{entry.value}</span>
                                                 </button>
                                             ))}
                                         </div>
                                     )}
                                 />
-                                <Line type="monotone" dataKey="disparos" name="Disparos" stroke="#6d5dfc" strokeWidth={4} dot={{ r: 6, fill: '#6d5dfc', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 10, strokeWidth: 0 }} hide={!activeLines.disparos} animationDuration={1500} />
-                                <Line type="monotone" dataKey="recuperos" name="Recuperos" stroke="#10b981" strokeWidth={4} dot={{ r: 6, fill: '#10b981', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 10, strokeWidth: 0 }} hide={!activeLines.recuperos} animationDuration={1500} />
-                                <Line type="monotone" dataKey="pérdidas" name="Pérdidas" stroke="#ef4444" strokeWidth={4} dot={{ r: 6, fill: '#ef4444', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 10, strokeWidth: 0 }} hide={!activeLines.pérdidas} animationDuration={1500} />
-                                <Line type="monotone" dataKey="faltas" name="Faltas" stroke="#f59e0b" strokeWidth={4} dot={{ r: 6, fill: '#f59e0b', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 10, strokeWidth: 0 }} hide={!activeLines.faltas} animationDuration={1500} />
+                                <Line type="monotone" dataKey="disparos" name="Disparos" stroke="#6d5dfc" strokeWidth={4} dot={{ r: 6, fill: '#6d5dfc', strokeWidth: 2, stroke: '#1a1a1a' }} activeDot={{ r: 10, strokeWidth: 0 }} hide={!activeLines.disparos} animationDuration={1500} />
+                                <Line type="monotone" dataKey="recuperos" name="Recuperos" stroke="#10b981" strokeWidth={4} dot={{ r: 6, fill: '#10b981', strokeWidth: 2, stroke: '#1a1a1a' }} activeDot={{ r: 10, strokeWidth: 0 }} hide={!activeLines.recuperos} animationDuration={1500} />
+                                <Line type="monotone" dataKey="pérdidas" name="Pérdidas" stroke="#ef4444" strokeWidth={4} dot={{ r: 6, fill: '#ef4444', strokeWidth: 2, stroke: '#1a1a1a' }} activeDot={{ r: 10, strokeWidth: 0 }} hide={!activeLines.pérdidas} animationDuration={1500} />
+                                <Line type="monotone" dataKey="faltas" name="Faltas" stroke="#f59e0b" strokeWidth={4} dot={{ r: 6, fill: '#f59e0b', strokeWidth: 2, stroke: '#1a1a1a' }} activeDot={{ r: 10, strokeWidth: 0 }} hide={!activeLines.faltas} animationDuration={1500} />
                             </LineChart>
                         </ResponsiveContainer>
                     </div>
-                </section>
+                </GlassCard>
 
                 {processedData.length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[48px] border-2 border-dashed border-surfaceVariant">
-                        <span className="text-6xl mb-6">📊</span>
-                        <p className="text-onSurfaceVariant font-black uppercase tracking-[4px] text-xs opacity-40">No hay datos suficientes para mostrar tendencias</p>
-                    </div>
+                    <GlassCard className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-white/10 mt-8">
+                        <span className="text-6xl mb-6"><i className="fa-solid fa-chart-simple"></i></span>
+                        <p className="text-white/50 font-black uppercase tracking-[4px] text-xs opacity-40">No hay datos suficientes para mostrar tendencias</p>
+                    </GlassCard>
                 )}
             </main>
 
             {/* Selector de Comparación Modal */}
             {isComparing && (
-                <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-brandDark/60 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="bg-white w-full max-w-2xl rounded-[40px] p-8 shadow-2xl flex flex-col max-h-[90vh] border border-surfaceVariant overflow-hidden">
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
+                    <GlassCard className="w-full max-w-2xl p-8 shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
                         <div className="flex justify-between items-center mb-6">
                             <div>
-                                <h3 className="text-xl font-black text-dark uppercase tracking-tight">Seleccionar 2 Partidos</h3>
-                                <p className="text-[10px] font-bold text-onSurfaceVariant uppercase tracking-widest">{comparisonSelection.length}/2 Seleccionados</p>
+                                <h3 className="text-xl font-black text-white uppercase tracking-tight">Seleccionar 2 Partidos</h3>
+                                <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">{comparisonSelection.length}/2 Seleccionados</p>
                             </div>
-                            <button onClick={() => { setIsComparing(false); setComparisonSelection([]); }} className="text-2xl opacity-40 hover:opacity-100">✕</button>
+                            <button onClick={() => { setIsComparing(false); setComparisonSelection([]); }} className="text-2xl text-white opacity-40 hover:opacity-100">✕</button>
                         </div>
 
                         <div className="flex-1 overflow-y-auto pr-2 space-y-3 mb-6 no-scrollbar">
@@ -266,38 +263,38 @@ const GlobalStatsDashboard: React.FC<GlobalStatsDashboardProps> = ({ matches }) 
                                 <button
                                     key={m.id}
                                     onClick={() => handleSelectForComparison(m.id)}
-                                    className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${comparisonSelection.includes(m.id) ? 'border-primary bg-primary/5' : 'border-surfaceVariant hover:border-primary/30'}`}
+                                    className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${comparisonSelection.includes(m.id) ? 'border-[#00fe00] bg-[#00fe00]/10' : 'border-white/10 hover:border-white/30'}`}
                                 >
                                     <div className="text-left">
-                                        <p className="text-xs font-black text-dark uppercase">vs {m.teamAway.name}</p>
-                                        <p className="text-[9px] font-bold text-onSurfaceVariant uppercase">{new Date(m.createdAt).toLocaleDateString()} • {m.scoreHome}-{m.scoreAway}</p>
+                                        <p className="text-xs font-black text-white uppercase">vs {m.teamAway.name}</p>
+                                        <p className="text-[9px] font-bold text-white/50 uppercase">{new Date(m.createdAt).toLocaleDateString()} • {m.scoreHome}-{m.scoreAway}</p>
                                     </div>
-                                    {comparisonSelection.includes(m.id) && <span className="text-primary text-xl">✅</span>}
+                                    {comparisonSelection.includes(m.id) && <span className="text-[#00fe00] text-xl">✅</span>}
                                 </button>
                             ))}
                         </div>
 
                         {comparisonSelection.length === 2 && comparisonData && (
-                            <div className="bg-surface rounded-3xl p-6 border border-surfaceVariant animate-in slide-in-from-bottom duration-500">
-                                <h4 className="text-[10px] font-black text-onSurfaceVariant uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <div className="bg-white/5 rounded-3xl p-6 border border-white/10 animate-in slide-in-from-bottom duration-500">
+                                <h4 className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-4 flex items-center gap-2">
                                     <span className="text-lg">⚖️</span> Resultado Comparativo
                                 </h4>
                                 <div className="grid grid-cols-3 gap-4 items-center mb-6">
                                     <div className="text-center">
-                                        <p className="text-xs font-black text-dark truncate mb-1">{comparisonData[0]?.teamAway.name}</p>
-                                        <p className="text-3xl font-black text-primary">{comparisonData[0]?.scoreHome}-{comparisonData[0]?.scoreAway}</p>
+                                        <p className="text-xs font-black text-white truncate mb-1">{comparisonData[0]?.teamAway.name}</p>
+                                        <p className="text-3xl font-black text-[#00fe00]">{comparisonData[0]?.scoreHome}-{comparisonData[0]?.scoreAway}</p>
                                     </div>
                                     <div className="flex flex-col gap-2">
-                                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden flex">
-                                            <div className="h-full bg-primary transition-all duration-1000" style={{ width: `${(comparisonData[0]!.scoreHome / (comparisonData[0]!.scoreHome + comparisonData[1]!.scoreHome + 0.1)) * 100}%` }}></div>
-                                            <div className="h-full bg-slate-300 transition-all duration-1000" style={{ width: '1px' }}></div>
-                                            <div className="h-full bg-brandDark transition-all duration-1000" style={{ width: `${(comparisonData[1]!.scoreHome / (comparisonData[0]!.scoreHome + comparisonData[1]!.scoreHome + 0.1)) * 100}%` }}></div>
+                                        <div className="h-2 bg-white/10 rounded-full overflow-hidden flex">
+                                            <div className="h-full bg-[#00fe00] transition-all duration-1000" style={{ width: `${(comparisonData[0]!.scoreHome / (comparisonData[0]!.scoreHome + comparisonData[1]!.scoreHome + 0.1)) * 100}%` }}></div>
+                                            <div className="h-full bg-white/20 transition-all duration-1000" style={{ width: '1px' }}></div>
+                                            <div className="h-full bg-blue-500 transition-all duration-1000" style={{ width: `${(comparisonData[1]!.scoreHome / (comparisonData[0]!.scoreHome + comparisonData[1]!.scoreHome + 0.1)) * 100}%` }}></div>
                                         </div>
-                                        <p className="text-[8px] text-center font-black uppercase opacity-40">Benchmark de Goles</p>
+                                        <p className="text-[8px] text-center font-black uppercase opacity-40 text-white">Benchmark de Goles</p>
                                     </div>
                                     <div className="text-center">
-                                        <p className="text-xs font-black text-dark truncate mb-1">{comparisonData[1]?.teamAway.name}</p>
-                                        <p className="text-3xl font-black text-brandDark">{comparisonData[1]?.scoreHome}-{comparisonData[1]?.scoreAway}</p>
+                                        <p className="text-xs font-black text-white truncate mb-1">{comparisonData[1]?.teamAway.name}</p>
+                                        <p className="text-3xl font-black text-blue-500">{comparisonData[1]?.scoreHome}-{comparisonData[1]?.scoreAway}</p>
                                     </div>
                                 </div>
 
@@ -310,13 +307,13 @@ const GlobalStatsDashboard: React.FC<GlobalStatsDashboardProps> = ({ matches }) 
                                     ].map(stat => (
                                         <div key={stat.label} className="flex flex-col gap-1">
                                             <div className="flex justify-between text-[8px] font-black uppercase">
-                                                <span className={stat.val1 > stat.val2 ? 'text-primary' : 'text-onSurfaceVariant'}>{stat.val1}</span>
-                                                <span className="text-onSurfaceVariant italic">{stat.label}</span>
-                                                <span className={stat.val2 > stat.val1 ? 'text-primary' : 'text-onSurfaceVariant'}>{stat.val2}</span>
+                                                <span className={stat.val1 > stat.val2 ? 'text-[#00fe00]' : 'text-white/50'}>{stat.val1}</span>
+                                                <span className="text-white/50 italic">{stat.label}</span>
+                                                <span className={stat.val2 > stat.val1 ? 'text-[#00fe00]' : 'text-white/50'}>{stat.val2}</span>
                                             </div>
-                                            <div className="h-1 bg-gray-100 rounded-full flex gap-1 overflow-hidden">
-                                                <div className={`h-full transition-all duration-700 ${stat.val1 > stat.val2 ? 'bg-primary' : 'bg-onSurfaceVariant/20'}`} style={{ width: `${(stat.val1 / (stat.val1 + stat.val2 + 0.1)) * 100}%` }}></div>
-                                                <div className={`h-full transition-all duration-700 ${stat.val2 > stat.val1 ? 'bg-brandDark' : 'bg-onSurfaceVariant/20'}`} style={{ width: `${(stat.val2 / (stat.val1 + stat.val2 + 0.1)) * 100}%` }}></div>
+                                            <div className="h-1 bg-white/10 rounded-full flex gap-1 overflow-hidden">
+                                                <div className={`h-full transition-all duration-700 ${stat.val1 > stat.val2 ? 'bg-[#00fe00]' : 'bg-white/20'}`} style={{ width: `${(stat.val1 / (stat.val1 + stat.val2 + 0.1)) * 100}%` }}></div>
+                                                <div className={`h-full transition-all duration-700 ${stat.val2 > stat.val1 ? 'bg-blue-500' : 'bg-white/20'}`} style={{ width: `${(stat.val2 / (stat.val1 + stat.val2 + 0.1)) * 100}%` }}></div>
                                             </div>
                                         </div>
                                     ))}
@@ -330,7 +327,7 @@ const GlobalStatsDashboard: React.FC<GlobalStatsDashboardProps> = ({ matches }) 
                         >
                             Cerrar Análisis
                         </Button>
-                    </div>
+                    </GlassCard>
                 </div>
             )}
         </div>

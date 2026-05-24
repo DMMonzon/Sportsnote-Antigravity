@@ -1,0 +1,173 @@
+  const renderJuegos = () => (
+    <div className="flex flex-col h-full gap-6 animate-in fade-in zoom-in-95 duration-300">
+      <div className="flex flex-col gap-4 pb-4">
+        <div>
+          <h2 className="font-contrail text-4xl md:text-5xl text-white uppercase tracking-wide">Panel de Juegos</h2>
+          <p className="font-lato text-white/70 text-sm mt-2 max-w-2xl">
+            Controla tu cronograma de partidos, organiza próximos encuentros y repasa los resultados recientes con un clic.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <button onClick={() => navigate('/new-game')} className="bg-primary text-white px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-brandDark transition-all active:scale-95 flex items-center gap-2 shadow-lg">
+            <i className="fa-solid fa-play"></i>
+            <span>Iniciar Nuevo</span>
+          </button>
+          <button onClick={() => navigate('/history')} className="border border-white/20 text-white px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-white/10 transition-all active:scale-95 flex items-center gap-2">
+            <i className="fa-solid fa-clock-rotate-left"></i>
+            <span>Historial</span>
+          </button>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 overflow-y-auto pr-2 no-scrollbar pb-20 md:pb-0">
+        <div className="bg-[#1a1a1a] rounded-2xl p-5 flex flex-col h-fit">
+          <div className="flex justify-between items-center mb-5">
+            <p className="text-[10px] font-black text-white/60 uppercase tracking-widest">Últimos Juegos</p>
+          </div>
+          <div className="space-y-3">
+            {matches.slice(-3).reverse().map((g) => (
+              <GameAccordion key={g.id} g={g} onStats={() => navigate(`/summary/${g.id}`)} onShare={() => handleShare(g)} onRecycle={() => setShowRecycleModal(g)} onFavorite={() => handleToggleFavorite(g)} onDelete={() => handleDeleteGame(g)} />
+            ))}
+            {matches.length === 0 && <p className="text-[11px] text-white/40 italic p-4 text-center">Sin registros disponibles.</p>}
+          </div>
+        </div>
+
+        <div className="bg-[#1a1a1a] rounded-2xl p-5 flex flex-col h-fit">
+          <div className="flex justify-between items-center mb-5">
+            <p className="text-[10px] font-black text-white/60 uppercase tracking-widest">Agenda Próxima</p>
+          </div>
+          <div className="space-y-3">
+            {[{ r: 'Lions Club', d: '24/05' }, { r: 'Tigres HC', d: '28/05' }].map((g, i) => (
+              <div key={i} className="group/agenda relative flex items-center justify-between bg-white/5 hover:bg-white/10 p-2 rounded-xl transition-all overflow-hidden">
+                <div className="flex items-center gap-2 truncate flex-1 min-w-0 pr-2">
+                  <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest shrink-0 w-10 text-center">{g.d}</span>
+                  <div className="flex items-center gap-2 flex-1 min-w-0 bg-black/40 px-3 py-2 rounded-lg">
+                    <span className="truncate flex-1 text-white text-[11px] font-bold uppercase tracking-tighter">vs {g.r}</span>
+                    <span className="text-[9px] font-black text-white/50 px-2.5 py-1 rounded-md leading-none shrink-0 bg-black/60 shadow-inner">PENDIENTE</span>
+                  </div>
+                </div>
+                <div className="flex gap-2 opacity-0 group-hover/agenda:opacity-100 transition-opacity duration-200 shrink-0 items-center px-2">
+                  <button className="hover:scale-125 transition-transform text-white/50 hover:text-white" title="Editar"><i className="fa-solid fa-pen"></i></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderEquipo = () => (
+    <div className="flex flex-col h-full gap-6 animate-in fade-in zoom-in-95 duration-300">
+      <div className="flex flex-col gap-4 pb-4">
+        <div>
+          <h2 className="font-contrail text-4xl md:text-5xl text-white uppercase tracking-wide">Gestión de Equipo</h2>
+          <p className="font-lato text-white/70 text-sm mt-2 max-w-2xl">
+            Administra los perfiles de tus jugadores, ajusta dorsales y mantén la información de tu plantilla actualizada para un mejor rendimiento táctico.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <button disabled className="bg-primary/50 text-white px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest cursor-not-allowed flex items-center gap-2">
+            <i className="fa-solid fa-user-plus"></i>
+            <span>Añadir Jugador</span>
+          </button>
+          <button disabled className="border border-white/20 text-white/50 px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest cursor-not-allowed flex items-center gap-2">
+            <i className="fa-solid fa-list"></i>
+            <span>Ver Plantilla</span>
+          </button>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-[#1a1a1a] rounded-2xl p-5 flex flex-col justify-center">
+          <p className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1">Registrados</p>
+          <h4 className="text-4xl font-contrail text-white">{PersistenceManager.loadStateLocal().players?.length || 0}</h4>
+        </div>
+        <div className="bg-[#1a1a1a] rounded-2xl p-5 flex flex-col justify-center">
+          <p className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1">Activos</p>
+          <h4 className="text-4xl font-contrail text-emerald-400">{PersistenceManager.loadStateLocal().players?.length || 0}</h4>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderEstadisticas = () => (
+    <div className="flex flex-col h-full gap-6 animate-in fade-in zoom-in-95 duration-300">
+      <div className="flex flex-col gap-4 pb-4">
+        <div>
+          <h2 className="font-contrail text-4xl md:text-5xl text-white uppercase tracking-wide">Estadísticas Pro</h2>
+          <p className="font-lato text-white/70 text-sm mt-2 max-w-2xl">
+            Métricas avanzadas para evaluar el rendimiento, eficiencia de pases y la evolución ofensiva de tu equipo basada en datos reales.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <button onClick={() => navigate('/trends')} className="bg-primary text-white px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-brandDark transition-all active:scale-95 flex items-center gap-2 shadow-lg">
+            <i className="fa-solid fa-chart-line"></i>
+            <span>Reporte Completo</span>
+          </button>
+          <button className="border border-white/20 text-white px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-white/10 transition-all active:scale-95 flex items-center gap-2">
+            <i className="fa-solid fa-download"></i>
+            <span>Exportar Data</span>
+          </button>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-[#1a1a1a] rounded-2xl p-5 flex flex-col justify-center">
+          <p className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1">Cadenas Prom.</p>
+          <h4 className="text-4xl font-contrail text-white">{statsData.avgChains}</h4>
+        </div>
+        <div className="bg-[#1a1a1a] rounded-2xl p-5 flex flex-col justify-center">
+          <p className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1">Goles Totales</p>
+          <h4 className="text-4xl font-contrail text-white">{statsData.totalGoals}</h4>
+        </div>
+        <div className="bg-[#1a1a1a] rounded-2xl p-5 flex flex-col justify-center col-span-2">
+          <p className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-2">Evolución Ofensiva</p>
+          <div className="w-full h-12">
+            {statsData.sparklineData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={statsData.sparklineData}>
+                  <Line type="monotone" dataKey="val" stroke="#8b5cf6" strokeWidth={3} dot={false} isAnimationActive={true} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center border border-white/10 rounded-lg border-dashed">
+                <span className="text-[9px] text-white/30 font-bold uppercase">Sin datos</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderAjustes = () => (
+    <div className="flex flex-col h-full gap-6 animate-in fade-in zoom-in-95 duration-300">
+      <div className="flex flex-col gap-4 pb-4">
+        <div>
+          <h2 className="font-contrail text-4xl md:text-5xl text-white uppercase tracking-wide">Configuración</h2>
+          <p className="font-lato text-white/70 text-sm mt-2 max-w-2xl">
+            Modifica los parámetros reglamentarios del deporte, tiempos de juego y administra tus listas de distribución para envíos automáticos.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <button className="bg-primary text-white px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-brandDark transition-all active:scale-95 flex items-center gap-2 shadow-lg">
+            <i className="fa-solid fa-sliders"></i>
+            <span>Reglamento</span>
+          </button>
+          <button className="border border-white/20 text-white px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-white/10 transition-all active:scale-95 flex items-center gap-2">
+            <i className="fa-solid fa-address-book"></i>
+            <span>Contactos</span>
+          </button>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-[#1a1a1a] rounded-2xl p-5 flex flex-col justify-center col-span-2">
+          <p className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1">Formato de Juego</p>
+          <p className="text-lg font-bold text-white mt-1">4 Cuartos • 15 min</p>
+        </div>
+        <div className="bg-[#1a1a1a] rounded-2xl p-5 flex flex-col justify-center">
+          <p className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1">Listas Activas</p>
+          <h4 className="text-4xl font-contrail text-white">4</h4>
+        </div>
+      </div>
+    </div>
+  );

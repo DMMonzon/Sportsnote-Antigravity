@@ -1,0 +1,204 @@
+  const renderJuegos = () => (
+    <div className="flex flex-col h-full justify-between animate-in fade-in zoom-in-95 duration-300">
+      <div className="max-w-3xl mt-4">
+        <p className="text-[#b4b4b4] text-[10px] font-bold tracking-[3px] uppercase mb-2">Resumen General</p>
+        <h2 className="font-contrail text-6xl md:text-8xl text-white italic tracking-wide mb-6 drop-shadow-lg">PANEL DE JUEGOS</h2>
+        <div className="border-l-2 border-[#b4b4b4]/50 pl-5 py-1 mb-6">
+          <p className="font-lato text-white/70 text-sm md:text-base leading-relaxed max-w-2xl">
+            Controla tu cronograma de partidos, organiza próximos encuentros y repasa los resultados recientes con un clic.
+          </p>
+        </div>
+      </div>
+      
+      <div className="flex flex-col xl:flex-row justify-between items-end gap-8 mt-4 mb-4">
+        <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">
+          <div className="bg-[#131041]/90 border border-white/5 rounded-xl p-5 flex flex-col h-[200px] shadow-2xl overflow-y-auto no-scrollbar">
+            <p className="text-[#b4b4b4] text-[9px] font-bold tracking-widest uppercase mb-4 flex items-center gap-2">
+               <i className="fa-solid fa-clock-rotate-left"></i> Últimos Juegos
+            </p>
+            <div className="space-y-3">
+              {matches.slice(-3).reverse().map((g) => (
+                <GameAccordion key={g.id} g={g} onStats={() => navigate(`/summary/${g.id}`)} onShare={() => handleShare(g)} onRecycle={() => setShowRecycleModal(g)} onFavorite={() => handleToggleFavorite(g)} onDelete={() => handleDeleteGame(g)} />
+              ))}
+              {matches.length === 0 && <p className="text-[11px] text-white/40 italic p-4 text-center">Sin registros disponibles.</p>}
+            </div>
+          </div>
+
+          <div className="bg-[#131041]/90 border border-white/5 rounded-xl p-5 flex flex-col h-[200px] shadow-2xl overflow-y-auto no-scrollbar">
+            <p className="text-[#b4b4b4] text-[9px] font-bold tracking-widest uppercase mb-4 flex items-center gap-2">
+               <i className="fa-solid fa-calendar-days"></i> Agenda Próxima
+            </p>
+            <div className="space-y-3">
+              {[{ r: 'Lions Club', d: '24/05' }, { r: 'Tigres HC', d: '28/05' }].map((g, i) => (
+                <div key={i} className="group/agenda relative flex items-center justify-between bg-white/5 hover:bg-white/10 p-2 rounded-xl transition-all overflow-hidden">
+                  <div className="flex items-center gap-2 truncate flex-1 min-w-0 pr-2">
+                    <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest shrink-0 w-10 text-center">{g.d}</span>
+                    <div className="flex items-center gap-2 flex-1 min-w-0 bg-black/40 px-3 py-2 rounded-lg">
+                      <span className="truncate flex-1 text-white text-[11px] font-bold uppercase tracking-tighter">vs {g.r}</span>
+                      <span className="text-[9px] font-black text-[#b4b4b4] px-2.5 py-1 rounded-md leading-none shrink-0 bg-[#b4b4b4]/10">PENDIENTE</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 opacity-0 group-hover/agenda:opacity-100 transition-opacity duration-200 shrink-0 items-center px-2">
+                    <button className="hover:scale-125 transition-transform text-white/50 hover:text-white" title="Editar"><i className="fa-solid fa-pen"></i></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap sm:flex-nowrap gap-4 w-full xl:w-auto shrink-0 justify-end">
+          <button onClick={() => navigate('/new-game')} className="bg-[#b4b4b4] text-black px-8 py-5 font-bold text-[11px] uppercase tracking-[2px] hover:bg-[#c0c0c0] transition-all active:scale-95 flex items-center justify-center gap-3 w-full sm:w-auto shadow-[0_0_20px_rgba(180,180,180,0.2)]">
+            INICIAR NUEVO <i className="fa-solid fa-arrow-right"></i>
+          </button>
+          <button onClick={() => navigate('/history')} className="bg-[#1a1c23] text-white border border-white/5 px-8 py-5 font-bold text-[11px] uppercase tracking-[2px] hover:bg-[#252830] transition-all active:scale-95 flex items-center justify-center gap-3 w-full sm:w-auto">
+            VER HISTORIAL <i className="fa-solid fa-chevron-right text-white/40"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderEquipo = () => (
+    <div className="flex flex-col h-full justify-between animate-in fade-in zoom-in-95 duration-300">
+      <div className="max-w-3xl mt-4">
+        <p className="text-[#b4b4b4] text-[10px] font-bold tracking-[3px] uppercase mb-2">Plantilla Activa</p>
+        <h2 className="font-contrail text-6xl md:text-8xl text-white italic tracking-wide mb-6 drop-shadow-lg">MI EQUIPO</h2>
+        <div className="border-l-2 border-[#b4b4b4]/50 pl-5 py-1 mb-6">
+          <p className="font-lato text-white/70 text-sm md:text-base leading-relaxed max-w-2xl">
+            Administra los perfiles de tus jugadores, ajusta dorsales y mantén la información de tu plantilla actualizada para un mejor rendimiento táctico.
+          </p>
+        </div>
+      </div>
+      
+      <div className="flex flex-col xl:flex-row justify-between items-end gap-8 mt-4 mb-4">
+        <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">
+          <div className="bg-[#131041]/90 border border-white/5 rounded-xl p-6 flex flex-col justify-center h-[160px] shadow-2xl">
+            <p className="text-[#b4b4b4] text-[9px] font-bold tracking-widest uppercase mb-2 flex items-center gap-2">
+               <i className="fa-solid fa-user-check"></i> Jugadores Registrados
+            </p>
+            <div className="flex items-baseline gap-4 mt-2">
+              <h4 className="text-6xl font-contrail text-white leading-none">{PersistenceManager.loadStateLocal().players?.length || 0}</h4>
+              <span className="text-[10px] font-bold text-white/50 uppercase tracking-widest">En Plantilla</span>
+            </div>
+          </div>
+          <div className="bg-[#131041]/90 border border-white/5 rounded-xl p-6 flex flex-col justify-center h-[160px] shadow-2xl">
+            <p className="text-[#b4b4b4] text-[9px] font-bold tracking-widest uppercase mb-2 flex items-center gap-2">
+               <i className="fa-solid fa-bolt"></i> Estado
+            </p>
+            <div className="flex items-baseline gap-4 mt-2">
+              <h4 className="text-6xl font-contrail text-[#b4b4b4] leading-none">{PersistenceManager.loadStateLocal().players?.length || 0}</h4>
+              <span className="text-[10px] font-bold text-white/50 uppercase tracking-widest">Activos</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap sm:flex-nowrap gap-4 w-full xl:w-auto shrink-0 justify-end">
+          <button disabled className="bg-[#b4b4b4]/50 text-black/50 px-8 py-5 font-bold text-[11px] uppercase tracking-[2px] cursor-not-allowed flex items-center justify-center gap-3 w-full sm:w-auto">
+            AÑADIR JUGADOR <i className="fa-solid fa-arrow-right"></i>
+          </button>
+          <button disabled className="bg-[#1a1c23] text-white/50 border border-white/5 px-8 py-5 font-bold text-[11px] uppercase tracking-[2px] cursor-not-allowed flex items-center justify-center gap-3 w-full sm:w-auto">
+            VER PLANTILLA <i className="fa-solid fa-chevron-right text-white/20"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderEstadisticas = () => (
+    <div className="flex flex-col h-full justify-between animate-in fade-in zoom-in-95 duration-300">
+      <div className="max-w-3xl mt-4">
+        <p className="text-[#b4b4b4] text-[10px] font-bold tracking-[3px] uppercase mb-2">Análisis de Desempeño</p>
+        <h2 className="font-contrail text-6xl md:text-8xl text-white italic tracking-wide mb-6 drop-shadow-lg">ESTADÍSTICAS</h2>
+        <div className="border-l-2 border-[#b4b4b4]/50 pl-5 py-1 mb-6">
+          <p className="font-lato text-white/70 text-sm md:text-base leading-relaxed max-w-2xl">
+            Métricas avanzadas para evaluar el rendimiento, eficiencia de pases y la evolución ofensiva de tu equipo basada en datos reales.
+          </p>
+        </div>
+      </div>
+      
+      <div className="flex flex-col xl:flex-row justify-between items-end gap-8 mt-4 mb-4">
+        <div className="flex-1 w-full grid grid-cols-2 md:grid-cols-3 gap-4 max-w-4xl">
+          <div className="bg-[#131041]/90 border border-white/5 rounded-xl p-5 flex flex-col justify-center shadow-2xl">
+            <p className="text-[#b4b4b4] text-[9px] font-bold tracking-widest uppercase mb-2 flex items-center gap-2">
+               <i className="fa-solid fa-link"></i> Cadenas Prom.
+            </p>
+            <h4 className="text-4xl font-contrail text-white">{statsData.avgChains}</h4>
+          </div>
+          <div className="bg-[#131041]/90 border border-white/5 rounded-xl p-5 flex flex-col justify-center shadow-2xl">
+            <p className="text-[#b4b4b4] text-[9px] font-bold tracking-widest uppercase mb-2 flex items-center gap-2">
+               <i className="fa-solid fa-futbol"></i> Goles Totales
+            </p>
+            <h4 className="text-4xl font-contrail text-white">{statsData.totalGoals}</h4>
+          </div>
+          <div className="bg-[#131041]/90 border border-white/5 rounded-xl p-5 flex flex-col justify-center col-span-2 md:col-span-1 shadow-2xl">
+            <p className="text-[#b4b4b4] text-[9px] font-bold tracking-widest uppercase mb-2 flex items-center gap-2">
+               <i className="fa-solid fa-chart-line"></i> Evolución Ofensiva
+            </p>
+            <div className="w-full h-12 mt-2">
+              {statsData.sparklineData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={statsData.sparklineData}>
+                    <Line type="monotone" dataKey="val" stroke="#b4b4b4" strokeWidth={3} dot={false} isAnimationActive={true} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center border border-white/10 rounded-lg border-dashed">
+                  <span className="text-[9px] text-white/30 font-bold uppercase">Sin datos</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap sm:flex-nowrap gap-4 w-full xl:w-auto shrink-0 justify-end">
+          <button onClick={() => navigate('/trends')} className="bg-[#b4b4b4] text-black px-8 py-5 font-bold text-[11px] uppercase tracking-[2px] hover:bg-[#c0c0c0] transition-all active:scale-95 flex items-center justify-center gap-3 w-full sm:w-auto shadow-[0_0_20px_rgba(180,180,180,0.2)]">
+            REPORTE COMPLETO <i className="fa-solid fa-arrow-right"></i>
+          </button>
+          <button className="bg-[#1a1c23] text-white border border-white/5 px-8 py-5 font-bold text-[11px] uppercase tracking-[2px] hover:bg-[#252830] transition-all active:scale-95 flex items-center justify-center gap-3 w-full sm:w-auto">
+            EXPORTAR DATA <i className="fa-solid fa-download text-white/40"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderAjustes = () => (
+    <div className="flex flex-col h-full justify-between animate-in fade-in zoom-in-95 duration-300">
+      <div className="max-w-3xl mt-4">
+        <p className="text-[#b4b4b4] text-[10px] font-bold tracking-[3px] uppercase mb-2">Sistema Operativo</p>
+        <h2 className="font-contrail text-6xl md:text-8xl text-white italic tracking-wide mb-6 drop-shadow-lg">CONFIGURACIÓN</h2>
+        <div className="border-l-2 border-[#b4b4b4]/50 pl-5 py-1 mb-6">
+          <p className="font-lato text-white/70 text-sm md:text-base leading-relaxed max-w-2xl">
+            Modifica los parámetros reglamentarios del deporte, tiempos de juego y administra tus listas de distribución para envíos automáticos.
+          </p>
+        </div>
+      </div>
+      
+      <div className="flex flex-col xl:flex-row justify-between items-end gap-8 mt-4 mb-4">
+        <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">
+          <div className="bg-[#131041]/90 border border-white/5 rounded-xl p-6 flex flex-col justify-center h-[160px] shadow-2xl">
+            <p className="text-[#b4b4b4] text-[9px] font-bold tracking-widest uppercase mb-2 flex items-center gap-2">
+               <i className="fa-solid fa-stopwatch"></i> Formato de Juego
+            </p>
+            <p className="text-2xl font-contrail text-white mt-2">4 Cuartos • 15 min</p>
+          </div>
+          <div className="bg-[#131041]/90 border border-white/5 rounded-xl p-6 flex flex-col justify-center h-[160px] shadow-2xl">
+            <p className="text-[#b4b4b4] text-[9px] font-bold tracking-widest uppercase mb-2 flex items-center gap-2">
+               <i className="fa-solid fa-address-book"></i> Listas Activas
+            </p>
+            <h4 className="text-5xl font-contrail text-white mt-2">4</h4>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap sm:flex-nowrap gap-4 w-full xl:w-auto shrink-0 justify-end">
+          <button className="bg-[#b4b4b4] text-black px-8 py-5 font-bold text-[11px] uppercase tracking-[2px] hover:bg-[#c0c0c0] transition-all active:scale-95 flex items-center justify-center gap-3 w-full sm:w-auto shadow-[0_0_20px_rgba(180,180,180,0.2)]">
+            REGLAMENTO <i className="fa-solid fa-arrow-right"></i>
+          </button>
+          <button className="bg-[#1a1c23] text-white border border-white/5 px-8 py-5 font-bold text-[11px] uppercase tracking-[2px] hover:bg-[#252830] transition-all active:scale-95 flex items-center justify-center gap-3 w-full sm:w-auto">
+            CONTACTOS <i className="fa-solid fa-chevron-right text-white/40"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
