@@ -514,7 +514,7 @@ export const PitchMap: React.FC<PitchMapProps> = ({
                     </g>
                 </svg>
 
-                <div className="absolute inset-[2%] border-2 border-white/60 overflow-hidden z-10">
+                <div className="absolute inset-[2%] border-2 overflow-hidden z-10" style={{ borderColor: '#ffffff' }}>
                     {/* Goals (Rectángulos planos sobre línea de fondo) */}
                     {isLandscape ? (
                         <>
@@ -531,34 +531,34 @@ export const PitchMap: React.FC<PitchMapProps> = ({
                     {/* Middle Line & 23m */}
                     {isLandscape ? (
                         <>
-                            <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white/60" />
-                            <div className="absolute left-[25%] top-0 bottom-0 w-px border-l-2 border-dashed border-white/40" />
-                            <div className="absolute right-[25%] top-0 bottom-0 w-px border-r-2 border-dashed border-white/40" />
+                            <div className="absolute left-1/2 top-0 bottom-0 w-0.5" style={{ backgroundColor: '#ffffff' }} />
+                            <div className="absolute left-[25%] top-0 bottom-0 w-px border-l-2 border-dashed" style={{ borderColor: '#ffffff' }} />
+                            <div className="absolute right-[25%] top-0 bottom-0 w-px border-r-2 border-dashed" style={{ borderColor: '#ffffff' }} />
 
                             {/* D-Areas Hockey Style - Width based on RadiusX (~26.6 * 2), Height on RadiusY (~16 * 2) */}
                             {/* Top/Away Circle */}
-                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[32%] h-[53.2%] border-2 border-white/60 rounded-full -translate-x-1/2" />
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[32%] h-[53.2%] border-2 rounded-full -translate-x-1/2" style={{ borderColor: '#ffffff' }} />
 
                             {/* Bottom/Home Circle */}
-                            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[32%] h-[53.2%] border-2 border-white/60 rounded-full translate-x-1/2" />
+                            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[32%] h-[53.2%] border-2 rounded-full translate-x-1/2" style={{ borderColor: '#ffffff' }} />
                         </>
                     ) : (
                         <>
-                            <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-white/60" />
-                            <div className="absolute top-[25%] left-0 right-0 h-px border-t-2 border-dashed border-white/40" />
-                            <div className="absolute bottom-[25%] left-0 right-0 h-px border-b-2 border-dashed border-white/40" />
+                            <div className="absolute top-1/2 left-0 right-0 h-0.5" style={{ backgroundColor: '#ffffff' }} />
+                            <div className="absolute top-[25%] left-0 right-0 h-px border-t-2 border-dashed" style={{ borderColor: '#ffffff' }} />
+                            <div className="absolute bottom-[25%] left-0 right-0 h-px border-b-2 border-dashed" style={{ borderColor: '#ffffff' }} />
 
                             {/* D-Areas Hockey Style - Width based on RadiusX (~26.6 * 2), Height on RadiusY (~16 * 2) */}
                             {/* Top/Away Circle */}
-                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[53.2%] h-[32%] border-2 border-white/60 rounded-full -translate-y-1/2" />
+                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[53.2%] h-[32%] border-2 rounded-full -translate-y-1/2" style={{ borderColor: '#ffffff' }} />
 
                             {/* Bottom/Home Circle */}
-                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[53.2%] h-[32%] border-2 border-white/60 rounded-full translate-y-1/2" />
+                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[53.2%] h-[32%] border-2 rounded-full translate-y-1/2" style={{ borderColor: '#ffffff' }} />
                         </>
                     )}
 
                     {/* Mid-point circle */}
-                    <div className="absolute top-1/2 left-1/2 w-2 h-2 bg-white/60 rounded-full -translate-x-1/2 -translate-y-1/2 shadow-sm" />
+                    <div className="absolute top-1/2 left-1/2 w-2 h-2 rounded-full -translate-x-1/2 -translate-y-1/2 shadow-sm" style={{ backgroundColor: '#ffffff' }} />
                 </div>
             </div>
 

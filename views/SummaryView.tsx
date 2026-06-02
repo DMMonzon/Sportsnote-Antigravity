@@ -24,12 +24,12 @@ const EntryAnalysisCard: React.FC<{
     <div className="flex justify-between items-center border-b border-white/10 pb-3">
       <div className="flex items-center gap-2">
         {icon && <span className="text-xs">{icon}</span>}
-        <h4 className="text-[9px] font-black text-white/50 uppercase tracking-widest">{title}</h4>
+        <h4 className="contrail-font text-[15px] font-black text-white uppercase tracking-wider">{title}</h4>
       </div>
       <div className="flex items-center gap-2">
-        <span className="text-xl font-black text-white">{homeTotal}</span>
+        <span className="text-2xl font-black text-white">{homeTotal}</span>
         <span className="text-[10px] font-bold text-white/40">/</span>
-        <span className="text-xl font-black text-white">{awayTotal}</span>
+        <span className="text-2xl font-black text-white">{awayTotal}</span>
       </div>
     </div>
     <div className="flex-1 flex flex-col gap-6 py-2">
@@ -52,7 +52,7 @@ const SectorRectangle: React.FC<{
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-[9px] font-black text-white/70 uppercase tracking-tighter opacity-70">{label}</p>
+      <p className="font-lato text-[15px] font-bold text-white uppercase tracking-wider">{label}</p>
       <div className={`w-full overflow-hidden flex flex-col ${borderPosition === 'top' ? 'flex-col-reverse' : 'flex-col'}`}>
         <div 
           className={`w-full h-12 bg-white/5 border border-white/10 flex overflow-hidden ${
@@ -88,7 +88,7 @@ const SectorRectangle: React.FC<{
                 key={sect}
                 className={`flex-1 border-r last:border-r-0 border-white/10 flex flex-col items-center justify-center transition-all ${cellRoundedClass} ${active ? 'bg-[#00fe00]/20' : ''}`}
               >
-                <span className={`text-[10px] font-black ${active ? 'text-[#00fe00]' : 'text-white/40'}`}>
+                <span className={`text-[16px] font-black ${active ? 'text-[#00fe00]' : 'text-white/40'}`}>
                   {val}
                 </span>
               </div>
@@ -369,55 +369,55 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
 
           <GlassCard className="p-6">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xs font-black uppercase text-white/70 flex items-center gap-2 italic">
-                <span className="text-sm"><i className="fa-solid fa-bullseye"></i></span> Remates Totales
+              <h3 className="contrail-font text-[15px] font-black uppercase text-white flex items-center gap-2 italic">
+                <i className="fa-solid fa-futbol text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i> Remates Totales
               </h3>
-              <div className="text-2xl font-black text-white">
+              <div className="text-3xl font-black text-white">
                 {homeShots.total} <span className="text-white/40">-</span> {awayShots.total}
               </div>
             </div>
             
             <div className="flex flex-col gap-4">
               {/* Local */}
-              <div className="bg-white/5 rounded-[20px] p-4 border border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
+              <div className="bg-white/5 rounded-[20px] p-4 border border-white flex flex-col md:flex-row justify-between items-center gap-4">
                 <div className="flex items-center gap-3 w-full md:w-1/4">
                   <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: game.teamHome.primaryColor || '#00fe00' }}></div>
-                  <span className="text-[10px] font-black text-white/70 uppercase tracking-widest">{game.teamHome.name}</span>
+                  <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider">{game.teamHome.name}</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2 md:gap-4 flex-1 w-full">
                   <div className="text-center bg-white/5 p-2 rounded-xl shadow-sm border border-white/10">
-                    <p className="text-[7px] text-white/50 uppercase opacity-60 mb-0.5">Gol</p>
-                    <p className="text-sm font-black text-white">{homeShots.goals} <span className="text-[9px] opacity-50">({getPct(homeShots.goals, homeShots.total)}%)</span></p>
+                    <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Gol</p>
+                    <p className="text-lg font-black text-white">{homeShots.goals} <span className="text-[9px] opacity-50">({getPct(homeShots.goals, homeShots.total)}%)</span></p>
                   </div>
                   <div className="text-center bg-white/5 p-2 rounded-xl shadow-sm border border-white/10">
-                    <p className="text-[7px] text-white/50 uppercase opacity-60 mb-0.5">Atajado</p>
-                    <p className="text-sm font-black text-white">{homeShots.saved} <span className="text-[9px] opacity-50">({getPct(homeShots.saved, homeShots.total)}%)</span></p>
+                    <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Atajado</p>
+                    <p className="text-lg font-black text-white">{homeShots.saved} <span className="text-[9px] opacity-50">({getPct(homeShots.saved, homeShots.total)}%)</span></p>
                   </div>
                   <div className="text-center bg-white/5 p-2 rounded-xl shadow-sm border border-white/10">
-                    <p className="text-[7px] text-white/50 uppercase opacity-60 mb-0.5">Desv.</p>
-                    <p className="text-sm font-black text-white">{homeShots.missed} <span className="text-[9px] opacity-50">({getPct(homeShots.missed, homeShots.total)}%)</span></p>
+                    <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Desv.</p>
+                    <p className="text-lg font-black text-white">{homeShots.missed} <span className="text-[9px] opacity-50">({getPct(homeShots.missed, homeShots.total)}%)</span></p>
                   </div>
                 </div>
               </div>
 
               {/* Visitante */}
-              <div className="bg-white/5 rounded-[20px] p-4 border border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
+              <div className="bg-white/5 rounded-[20px] p-4 border border-white flex flex-col md:flex-row justify-between items-center gap-4">
                 <div className="flex items-center gap-3 w-full md:w-1/4">
                   <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
-                  <span className="text-[10px] font-black text-white/70 uppercase tracking-widest">{game.teamAway.name}</span>
+                  <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider">{game.teamAway.name}</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2 md:gap-4 flex-1 w-full">
                   <div className="text-center bg-white/5 p-2 rounded-xl shadow-sm border border-white/10">
-                    <p className="text-[7px] text-white/50 uppercase opacity-60 mb-0.5">Gol</p>
-                    <p className="text-sm font-black text-white">{awayShots.goals} <span className="text-[9px] opacity-50">({getPct(awayShots.goals, awayShots.total)}%)</span></p>
+                    <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Gol</p>
+                    <p className="text-lg font-black text-white">{awayShots.goals} <span className="text-[9px] opacity-50">({getPct(awayShots.goals, awayShots.total)}%)</span></p>
                   </div>
                   <div className="text-center bg-white/5 p-2 rounded-xl shadow-sm border border-white/10">
-                    <p className="text-[7px] text-white/50 uppercase opacity-60 mb-0.5">Atajado</p>
-                    <p className="text-sm font-black text-white">{awayShots.saved} <span className="text-[9px] opacity-50">({getPct(awayShots.saved, awayShots.total)}%)</span></p>
+                    <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Atajado</p>
+                    <p className="text-lg font-black text-white">{awayShots.saved} <span className="text-[9px] opacity-50">({getPct(awayShots.saved, awayShots.total)}%)</span></p>
                   </div>
                   <div className="text-center bg-white/5 p-2 rounded-xl shadow-sm border border-white/10">
-                    <p className="text-[7px] text-white/50 uppercase opacity-60 mb-0.5">Desv.</p>
-                    <p className="text-sm font-black text-white">{awayShots.missed} <span className="text-[9px] opacity-50">({getPct(awayShots.missed, awayShots.total)}%)</span></p>
+                    <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Desv.</p>
+                    <p className="text-lg font-black text-white">{awayShots.missed} <span className="text-[9px] opacity-50">({getPct(awayShots.missed, awayShots.total)}%)</span></p>
                   </div>
                 </div>
               </div>
@@ -427,26 +427,26 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
           <GlassCard className="p-6">
             <div className="flex flex-col gap-6">
               <div className="w-full">
-                <h3 className="text-xs font-black uppercase text-white/70 mb-4 italic">Balance de Acciones (Local)</h3>
+                <h3 className="contrail-font text-[15px] font-black uppercase text-white mb-4 italic">Balance de Acciones (Local)</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {[
-                    { label: 'Pérdidas', icon: <i className="fa-solid fa-arrow-trend-down"></i>, types: ['PÉRDIDA', 'PERDIDA', 'TURNOVER'], color: 'text-orange-500' },
-                    { label: 'Recuperos', icon: <i className="fa-solid fa-arrow-trend-up"></i>, types: ['RECUPERO'], color: 'text-[#00fe00]' },
-                    { label: 'Faltas', icon: <i className="fa-solid fa-triangle-exclamation"></i>, types: ['FALTA'], color: 'text-red-500' }
+                    { label: 'Pérdidas', icon: <i className="fa-solid fa-arrow-trend-down text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>, types: ['PÉRDIDA', 'PERDIDA', 'TURNOVER'], color: 'text-orange-500' },
+                    { label: 'Recuperos', icon: <i className="fa-solid fa-arrow-trend-up text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>, types: ['RECUPERO'], color: 'text-[#00fe00]' },
+                    { label: 'Faltas', icon: <i className="fa-solid fa-triangle-exclamation text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>, types: ['FALTA'], color: 'text-red-500' }
                   ].map(stat => {
                     const data = getDetailedStat(stat.types, game.teamHome.id);
                     return (
-                      <div key={stat.label} className="bg-white/5 p-4 rounded-[24px] border border-white/10 flex flex-col gap-2 shadow-sm">
+                      <div key={stat.label} className="bg-white/5 p-4 rounded-[24px] border border-white flex flex-col gap-2 shadow-sm">
                         <div className="flex justify-between items-center border-b border-white/10 pb-2">
                           <div className="flex items-center gap-2">
-                            {stat.icon && <span className="text-[10px]">{stat.icon}</span>}
-                            <p className="text-[9px] font-black text-white/70 uppercase tracking-widest">{stat.label}</p>
+                            {stat.icon && <span className="text-xs flex items-center">{stat.icon}</span>}
+                            <p className="contrail-font text-[15px] font-black text-white uppercase tracking-wider">{stat.label}</p>
                           </div>
-                          <span className={`text-xl font-black ${stat.color}`}>{data.total}</span>
+                          <span className={`text-2xl font-black ${stat.color}`}>{data.total}</span>
                         </div>
                         <div className="grid grid-cols-2 gap-2 mt-1">
-                          <div className="flex items-center gap-2 p-2 rounded-xl bg-white/5 border border-white/5"><span className="text-blue-400 text-[10px]">↓</span><div className="flex flex-col"><span className="text-[8px] font-bold opacity-60 text-white">Propio</span><span className="text-[11px] font-black text-white">{data.own}</span></div></div>
-                          <div className="flex items-center gap-2 p-2 rounded-xl bg-white/5 border border-white/5"><span className="text-orange-400 text-[10px]">↑</span><div className="flex flex-col"><span className="text-[8px] font-bold opacity-60 text-white">Rival</span><span className="text-[11px] font-black text-white">{data.rival}</span></div></div>
+                          <div className="flex items-center gap-2 p-2 rounded-xl bg-white/5 border border-white/5"><span className="text-blue-400 text-[10px]">↓</span><div className="flex flex-col"><span className="font-lato text-[15px] font-bold opacity-60 text-white">Propio</span><span className="text-[18px] font-black text-white">{data.own}</span></div></div>
+                          <div className="flex items-center gap-2 p-2 rounded-xl bg-white/5 border border-white/5"><span className="text-orange-400 text-[10px]">↑</span><div className="flex flex-col"><span className="font-lato text-[15px] font-bold opacity-60 text-white">Rival</span><span className="text-[18px] font-black text-white">{data.rival}</span></div></div>
                         </div>
                         <PeriodRow periods={data.periods} />
                       </div>
@@ -457,15 +457,13 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
             </div>
           </GlassCard>
 
-          {/* Tactical Performance section removed for MVP */}
-
-
+          {/* Tactical Performance section removed */}
           <GlassCard className="p-6">
-            <h3 className="text-xs font-black uppercase text-white/70 mb-6 flex items-center gap-2 italic">Ingresos y Accesos Ofensivos <div className="h-px flex-1 bg-white/10"></div></h3>
+            <h3 className="contrail-font text-[15px] font-black uppercase text-white mb-6 flex items-center gap-2 italic">Ingresos y Accesos Ofensivos <div className="h-px flex-1 bg-white/10"></div></h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <EntryAnalysisCard
                 title="Ingresos al Área"
-                icon={<i className="fa-solid fa-arrow-right-to-bracket"></i>}
+                icon={<i className="fa-solid fa-arrow-right-to-bracket text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
                 homeTotal={Object.values(statsArea.home).reduce((a: number, b: number) => a + b, 0)}
                 awayTotal={Object.values(statsArea.away).reduce((a: number, b: number) => a + b, 0)}
               >
@@ -487,7 +485,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
 
               <EntryAnalysisCard
                 title="Ingresos a 23 Yardas"
-                icon={<span className="font-black italic">23y</span>}
+                icon={<i className="fa-solid fa-bezier-curve text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
                 homeTotal={Object.values(stats23.home).reduce((a: number, b: number) => a + b, 0)}
                 awayTotal={Object.values(stats23.away).reduce((a: number, b: number) => a + b, 0)}
               >
@@ -514,8 +512,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
 
 
           <GlassCard className="p-6">
-            <h3 className="text-xs font-black uppercase text-white/70 mb-6 flex items-center gap-2 italic">
-              <span className="text-sm"><i className="fa-solid fa-stopwatch"></i></span> Fluctuación de Pases por Período <div className="h-px flex-1 bg-white/10"></div>
+            <h3 className="contrail-font text-[15px] font-black uppercase text-white mb-6 flex items-center gap-2 italic">
+              <i className="fa-solid fa-magnifying-glass-arrow-right text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i> Fluctuación de Pases por Período <div className="h-px flex-1 bg-white/10"></div>
             </h3>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">

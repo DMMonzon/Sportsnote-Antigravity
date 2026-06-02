@@ -55,19 +55,19 @@ const EntryAnalysisCard: React.FC<{
   const [isExpanded, setIsExpanded] = useState(true);
 
   return (
-    <div className="border-white/10 p-5 rounded-[28px] border border-white/10 shadow-sm flex flex-col gap-4">
+    <div className="border-white p-5 rounded-[28px] border-[1px] border-white shadow-sm flex flex-col gap-4">
       <div className="flex justify-between items-center border-b border-white/10 pb-3">
         <div className="flex items-center gap-2">
           {icon && <span className="text-xs">{icon}</span>}
-          <h4 className="contrail-font text-[9px] font-black text-white uppercase tracking-widest">{title}</h4>
+          <h4 className="contrail-font text-[15px] font-black text-white uppercase tracking-wider">{title}</h4>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xl font-black text-white">{homeTotal}/{awayTotal}</span>
+          <span className="text-2xl font-black text-white">{homeTotal}/{awayTotal}</span>
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className={`w-6 h-6 flex items-center justify-center rounded-full bg-white/5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
           >
-            <span className="text-[10px]">▼</span>
+            <span className="text-[10px] text-white font-black" style={{ color: '#ffffff' }}>▼</span>
           </button>
         </div>
       </div>
@@ -80,7 +80,7 @@ const EntryAnalysisCard: React.FC<{
   );
 };
 
-const StatDetailCard = ({ title, data, colorClass, showDetails = true, compact = false, icon }: { title: string, data: any, colorClass: string, showDetails?: boolean, compact?: boolean, icon?: string }) => {
+const StatDetailCard = ({ title, data, colorClass, showDetails = true, compact = false, icon }: { title: any, data: any, colorClass: string, showDetails?: boolean, compact?: boolean, icon?: string | React.ReactNode }) => {
   const [isExpanded, setIsExpanded] = useState(true);
 
   const colorMap: { [key: string]: { text: string, bg: string, border: string, accent: string } } = {
@@ -101,20 +101,20 @@ const StatDetailCard = ({ title, data, colorClass, showDetails = true, compact =
   const isMaxLane = (val: number) => val > 0 && val === maxLaneVal;
 
   return (
-    <div className={`border-white/10 ${compact ? 'p-3 rounded-2xl' : 'p-5 rounded-[28px]'} border border-white/10 shadow-sm flex flex-col ${compact ? 'gap-2' : 'gap-3'}`}>
+    <div className={`border-white ${compact ? 'p-3 rounded-2xl' : 'p-5 rounded-[28px]'} border-[1px] border-white shadow-sm flex flex-col ${compact ? 'gap-2' : 'gap-3'}`}>
       <div className={`flex justify-between items-center ${showDetails && isExpanded ? 'border-b border-white/10 pb-2' : ''}`}>
         <div className="flex items-center gap-2">
           {icon && <span className="text-xs">{icon}</span>}
-          <p className="contrail-font text-[9px] font-black text-white uppercase tracking-widest">{title}</p>
+          <div className="contrail-font text-[15px] font-black text-white uppercase tracking-wider">{title}</div>
         </div>
         <div className="flex items-center gap-3">
-          <span className={`${compact ? 'text-xl' : 'text-2xl'} font-black text-white`}>{data.total}</span>
+          <span className={`${compact ? 'text-2xl' : 'text-3xl'} font-black text-white`}>{data.total}</span>
           {showDetails && (
             <button
               onClick={() => setIsExpanded(!isExpanded)}
               className={`w-6 h-6 flex items-center justify-center rounded-full bg-white/5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
             >
-              <span className="text-[10px]">▼</span>
+              <span className="text-[10px] text-white font-black" style={{ color: '#ffffff' }}>▼</span>
             </button>
           )}
         </div>
@@ -126,31 +126,31 @@ const StatDetailCard = ({ title, data, colorClass, showDetails = true, compact =
             <div className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${isMaxHalf(data.own) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10/40 border-white/10/30'}`}>
               <span className={`${isMaxHalf(data.own) ? style.accent : 'text-blue-500'} text-[10px]`}>↓</span>
               <div className="flex flex-col">
-                <span className={`text-[8px] font-bold uppercase ${isMaxHalf(data.own) ? style.text : 'text-white opacity-60'} leading-none`}>En Campo Propio</span>
-                <span className="text-[11px] font-black leading-none text-white">{data.own}</span>
+                <span className={`font-lato text-[15px] font-bold uppercase ${isMaxHalf(data.own) ? style.text : 'text-white opacity-60'} leading-none`}>En Campo Propio</span>
+                <span className="text-[18px] font-black leading-none text-white">{data.own}</span>
               </div>
             </div>
             <div className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${isMaxHalf(data.rival) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10/40 border-white/10/30'}`}>
               <span className={`${isMaxHalf(data.rival) ? style.accent : 'text-orange-500'} text-[10px]`}>↑</span>
               <div className="flex flex-col">
-                <span className={`text-[8px] font-bold uppercase ${isMaxHalf(data.rival) ? style.text : 'text-white opacity-60'} leading-none`}>En Campo Rival</span>
-                <span className="text-[11px] font-black leading-none text-white">{data.rival}</span>
+                <span className={`font-lato text-[15px] font-bold uppercase ${isMaxHalf(data.rival) ? style.text : 'text-white opacity-60'} leading-none`}>En Campo Rival</span>
+                <span className="text-[18px] font-black leading-none text-white">{data.rival}</span>
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-1.5 pt-1">
             <div className={`flex flex-col items-center p-1.5 rounded-xl border transition-all ${isMaxLane(data.left) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10/40 border-white/10/30'}`}>
-              <span className={`text-[7px] font-black uppercase mb-0.5 ${isMaxLane(data.left) ? style.text : 'text-white opacity-60'}`}>Izquierda</span>
-              <span className="text-[10px] font-black text-white">{data.left}</span>
+              <span className={`font-lato text-[15px] font-black uppercase mb-0.5 ${isMaxLane(data.left) ? style.text : 'text-white opacity-60'}`}>Izquierda</span>
+              <span className="text-[16px] font-black text-white">{data.left}</span>
             </div>
             <div className={`flex flex-col items-center p-1.5 rounded-xl border transition-all ${isMaxLane(data.center) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10/40 border-white/10/30'}`}>
-              <span className={`text-[7px] font-black uppercase mb-0.5 ${isMaxLane(data.center) ? style.text : 'text-white opacity-60'}`}>Centro</span>
-              <span className="text-[10px] font-black text-white">{data.center}</span>
+              <span className={`font-lato text-[15px] font-black uppercase mb-0.5 ${isMaxLane(data.center) ? style.text : 'text-white opacity-60'}`}>Centro</span>
+              <span className="text-[16px] font-black text-white">{data.center}</span>
             </div>
             <div className={`flex flex-col items-center p-1.5 rounded-xl border transition-all ${isMaxLane(data.right) ? `${highlightBg} ${style.border} shadow-sm` : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10/40 border-white/10/30'}`}>
-              <span className={`text-[7px] font-black uppercase mb-0.5 ${isMaxLane(data.right) ? style.text : 'text-white opacity-60'}`}>Derecha</span>
-              <span className="text-[10px] font-black text-white">{data.right}</span>
+              <span className={`font-lato text-[15px] font-black uppercase mb-0.5 ${isMaxLane(data.right) ? style.text : 'text-white opacity-60'}`}>Derecha</span>
+              <span className="text-[16px] font-black text-white">{data.right}</span>
             </div>
           </div>
         </div>
@@ -159,7 +159,7 @@ const StatDetailCard = ({ title, data, colorClass, showDetails = true, compact =
   );
 };
 
-const StatComparisonCard = ({ title, icon, homeData, awayData, allEvents, homeColor, awayColor }: { title: string, icon: string, homeData: any, awayData: any, allEvents: GameEvent[], homeColor: string, awayColor: string }) => {
+const StatComparisonCard = ({ title, icon, homeData, awayData, allEvents, homeColor, awayColor }: { title: string, icon: any, homeData: any, awayData: any, allEvents: GameEvent[], homeColor: string, awayColor: string }) => {
   const [isExpanded, setIsExpanded] = useState(true);
 
   const getOutcomes = (events: GameEvent[]) => {
@@ -182,19 +182,19 @@ const StatComparisonCard = ({ title, icon, homeData, awayData, allEvents, homeCo
   const awayOutcomes = getOutcomes(awayData.events);
 
   return (
-    <div className="border-white/10 p-5 rounded-[28px] border border-white/10 shadow-sm flex flex-col gap-4">
+    <div className="border-white p-5 rounded-[28px] border-[1px] border-white shadow-sm flex flex-col gap-4">
       <div className={`flex justify-between items-center ${isExpanded ? 'border-b border-white/10 pb-3' : ''}`}>
         <div className="flex items-center gap-2">
-          <span className="text-xs">{icon}</span>
-          <h4 className="contrail-font text-[9px] font-black text-white uppercase tracking-widest">{title}</h4>
+          {typeof icon === 'string' ? <span className="text-xs">{icon}</span> : icon}
+          <h4 className="contrail-font text-[15px] font-black text-white uppercase tracking-wider">{title}</h4>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xl font-black text-white">{homeData.total}/{awayData.total}</span>
+          <span className="text-2xl font-black text-white">{homeData.total}/{awayData.total}</span>
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className={`w-6 h-6 flex items-center justify-center rounded-full bg-white/5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
           >
-            <span className="text-[10px]">▼</span>
+            <span className="text-[10px] text-white font-black" style={{ color: '#ffffff' }}>▼</span>
           </button>
         </div>
       </div>
@@ -204,20 +204,20 @@ const StatComparisonCard = ({ title, icon, homeData, awayData, allEvents, homeCo
             <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: homeColor }}></div>
             <div className="grid grid-cols-4 flex-1 gap-1">
               <div className="flex items-center gap-1">
-                <span className="text-[7px] font-black text-white uppercase">Gol:</span>
-                <span className="text-[10px] font-black text-white leading-none">{homeOutcomes.gol}</span>
+                <span className="font-lato text-[15px] font-bold text-white uppercase">Gol:</span>
+                <span className="text-[16px] font-black text-white leading-none">{homeOutcomes.gol}</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-[7px] font-black text-white uppercase">Ata:</span>
-                <span className="text-[10px] font-black text-white leading-none">{homeOutcomes.atajado}</span>
+                <span className="font-lato text-[15px] font-bold text-white uppercase">Ata:</span>
+                <span className="text-[16px] font-black text-white leading-none">{homeOutcomes.atajado}</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-[7px] font-black text-white uppercase">Des:</span>
-                <span className="text-[10px] font-black text-white leading-none">{homeOutcomes.desviado}</span>
+                <span className="font-lato text-[15px] font-bold text-white uppercase">Des:</span>
+                <span className="text-[16px] font-black text-white leading-none">{homeOutcomes.desviado}</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-[7px] font-black text-white uppercase">Pér:</span>
-                <span className="text-[10px] font-black text-white leading-none">{homeOutcomes.perdida}</span>
+                <span className="font-lato text-[15px] font-bold text-white uppercase">Pér:</span>
+                <span className="text-[16px] font-black text-white leading-none">{homeOutcomes.perdida}</span>
               </div>
             </div>
           </div>
@@ -225,20 +225,20 @@ const StatComparisonCard = ({ title, icon, homeData, awayData, allEvents, homeCo
             <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: awayColor }}></div>
             <div className="grid grid-cols-4 flex-1 gap-1">
               <div className="flex items-center gap-1">
-                <span className="text-[7px] font-black text-white uppercase">Gol:</span>
-                <span className="text-[10px] font-black text-white leading-none">{awayOutcomes.gol}</span>
+                <span className="font-lato text-[15px] font-bold text-white uppercase">Gol:</span>
+                <span className="text-[16px] font-black text-white leading-none">{awayOutcomes.gol}</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-[7px] font-black text-white uppercase">Ata:</span>
-                <span className="text-[10px] font-black text-white leading-none">{awayOutcomes.atajado}</span>
+                <span className="font-lato text-[15px] font-bold text-white uppercase">Ata:</span>
+                <span className="text-[16px] font-black text-white leading-none">{awayOutcomes.atajado}</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-[7px] font-black text-white uppercase">Des:</span>
-                <span className="text-[10px] font-black text-white leading-none">{awayOutcomes.desviado}</span>
+                <span className="font-lato text-[15px] font-bold text-white uppercase">Des:</span>
+                <span className="text-[16px] font-black text-white leading-none">{awayOutcomes.desviado}</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-[7px] font-black text-white uppercase">Pér:</span>
-                <span className="text-[10px] font-black text-white leading-none">{awayOutcomes.perdida}</span>
+                <span className="font-lato text-[15px] font-bold text-white uppercase">Pér:</span>
+                <span className="text-[16px] font-black text-white leading-none">{awayOutcomes.perdida}</span>
               </div>
             </div>
           </div>
@@ -262,7 +262,7 @@ const SectorRectangle: React.FC<{
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-[9px] font-black text-white uppercase tracking-tighter opacity-70">{label}</p>
+      <p className="font-lato text-[15px] font-bold text-white uppercase tracking-wider">{label}</p>
       <div className={`w-full overflow-hidden flex flex-col ${borderPosition === 'top' ? 'flex-col-reverse' : 'flex-col'}`}>
         <div
           className={`w-full h-12 bg-white/5 border border-white/10 flex overflow-hidden ${type === 'zone23'
@@ -297,7 +297,7 @@ const SectorRectangle: React.FC<{
                 key={sect}
                 className={`flex-1 border-r last:border-r-0 border-white/10/20 flex flex-col items-center justify-center transition-all ${cellRoundedClass} ${active ? 'bg-primary/10' : ''}`}
               >
-                <span className={`text-[10px] font-black ${active ? 'text-primary' : 'text-white'}`}>
+                <span className={`text-[16px] font-black ${active ? 'text-primary' : 'text-white'}`}>
                   {val}
                 </span>
               </div>
@@ -1600,11 +1600,11 @@ const LiveGameView: React.FC<{
             {!isLandscape && (
           <aside className="hidden lg:flex w-[320px] flex-col p-5 bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border-r border-white/10 overflow-y-auto no-scrollbar">
             <div className="flex flex-col gap-6 pb-10">
-              <h3 className="contrail-font text-[10px] font-black text-white uppercase tracking-widest border-b border-white/10 pb-2 italic">Análisis en Tiempo Real</h3>
+              <h3 className="contrail-font text-[16px] font-black text-white uppercase tracking-wider border-b border-white/10 pb-2 italic">Análisis en Tiempo Real</h3>
 
               <EntryAnalysisCard
                 title="Ingresos al Área"
-                icon={<i className="fa-solid fa-arrow-right-to-bracket"></i>}
+                icon={<i className="fa-solid fa-arrow-right-to-bracket text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
                 homeTotal={Object.values(statsArea.home).reduce((a: number, b: number) => a + b, 0)}
                 awayTotal={Object.values(statsArea.away).reduce((a: number, b: number) => a + b, 0)}
               >
@@ -1626,7 +1626,7 @@ const LiveGameView: React.FC<{
 
               <EntryAnalysisCard
                 title="Ingresos a 23 Yardas"
-                icon="2️⃣3️⃣"
+                icon={<i className="fa-solid fa-bezier-curve text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
                 homeTotal={Object.values(stats23.home).reduce((a: number, b: number) => a + b, 0)}
                 awayTotal={Object.values(stats23.away).reduce((a: number, b: number) => a + b, 0)}
               >
@@ -1650,7 +1650,7 @@ const LiveGameView: React.FC<{
 
               <StatComparisonCard
                 title="Córners Cortos"
-                icon={<i className="fa-solid fa-hockey-puck"></i>}
+                icon={<i className="fa-solid fa-flag text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
                 homeData={getDetailedStat(['CÓRNER CORTO'], game.teamHome.id)}
                 awayData={getDetailedStat(['CÓRNER CORTO'], game.teamAway.id)}
                 allEvents={game.events}
@@ -1659,7 +1659,7 @@ const LiveGameView: React.FC<{
               />
               <StatComparisonCard
                 title="Penales"
-                icon={<i className="fa-solid fa-bullseye"></i>}
+                icon={<i className="fa-solid fa-bullseye text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
                 homeData={getDetailedStat(['PENAL'], game.teamHome.id)}
                 awayData={getDetailedStat(['PENAL'], game.teamAway.id)}
                 allEvents={game.events}
@@ -1668,19 +1668,19 @@ const LiveGameView: React.FC<{
               />
 
               {/* Remates Totales Sidebar - MOVED FROM RIGHT */}
-              <div className="border-white/10 p-4 rounded-[24px] border border-white/10 shadow-sm flex flex-col gap-3">
+              <div className="border-white p-4 rounded-[24px] border-[1px] border-white shadow-sm flex flex-col gap-3">
                 <div className={`flex justify-between items-center ${shotsTotalSidebarExpanded ? 'border-b border-white/10 pb-2' : ''}`}>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs"><i className="fa-solid fa-futbol"></i></span>
-                    <p className="contrail-font text-[9px] font-black text-white uppercase tracking-widest leading-none">Remates Totales</p>
+                    <i className="fa-solid fa-futbol text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>
+                    <p className="contrail-font text-[15px] font-black text-white uppercase tracking-wider leading-none">Remates Totales</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-xl font-black text-white">{landscapeShots.home}/{landscapeShots.away}</span>
+                    <span className="text-2xl font-black text-white">{landscapeShots.home}/{landscapeShots.away}</span>
                     <button
                       onClick={() => setShotsTotalSidebarExpanded(!shotsTotalSidebarExpanded)}
                       className={`w-5 h-5 flex items-center justify-center rounded-full bg-white/5 transition-transform duration-300 ${shotsTotalSidebarExpanded ? 'rotate-180' : ''}`}
                     >
-                      <span className="text-[8px]">▼</span>
+                      <span className="text-[8px] text-white font-black" style={{ color: '#ffffff' }}>▼</span>
                     </button>
                   </div>
                 </div>
@@ -1691,16 +1691,16 @@ const LiveGameView: React.FC<{
                       <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
                       <div className="grid grid-cols-3 flex-1 gap-2">
                         <div className="flex items-center gap-1">
-                          <span className="text-[7px] font-black text-white uppercase">Gol:</span>
-                          <span className="text-[10px] font-black text-white leading-none">{getStat(['GOL'], game.teamHome.id)}</span>
+                          <span className="font-lato text-[15px] font-bold text-white uppercase">Gol:</span>
+                          <span className="text-[16px] font-black text-white leading-none">{getStat(['GOL'], game.teamHome.id)}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="text-[7px] font-black text-white uppercase">Ata:</span>
-                          <span className="text-[10px] font-black text-white leading-none">{getStat(['ATAJADO'], game.teamHome.id)}</span>
+                          <span className="font-lato text-[15px] font-bold text-white uppercase">Ata:</span>
+                          <span className="text-[16px] font-black text-white leading-none">{getStat(['ATAJADO'], game.teamHome.id)}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="text-[7px] font-black text-white uppercase">Des:</span>
-                          <span className="text-[10px] font-black text-white leading-none">{getStat(['DESVIADO'], game.teamHome.id)}</span>
+                          <span className="font-lato text-[15px] font-bold text-white uppercase">Des:</span>
+                          <span className="text-[16px] font-black text-white leading-none">{getStat(['DESVIADO'], game.teamHome.id)}</span>
                         </div>
                       </div>
                     </div>
@@ -1708,16 +1708,16 @@ const LiveGameView: React.FC<{
                       <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
                       <div className="grid grid-cols-3 flex-1 gap-2">
                         <div className="flex items-center gap-1">
-                          <span className="text-[7px] font-black text-white uppercase">Gol:</span>
-                          <span className="text-[10px] font-black text-white leading-none">{getStat(['GOL'], game.teamAway.id)}</span>
+                          <span className="font-lato text-[15px] font-bold text-white uppercase">Gol:</span>
+                          <span className="text-[16px] font-black text-white leading-none">{getStat(['GOL'], game.teamAway.id)}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="text-[7px] font-black text-white uppercase">Ata:</span>
-                          <span className="text-[10px] font-black text-white leading-none">{getStat(['ATAJADO'], game.teamAway.id)}</span>
+                          <span className="font-lato text-[15px] font-bold text-white uppercase">Ata:</span>
+                          <span className="text-[16px] font-black text-white leading-none">{getStat(['ATAJADO'], game.teamAway.id)}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="text-[7px] font-black text-white uppercase">Des:</span>
-                          <span className="text-[10px] font-black text-white leading-none">{getStat(['DESVIADO'], game.teamAway.id)}</span>
+                          <span className="font-lato text-[15px] font-bold text-white uppercase">Des:</span>
+                          <span className="text-[16px] font-black text-white leading-none">{getStat(['DESVIADO'], game.teamAway.id)}</span>
                         </div>
                       </div>
                     </div>
@@ -1853,19 +1853,19 @@ const LiveGameView: React.FC<{
                       ))}
                     </div>
 
-                    <div className="border-white/10 p-6 rounded-[24px] border border-white/10 mb-6 shadow-inner flex flex-col gap-4">
+                    <div className="border-white p-6 rounded-[24px] border-[1px] border-white mb-6 shadow-inner flex flex-col gap-4">
                       <div className={`flex justify-between items-center ${possessionExpanded ? 'border-b border-white/10 pb-3' : ''}`}>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs">⏱️</span>
-                          <h4 className="contrail-font text-[9px] font-black text-white uppercase tracking-widest">Posesión</h4>
+                          <i className="fa-solid fa-stopwatch text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>
+                          <h4 className="contrail-font text-[15px] font-black text-white uppercase tracking-wider">Posesión</h4>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="text-sm font-black text-white">{localPct}% / {awayPct}%</span>
+                          <span className="text-lg font-black text-white">{localPct}% / {awayPct}%</span>
                           <button
                             onClick={() => setPossessionExpanded(!possessionExpanded)}
                             className={`w-6 h-6 flex items-center justify-center rounded-full bg-white/5 transition-transform duration-300 ${possessionExpanded ? 'rotate-180' : ''}`}
                           >
-                            <span className="text-[10px]">▼</span>
+                            <span className="text-[10px] text-white font-black" style={{ color: '#ffffff' }}>▼</span>
                           </button>
                         </div>
                       </div>
@@ -1875,22 +1875,22 @@ const LiveGameView: React.FC<{
                           <div className="flex justify-between items-center mb-3">
                             <div className="flex items-center gap-2">
                               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
-                              <span className="text-[9px] font-black text-white uppercase tracking-widest">Posesión Local</span>
+                              <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider">Posesión Local</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="text-[9px] font-black text-white uppercase tracking-widest">Posesión Visita</span>
+                              <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider">Posesión Visita</span>
                               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
                             </div>
                           </div>
                           <div className="w-full h-10 bg-white/5 rounded-2xl overflow-hidden flex shadow-inner border border-white/10">
                             <div
-                              className="h-full transition-all duration-700 ease-out flex items-center justify-center text-[11px] font-black text-white drop-shadow-sm"
+                              className="h-full transition-all duration-700 ease-out flex items-center justify-center text-[16px] font-black text-white drop-shadow-sm"
                               style={{ width: `${localPct}%`, backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}
                             >
                               {localPct > 15 && `${localPct}%`}
                             </div>
                             <div
-                              className="h-full transition-all duration-700 ease-out flex items-center justify-center text-[11px] font-black text-white drop-shadow-sm"
+                              className="h-full transition-all duration-700 ease-out flex items-center justify-center text-[16px] font-black text-white drop-shadow-sm"
                               style={{ width: `${awayPct}%`, backgroundColor: game.teamAway.primaryColor || '#ef4444' }}
                             >
                               {awayPct > 15 && `${awayPct}%`}
@@ -1902,77 +1902,76 @@ const LiveGameView: React.FC<{
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {/* Remates Totales Unificados */}
-                      <div className="border-white/10 p-5 rounded-[28px] border border-white/10 shadow-sm flex flex-col gap-4">
+                      <div className="border-white p-5 rounded-[28px] border-[1px] border-white shadow-sm flex flex-col gap-4">
                         <div className="flex justify-between items-center mb-2">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs"><i className="fa-solid fa-futbol"></i></span>
-                            <p className="contrail-font text-[9px] font-black text-white uppercase tracking-widest">Remates Totales</p>
+                            <i className="fa-solid fa-futbol text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>
+                            <p className="contrail-font text-[15px] font-black text-white uppercase tracking-wider">Remates Totales</p>
                           </div>
-                          <div className="text-xl font-black text-white">
+                          <div className="text-2xl font-black text-white">
                             {getStat(['DISPARO'], game.teamHome.id)} <span className="text-white/40">-</span> {getStat(['DISPARO'], game.teamAway.id)}
                           </div>
                         </div>
                         
                         <div className="flex flex-col gap-4">
                           {/* Local */}
-                          <div className="bg-[#1e293b]/45 backdrop-blur-md border border-white/10 rounded-[20px] p-4 border border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
+                          <div className="bg-[#1e293b]/45 backdrop-blur-md border border-white p-4 border-[1px] border-white flex flex-col md:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-3 w-full md:w-1/4">
                               <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
-                              <span className="text-[10px] font-black text-white uppercase tracking-widest">{game.teamHome.name}</span>
+                              <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider">{game.teamHome.name}</span>
                             </div>
                             <div className="grid grid-cols-3 gap-2 md:gap-4 flex-1 w-full">
                               <div className="text-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10/30 p-2 rounded-xl shadow-sm border border-white/10/30">
-                                <p className="text-[7px] uppercase opacity-60 mb-0.5">Gol</p>
-                                <p className="text-sm font-black text-white">{getStat(['GOL'], game.teamHome.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['GOL'], game.teamHome.id) / (getStat(['DISPARO'], game.teamHome.id) || 1)) * 100)}%)</span></p>
+                                <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Gol</p>
+                                <p className="text-lg font-black text-white">{getStat(['GOL'], game.teamHome.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['GOL'], game.teamHome.id) / (getStat(['DISPARO'], game.teamHome.id) || 1)) * 100)}%)</span></p>
                               </div>
                               <div className="text-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10/30 p-2 rounded-xl shadow-sm border border-white/10/30">
-                                <p className="text-[7px] uppercase opacity-60 mb-0.5">Atajado</p>
-                                <p className="text-sm font-black text-white">{getStat(['ATAJADO'], game.teamHome.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['ATAJADO'], game.teamHome.id) / (getStat(['DISPARO'], game.teamHome.id) || 1)) * 100)}%)</span></p>
+                                <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Atajado</p>
+                                <p className="text-lg font-black text-white">{getStat(['ATAJADO'], game.teamHome.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['ATAJADO'], game.teamHome.id) / (getStat(['DISPARO'], game.teamHome.id) || 1)) * 100)}%)</span></p>
                               </div>
                               <div className="text-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10/30 p-2 rounded-xl shadow-sm border border-white/10/30">
-                                <p className="text-[7px] uppercase opacity-60 mb-0.5">Desv.</p>
-                                <p className="text-sm font-black text-white">{getStat(['DESVIADO'], game.teamHome.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['DESVIADO'], game.teamHome.id) / (getStat(['DISPARO'], game.teamHome.id) || 1)) * 100)}%)</span></p>
+                                <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Desv.</p>
+                                <p className="text-lg font-black text-white">{getStat(['DESVIADO'], game.teamHome.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['DESVIADO'], game.teamHome.id) / (getStat(['DISPARO'], game.teamHome.id) || 1)) * 100)}%)</span></p>
                               </div>
                             </div>
                           </div>
 
                           {/* Visitante */}
-                          <div className="bg-[#1e293b]/45 backdrop-blur-md border border-white/10 rounded-[20px] p-4 border border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
+                          <div className="bg-[#1e293b]/45 backdrop-blur-md border border-white p-4 border-[1px] border-white flex flex-col md:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-3 w-full md:w-1/4">
                               <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
-                              <span className="text-[10px] font-black text-white uppercase tracking-widest">{game.teamAway.name}</span>
+                              <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider">{game.teamAway.name}</span>
                             </div>
                             <div className="grid grid-cols-3 gap-2 md:gap-4 flex-1 w-full">
                               <div className="text-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10/30 p-2 rounded-xl shadow-sm border border-white/10/30">
-                                <p className="text-[7px] uppercase opacity-60 mb-0.5">Gol</p>
-                                <p className="text-sm font-black text-white">{getStat(['GOL'], game.teamAway.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['GOL'], game.teamAway.id) / (getStat(['DISPARO'], game.teamAway.id) || 1)) * 100)}%)</span></p>
+                                <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Gol</p>
+                                <p className="text-lg font-black text-white">{getStat(['GOL'], game.teamAway.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['GOL'], game.teamAway.id) / (getStat(['DISPARO'], game.teamAway.id) || 1)) * 100)}%)</span></p>
                               </div>
                               <div className="text-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10/30 p-2 rounded-xl shadow-sm border border-white/10/30">
-                                <p className="text-[7px] uppercase opacity-60 mb-0.5">Atajado</p>
-                                <p className="text-sm font-black text-white">{getStat(['ATAJADO'], game.teamAway.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['ATAJADO'], game.teamAway.id) / (getStat(['DISPARO'], game.teamAway.id) || 1)) * 100)}%)</span></p>
+                                <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Atajado</p>
+                                <p className="text-lg font-black text-white">{getStat(['ATAJADO'], game.teamAway.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['ATAJADO'], game.teamAway.id) / (getStat(['DISPARO'], game.teamAway.id) || 1)) * 100)}%)</span></p>
                               </div>
                               <div className="text-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10/30 p-2 rounded-xl shadow-sm border border-white/10/30">
-                                <p className="text-[7px] uppercase opacity-60 mb-0.5">Desv.</p>
-                                <p className="text-sm font-black text-white">{getStat(['DESVIADO'], game.teamAway.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['DESVIADO'], game.teamAway.id) / (getStat(['DISPARO'], game.teamAway.id) || 1)) * 100)}%)</span></p>
-                              </div>
+                                <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Desv.</p>
+                                <p className="text-lg font-black text-white">{getStat(['DESVIADO'], game.teamAway.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['DESVIADO'], game.teamAway.id) / (getStat(['DISPARO'], game.teamAway.id) || 1)) * 100)}%)</span></p>
                             </div>
                           </div>
                         </div>
                       </div>
-
-                      <div className="grid grid-cols-1 gap-4">
+                    </div>
+                    <div className="grid grid-cols-1 gap-4">
                         <div className="flex flex-col gap-4">
-                          <h4 className="contrail-font text-[10px] font-black text-white uppercase tracking-widest px-2 italic">Local</h4>
-                          <StatDetailCard title={<>Pérdidas <i className="fa-solid fa-arrow-trend-down"></i></>} data={getDetailedStat(['PÉRDIDA', 'PERDIDA', 'TURNOVER'], game.teamHome.id)} colorClass="text-orange-600" />
-                          <StatDetailCard title={<>Recuperos <i className="fa-solid fa-arrow-trend-up"></i></>} data={getDetailedStat(['RECUPERO'], game.teamHome.id)} colorClass="text-emerald-600" />
-                          <StatDetailCard title={<>Faltas <i className="fa-solid fa-triangle-exclamation"></i></>} data={getDetailedStat(['FALTA'], game.teamHome.id)} colorClass="text-red-600" />
+                          <h4 className="contrail-font text-[16px] font-black text-white uppercase tracking-wider px-2 italic">Local</h4>
+                          <StatDetailCard title="Pérdidas" icon={<i className="fa-solid fa-arrow-trend-down text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>} data={getDetailedStat(['PÉRDIDA', 'PERDIDA', 'TURNOVER'], game.teamHome.id)} colorClass="text-orange-600" />
+                          <StatDetailCard title="Recuperos" icon={<i className="fa-solid fa-arrow-trend-up text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>} data={getDetailedStat(['RECUPERO'], game.teamHome.id)} colorClass="text-emerald-600" />
+                          <StatDetailCard title="Faltas" icon={<i className="fa-solid fa-triangle-exclamation text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>} data={getDetailedStat(['FALTA'], game.teamHome.id)} colorClass="text-red-600" />
                         </div>
                       </div>
 
                       {/* Ingresos al Área */}
                       <EntryAnalysisCard
                         title="Ingresos al Área"
-                        icon={<i className="fa-solid fa-bullseye"></i>}
+                        icon={<i className="fa-solid fa-arrow-right-to-bracket text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
                         homeTotal={Object.values(statsArea.home).reduce((a: number, b: number) => a + b, 0)}
                         awayTotal={Object.values(statsArea.away).reduce((a: number, b: number) => a + b, 0)}
                       >
@@ -1995,7 +1994,7 @@ const LiveGameView: React.FC<{
                       {/* Ingresos a 23 Yardas */}
                       <EntryAnalysisCard
                         title="Ingresos a 23 Yardas"
-                        icon="2️⃣3️⃣"
+                        icon={<i className="fa-solid fa-bezier-curve text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
                         homeTotal={Object.values(stats23.home).reduce((a: number, b: number) => a + b, 0)}
                         awayTotal={Object.values(stats23.away).reduce((a: number, b: number) => a + b, 0)}
                       >
@@ -2019,7 +2018,7 @@ const LiveGameView: React.FC<{
 
                       <StatComparisonCard
                         title="Córners Cortos"
-                        icon={<i className="fa-solid fa-hockey-puck"></i>}
+                        icon={<i className="fa-solid fa-flag text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
                         homeData={getDetailedStat(['CÓRNER CORTO'], game.teamHome.id)}
                         awayData={getDetailedStat(['CÓRNER CORTO'], game.teamAway.id)}
                         allEvents={game.events}
@@ -2028,7 +2027,7 @@ const LiveGameView: React.FC<{
                       />
                       <StatComparisonCard
                         title="Penales"
-                        icon={<i className="fa-solid fa-bullseye"></i>}
+                        icon={<i className="fa-solid fa-bullseye text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
                         homeData={getDetailedStat(['PENAL'], game.teamHome.id)}
                         awayData={getDetailedStat(['PENAL'], game.teamAway.id)}
                         allEvents={game.events}
@@ -2038,12 +2037,14 @@ const LiveGameView: React.FC<{
                     </div>
 
                     <div className="mt-8 mb-6">
-                      <h3 className="contrail-font text-[10px] font-black text-white uppercase tracking-widest mb-4 border-b border-white/10 pb-2 italic">Análisis de Pases</h3>
+                      <h3 className="contrail-font text-[15px] font-black text-white uppercase tracking-wider mb-4 border-b border-white/10 pb-2 italic flex items-center gap-2">
+                        <i className="fa-solid fa-magnifying-glass-arrow-right text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i> Análisis de Pases
+                      </h3>
 
                       <div className="flex flex-row items-stretch gap-3">
-                        <div className="flex-1 border-white/10 p-4 rounded-[24px] border border-white/10 text-center shadow-inner flex flex-col justify-center min-h-[100px]">
-                          <p className="text-[8px] font-black text-white uppercase mb-1">Mínimo</p>
-                          <p className="text-2xl font-black text-white leading-none">{pMin}</p>
+                        <div className="flex-1 border-white p-4 rounded-[24px] border-[1px] border-white text-center shadow-inner flex flex-col justify-center min-h-[100px]">
+                          <p className="font-lato text-[15px] font-bold text-white uppercase mb-1">Mínimo</p>
+                          <p className="text-3xl font-black text-white leading-none">{pMin}</p>
                           {minPassEvent && (
                             <p className="text-[7px] font-bold text-white/50 uppercase mt-1 leading-tight">
                               {minPassEvent.gameTime}
@@ -2051,15 +2052,15 @@ const LiveGameView: React.FC<{
                           )}
                         </div>
 
-                        <div className="flex-[1.2] bg-primary p-4 rounded-[28px] shadow-xl shadow-primary/20 text-center flex flex-col justify-center border-2 border-white/20 min-h-[110px]">
-                          <p className="text-[9px] font-black text-white/70 uppercase mb-1">Promedio</p>
-                          <p className="text-4xl font-black text-white leading-none">{pAvg}</p>
-                          <p className="contrail-font text-[7px] font-bold text-white uppercase mt-1 tracking-widest">Pases / Cadena</p>
+                        <div className="flex-[1.2] bg-primary p-4 rounded-[28px] shadow-xl shadow-primary/20 text-center flex flex-col justify-center border-2 border-white min-h-[110px]">
+                          <p className="font-lato text-[15px] font-bold text-white/70 uppercase mb-1">Promedio</p>
+                          <p className="text-5xl font-black text-white leading-none">{pAvg}</p>
+                          <p className="font-lato text-[12px] font-bold text-white uppercase mt-1 tracking-widest">Pases / Cadena</p>
                         </div>
 
-                        <div className="flex-1 border-white/10 p-4 rounded-[24px] border border-white/10 text-center shadow-inner flex flex-col justify-center min-h-[100px]">
-                          <p className="text-[8px] font-black text-white uppercase mb-1">Máximo</p>
-                          <p className="text-2xl font-black text-white leading-none">{pMax}</p>
+                        <div className="flex-1 border-white p-4 rounded-[24px] border-[1px] border-white text-center shadow-inner flex flex-col justify-center min-h-[100px]">
+                          <p className="font-lato text-[15px] font-bold text-white uppercase mb-1">Máximo</p>
+                          <p className="text-3xl font-black text-white leading-none">{pMax}</p>
                           {maxPassEvent && (
                             <p className="text-[7px] font-bold text-white/50 uppercase mt-1 leading-tight">
                               {maxPassEvent.gameTime}
@@ -2353,7 +2354,7 @@ const LiveGameView: React.FC<{
 
           {isLandscape && (
             <aside className="hidden md:flex w-[80px] bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border-l border-white/10 flex-col items-center py-6 gap-6 z-50 shadow-lg shrink-0">
-              <p className="contrail-font text-[8px] font-black text-white uppercase tracking-widest leading-none mb-2">Notas</p>
+              <p className="contrail-font text-[16px] font-black text-white uppercase tracking-wider leading-none mb-2">Notas</p>
               <button
                 onClick={(e) => { e.stopPropagation(); handleVoiceNote(); }}
                 className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all shadow-md border-2 ${isRecording ? 'bg-red-600 text-white animate-pulse border-red-400' : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border-primary text-primary'}`}
@@ -2374,22 +2375,22 @@ const LiveGameView: React.FC<{
           !isLandscape && (
             <aside className="hidden lg:flex w-[320px] flex-col p-4 bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border-l border-white/10 overflow-y-auto no-scrollbar">
               <div className="flex flex-col gap-4 pb-10">
-                <h3 className="contrail-font text-[10px] font-black text-white uppercase tracking-widest border-b border-white/10 pb-2 italic">Estadísticas En vivo</h3>
+                <h3 className="contrail-font text-[16px] font-black text-white uppercase tracking-wider border-b border-white/10 pb-2 italic">Estadísticas En vivo</h3>
 
                 {/* Posesión Sidebar */}
-                <div className="border-white/10 p-4 rounded-[24px] border border-white/10 shadow-inner flex flex-col gap-2">
+                <div className="border-white p-4 rounded-[24px] border-[1px] border-white shadow-inner flex flex-col gap-2">
                   <div className={`flex justify-between items-center ${possessionSidebarExpanded ? 'border-b border-white/10 pb-2 mb-1' : ''}`}>
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px]">⏱️</span>
-                      <p className="contrail-font text-[9px] font-black text-white uppercase tracking-widest leading-none">Posesión</p>
+                      <i className="fa-solid fa-stopwatch text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>
+                      <p className="contrail-font text-[15px] font-black text-white uppercase tracking-wider leading-none">Posesión</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-black text-white">{localPct}% / {awayPct}%</span>
+                      <span className="text-lg font-black text-white">{localPct}% / {awayPct}%</span>
                       <button
                         onClick={() => setPossessionSidebarExpanded(!possessionSidebarExpanded)}
                         className={`w-5 h-5 flex items-center justify-center rounded-full bg-white/5 transition-transform duration-300 ${possessionSidebarExpanded ? 'rotate-180' : ''}`}
                       >
-                        <span className="text-[8px]">▼</span>
+                        <span className="text-[8px] text-white font-black" style={{ color: '#ffffff' }}>▼</span>
                       </button>
                     </div>
                   </div>
@@ -2397,11 +2398,11 @@ const LiveGameView: React.FC<{
                   {possessionSidebarExpanded && (
                     <div className="animate-in slide-in-from-top duration-300">
                       <div className="flex justify-between items-center mb-2">
-                        <span className="text-[8px] font-black text-white uppercase tracking-widest flex items-center gap-1.5">
+                        <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                           <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
                           {localPct}%
                         </span>
-                        <span className="text-[8px] font-black text-white uppercase tracking-widest flex items-center gap-1.5">
+                        <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                           {awayPct}%
                           <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
                         </span>
@@ -2416,26 +2417,28 @@ const LiveGameView: React.FC<{
 
 
                 {/* Desgloses Detallados Sidebar */}
-                <StatDetailCard title="Pérdidas" data={getDetailedStat(['PÉRDIDA', 'PERDIDA', 'TURNOVER'], game.teamHome.id)} colorClass="text-orange-600" compact={true} icon={<i className="fa-solid fa-arrow-trend-down"></i>} />
-                <StatDetailCard title="Recuperos" data={getDetailedStat(['RECUPERO'], game.teamHome.id)} colorClass="text-emerald-600" compact={true} icon={<i className="fa-solid fa-arrow-trend-up"></i>} />
-                <StatDetailCard title="Faltas" data={getDetailedStat(['FALTA'], game.teamHome.id)} colorClass="text-red-600" compact={true} icon="⚠️" />
+                <StatDetailCard title="Pérdidas" data={getDetailedStat(['PÉRDIDA', 'PERDIDA', 'TURNOVER'], game.teamHome.id)} colorClass="text-orange-600" compact={true} icon={<i className="fa-solid fa-arrow-trend-down text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>} />
+                <StatDetailCard title="Recuperos" data={getDetailedStat(['RECUPERO'], game.teamHome.id)} colorClass="text-emerald-600" compact={true} icon={<i className="fa-solid fa-arrow-trend-up text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>} />
+                <StatDetailCard title="Faltas" data={getDetailedStat(['FALTA'], game.teamHome.id)} colorClass="text-red-600" compact={true} icon={<i className="fa-solid fa-triangle-exclamation text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>} />
 
                 {/* Análisis de Pases Sidebar Horizontal */}
                 <div className="mt-2">
-                  <h3 className="contrail-font text-[9px] font-black text-white uppercase tracking-widest mb-3 italic">Análisis de Pases</h3>
+                  <h3 className="contrail-font text-[15px] font-black text-white uppercase tracking-wider mb-3 italic flex items-center gap-2">
+                    <i className="fa-solid fa-magnifying-glass-arrow-right text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i> Análisis de Pases
+                  </h3>
                   <div className="flex flex-row items-stretch gap-2 h-24">
-                    <div className="flex-1 border-white/10 p-2 rounded-2xl border border-white/10 text-center shadow-inner flex flex-col justify-center">
-                      <p className="text-[7px] font-black text-white uppercase mb-0.5">Mín</p>
-                      <p className="text-lg font-black text-white leading-none">{pMin}</p>
+                    <div className="flex-1 border-white p-2 rounded-2xl border-[1px] border-white text-center shadow-inner flex flex-col justify-center">
+                      <p className="font-lato text-[15px] font-bold text-white uppercase mb-0.5">Mín</p>
+                      <p className="text-xl font-black text-white leading-none">{pMin}</p>
                       {minPassEvent && <p className="text-[6px] font-bold text-white/40 mt-0.5 leading-none">{minPassEvent.gameTime}</p>}
                     </div>
-                    <div className="flex-[1.2] bg-primary p-2 rounded-[20px] shadow-lg shadow-primary/10 text-center flex flex-col justify-center border border-white/10">
-                      <p className="text-[8px] font-black text-white/60 uppercase mb-0.5">Prom</p>
-                      <p className="text-2xl font-black text-white leading-none">{pAvg}</p>
+                    <div className="flex-[1.2] bg-primary p-2 rounded-[20px] shadow-lg shadow-primary/10 text-center flex flex-col justify-center border-2 border-white">
+                      <p className="font-lato text-[15px] font-bold text-white/60 uppercase mb-0.5">Prom</p>
+                      <p className="text-3xl font-black text-white leading-none">{pAvg}</p>
                     </div>
-                    <div className="flex-1 border-white/10 p-2 rounded-2xl border border-white/10 text-center shadow-inner flex flex-col justify-center">
-                      <p className="text-[7px] font-black text-white uppercase mb-0.5">Máx</p>
-                      <p className="text-lg font-black text-white leading-none">{pMax}</p>
+                    <div className="flex-1 border-white p-2 rounded-2xl border-[1px] border-white text-center shadow-inner flex flex-col justify-center">
+                      <p className="font-lato text-[15px] font-bold text-white uppercase mb-0.5">Máx</p>
+                      <p className="text-xl font-black text-white leading-none">{pMax}</p>
                       {maxPassEvent && <p className="text-[6px] font-bold text-white/40 mt-0.5 leading-none">{maxPassEvent.gameTime}</p>}
                     </div>
                   </div>

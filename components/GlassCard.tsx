@@ -9,7 +9,7 @@ interface GlassCardProps {
 export const GlassCard: React.FC<GlassCardProps> = ({ children, className = '', onClick }) => {
   return (
     <div 
-      className={`bg-[rgba(30,41,59,0.4)] backdrop-blur-[12px] border border-white/10 rounded-2xl ${className}`}
+      className={`bg-[rgba(30,41,59,0.4)] backdrop-blur-[12px] border-[1px] border-white rounded-2xl ${className}`}
       onClick={onClick}
     >
       {children}

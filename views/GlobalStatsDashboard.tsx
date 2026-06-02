@@ -180,7 +180,7 @@ const GlobalStatsDashboard: React.FC<GlobalStatsDashboardProps> = ({ matches }) 
                 {/* Promedios */}
                 <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     {[
-                        { id: 'disparos', label: 'Disparos / PJ', value: averages.disparos, color: '#6d5dfc', icon: <i className="fa-solid fa-bullseye"></i> },
+                        { id: 'disparos', label: 'Disparos / PJ', value: averages.disparos, color: '#6d5dfc', icon: <i className="fa-solid fa-futbol"></i> },
                         { id: 'recuperos', label: 'Recuperos / PJ', value: averages.recuperos, color: '#10b981', icon: <i className="fa-solid fa-arrow-trend-up"></i> },
                         { id: 'pérdidas', label: 'Pérdidas / PJ', value: averages.pérdidas, color: '#ef4444', icon: <i className="fa-solid fa-arrow-trend-down"></i> },
                         { id: 'faltas', label: 'Faltas / PJ', value: averages.faltas, color: '#f59e0b', icon: <i className="fa-solid fa-triangle-exclamation"></i> }
