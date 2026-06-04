@@ -83,6 +83,7 @@ export interface Game {
   ownerId?: string;
   userId?: string;
   authorId?: string;
+  registroMode?: 'visual' | 'botones';
 }
 
 

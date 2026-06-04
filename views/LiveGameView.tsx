@@ -14,7 +14,7 @@ import { PersistenceManager } from '../services/PersistenceManager';
 import { aiService } from '../services/aiService';
 import { StorageService } from '../services/StorageService';
 import { PitchMap } from '../components/PitchMap';
-import { db, auth, doc, setDoc, serverTimestamp } from '../services/firebase';
+import { db, auth, doc, setDoc, getDoc, collection, getDocs, query, where, serverTimestamp } from '../services/firebase';
 const NSeparator = () => (
   <div className="hidden md:flex w-8 h-8 md:w-10 md:h-10 items-center justify-center shrink-0">
     <img
@@ -322,6 +322,145 @@ const getActionIcon = (type: string) => {
   return (<i className="fa-thumbtack fa-solid text-white"></i>);
 };
 
+interface ActionButton {
+  id: string;
+  name: string;
+  shortName: string;
+  type: string;
+  icon: string;
+  nextPossession?: 'SAME' | 'OPPOSITE';
+  details?: string;
+}
+
+interface ActionCategory {
+  id: string;
+  name: string;
+  icon: string;
+  buttons: ActionButton[];
+}
+
+const actionsSchema: {
+  [key: string]: {
+    local: ActionCategory[];
+    visitante: ActionCategory[];
+  };
+} = {
+  HOME: {
+    local: [
+      {
+        id: 'remate',
+        name: 'Remate al arco rival',
+        icon: 'fa-solid fa-crosshairs',
+        buttons: [
+          { id: 'remate_atajado', name: 'Atajado', shortName: 'Ataj.', type: 'DISPARO_ATAJADO', icon: 'fa-solid fa-hand' },
+          { id: 'remate_desviado', name: 'Desviado', shortName: 'Desv.', type: 'DISPARO_DESVIADO', icon: 'fa-solid fa-xmark' },
+          { id: 'remate_gol', name: 'Gol', shortName: 'Gol', type: 'DISPARO_GOL', icon: 'fa-solid fa-futbol' }
+        ]
+      },
+      {
+        id: 'ingreso_area',
+        name: 'Ingreso al área rival',
+        icon: 'fa-solid fa-arrow-right-to-bracket',
+        buttons: [
+          { id: 'area_jugada', name: 'Jugada', shortName: 'Jug.', type: 'Ingreso en área', details: 'Jugada', icon: 'fa-solid fa-people-group' },
+          { id: 'area_pase', name: 'Pase', shortName: 'Pase', type: 'Ingreso en área', details: 'Pase', icon: 'fa-solid fa-magnifying-glass-arrow-right' },
+          { id: 'area_despeje', name: 'Despeje', shortName: 'Desp.', type: 'Ingreso en área', details: 'Despeje', icon: 'fa-solid fa-up-right-from-square' }
+        ]
+      },
+      {
+        id: 'ingreso_23',
+        name: 'Ingreso a 23 yardas rival',
+        icon: 'fa-solid fa-bezier-curve',
+        buttons: [
+          { id: '23_jugada', name: 'Jugada', shortName: 'Jug.', type: 'Ingreso en 23', details: 'Jugada', icon: 'fa-solid fa-people-group' },
+          { id: '23_pase', name: 'Pase', shortName: 'Pase', type: 'Ingreso en 23', details: 'Pase', icon: 'fa-solid fa-magnifying-glass-arrow-right' },
+          { id: '23_despeje', name: 'Despeje', shortName: 'Desp.', type: 'Ingreso en 23', details: 'Despeje', icon: 'fa-solid fa-up-right-from-square' }
+        ]
+      },
+      {
+        id: 'faltas_recibidas',
+        name: 'Faltas recibidas',
+        icon: 'fa-solid fa-hand-paper',
+        buttons: [
+          { id: 'falta_tarjeta', name: 'Tarjeta a rival', shortName: 'Tarj.', type: 'FALTA_TARJETA', icon: 'fa-solid fa-diamond' },
+          { id: 'falta_corto', name: 'Córner corto', shortName: 'CC', type: 'CÓRNER CORTO', icon: 'fa-solid fa-flag' },
+          { id: 'falta_penal', name: 'Penal', shortName: 'Penal', type: 'PENAL', icon: 'fa-solid fa-bullseye' }
+        ]
+      }
+    ],
+    visitante: [
+      {
+        id: 'perdida',
+        name: 'Pérdida',
+        icon: 'fa-solid fa-arrow-trend-down',
+        buttons: [
+          { id: 'perdida_falta', name: 'Falta', shortName: 'Falta', type: 'PÉRDIDA_FALTA', icon: 'fa-solid fa-hand-fist', nextPossession: 'OPPOSITE' },
+          { id: 'perdida_quite', name: 'Quite', shortName: 'Quite', type: 'PÉRDIDA_QUITE', icon: 'fa-solid fa-shield-halved', nextPossession: 'OPPOSITE' },
+          { id: 'perdida_interc', name: 'Intercepción', shortName: 'Interc.', type: 'PÉRDIDA_INTERCEPCIÓN', icon: 'fa-solid fa-bolt', nextPossession: 'OPPOSITE' },
+          { id: 'perdida_afuera', name: 'Afuera', shortName: 'Afuera', type: 'PÉRDIDA_AFUERA', icon: 'fa-solid fa-arrow-right-from-bracket', nextPossession: 'OPPOSITE' }
+        ]
+      }
+    ]
+  },
+  AWAY: {
+    local: [
+      {
+        id: 'recupero',
+        name: 'Recupero',
+        icon: 'fa-solid fa-arrow-trend-up',
+        buttons: [
+          { id: 'recupero_falta', name: 'Falta', shortName: 'Falta', type: 'RECUPERO_FALTA', icon: 'fa-solid fa-hand-fist', nextPossession: 'OPPOSITE' },
+          { id: 'recupero_quite', name: 'Quite', shortName: 'Quite', type: 'RECUPERO_QUITE', icon: 'fa-solid fa-shield-halved', nextPossession: 'OPPOSITE' },
+          { id: 'recupero_interc', name: 'Intercepción', shortName: 'Interc.', type: 'RECUPERO_INTERCEPCIÓN', icon: 'fa-solid fa-bolt', nextPossession: 'OPPOSITE' },
+          { id: 'recupero_afuera', name: 'Afuera', shortName: 'Afuera', type: 'RECUPERO_AFUERA', icon: 'fa-solid fa-arrow-right-from-bracket', nextPossession: 'OPPOSITE' }
+        ]
+      }
+    ],
+    visitante: [
+      {
+        id: 'remate_mi_arco',
+        name: 'Remate a mi arco',
+        icon: 'fa-solid fa-crosshairs',
+        buttons: [
+          { id: 'mi_arco_atajado', name: 'Atajado', shortName: 'Ataj.', type: 'DISPARO_RIVAL_ATAJADO', icon: 'fa-solid fa-hand' },
+          { id: 'mi_arco_desviado', name: 'Desviado', shortName: 'Desv.', type: 'DISPARO_RIVAL_DESVIADO', icon: 'fa-solid fa-xmark' },
+          { id: 'mi_arco_gol', name: 'Gol', shortName: 'Gol', type: 'DISPARO_RIVAL_GOL', icon: 'fa-solid fa-futbol' }
+        ]
+      },
+      {
+        id: 'ingreso_mi_area',
+        name: 'Ingreso a mi área',
+        icon: 'fa-solid fa-arrow-right-to-bracket',
+        buttons: [
+          { id: 'mi_area_jugada', name: 'Jugada', shortName: 'Jug.', type: 'Ingreso Rival en área', details: 'Jugada', icon: 'fa-solid fa-people-group' },
+          { id: 'mi_area_pase', name: 'Pase', shortName: 'Pase', type: 'Ingreso Rival en área', details: 'Pase', icon: 'fa-solid fa-magnifying-glass-arrow-right' },
+          { id: 'mi_area_despeje', name: 'Despeje', shortName: 'Desp.', type: 'Ingreso Rival en área', details: 'Despeje', icon: 'fa-solid fa-up-right-from-square' }
+        ]
+      },
+      {
+        id: 'ingreso_mis_23',
+        name: 'Ingreso a mis 23 yardas',
+        icon: 'fa-solid fa-bezier-curve',
+        buttons: [
+          { id: 'mi_23_jugada', name: 'Jugada', shortName: 'Jug.', type: 'Ingreso rival en 23', details: 'Jugada', icon: 'fa-solid fa-people-group' },
+          { id: 'mi_23_pase', name: 'Pase', shortName: 'Pase', type: 'Ingreso rival en 23', details: 'Pase', icon: 'fa-solid fa-magnifying-glass-arrow-right' },
+          { id: 'mi_23_despeje', name: 'Despeje', shortName: 'Desp.', type: 'Ingreso rival en 23', details: 'Despeje', icon: 'fa-solid fa-up-right-from-square' }
+        ]
+      },
+      {
+        id: 'faltas_cometidas',
+        name: 'Faltas cometidas',
+        icon: 'fa-solid fa-hand-paper',
+        buttons: [
+          { id: 'falta_tarjeta_recibida', name: 'Tarjeta recibida', shortName: 'Tarj.', type: 'FALTA_TARJETA_RECIBIDA', icon: 'fa-solid fa-diamond' },
+          { id: 'falta_corto_cometida', name: 'Córner corto', shortName: 'CC', type: 'FALTA COMETIDA (CÓRNER CORTO)', icon: 'fa-solid fa-flag' },
+          { id: 'falta_penal_cometida', name: 'Penal', shortName: 'Penal', type: 'FALTA COMETIDA (PENAL)', icon: 'fa-solid fa-bullseye' }
+        ]
+      }
+    ]
+  }
+};
+
 const LiveGameView: React.FC<{
   role: UserRole,
   tacticalSchemes: TacticalScheme[],
@@ -332,6 +471,53 @@ const LiveGameView: React.FC<{
   const { id } = useParams();
   const navigate = useNavigate();
   const [game, setGame] = useState<Game | null>(null);
+  const [selectedLane, setSelectedLane] = useState<'left' | 'center' | 'right'>('center');
+  const [selectedZone, setSelectedZone] = useState<'rival' | 'own'>('rival');
+  const [dbAcciones, setDbAcciones] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchAcciones = async () => {
+      try {
+        const docRef = doc(db, 'config', 'acciones');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data && Array.isArray(data.lista)) {
+            setDbAcciones(data.lista);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load from doc config/acciones:', err);
+      }
+
+      try {
+        const colRef = collection(db, 'config', 'acciones', 'items');
+        const snap = await getDocs(colRef);
+        if (!snap.empty) {
+          const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          setDbAcciones(list);
+          return;
+        }
+      } catch (err) {
+        console.warn('Failed to load from subcol config/acciones/items:', err);
+      }
+
+      try {
+        const colRef = collection(db, 'acciones');
+        const snap = await getDocs(colRef);
+        if (!snap.empty) {
+          const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          setDbAcciones(list);
+          return;
+        }
+      } catch (err) {
+        console.warn('Failed to load from root collection acciones:', err);
+      }
+    };
+    fetchAcciones();
+  }, []);
+
   const [isRunning, setIsRunning] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [possession, setPossession] = useState<Possession>(Possession.NONE);
@@ -677,6 +863,133 @@ const LiveGameView: React.FC<{
       }
     }
     registerEvent(type, nextPoss, x, y, details);
+  };
+
+  const handleTacticalButtonClick = (btn: ActionButton) => {
+    if (!game) return;
+    if (!isRunning) {
+      setSnackbar({ message: "Inicia el cronómetro para registrar acciones", visible: true });
+      setTimeout(() => setSnackbar(prev => ({ ...prev, visible: false })), 2500);
+      return;
+    }
+
+    let lx = 50;
+    if (selectedLane === 'left') lx = 16;
+    else if (selectedLane === 'right') lx = 83;
+
+    let ly = 50;
+    if (selectedZone === 'rival') ly = 25;
+    else if (selectedZone === 'own') ly = 75;
+
+    const laneName = selectedLane === 'left' ? 'Izquierda' : selectedLane === 'right' ? 'Derecha' : 'Centro';
+    const zoneName = selectedZone === 'rival' ? 'Rival' : 'Propio';
+    const sectorStr = `Botones: Campo ${zoneName} - ${laneName}`;
+
+    let finalType = btn.type;
+    let finalPoss = possession;
+
+    // Normalizaciones para alineación con las estadísticas existentes
+    if (btn.type === 'Ingreso en área') {
+      finalType = possession === Possession.HOME ? 'Ingreso en área' : 'Ingreso Rival en área';
+    } else if (btn.type === 'Ingreso en 23') {
+      finalType = possession === Possession.HOME ? 'Ingreso en 23' : 'Ingreso rival en 23';
+    }
+
+    // Lógica para Remates (DISPAROS)
+    if (btn.type.startsWith('DISPARO_') || btn.type.startsWith('DISPARO_RIVAL_')) {
+      const isRivalShot = btn.type.startsWith('DISPARO_RIVAL_');
+      const targetGoal = ly < 50 ? 'TOP' : 'BOTTOM';
+      
+      let outcome: 'GOL' | 'ATAJADO' | 'DESVIADO' = 'GOL';
+      if (btn.type.includes('GOL')) outcome = 'GOL';
+      else if (btn.type.includes('ATAJADO')) outcome = 'ATAJADO';
+      else if (btn.type.includes('DESVIADO')) outcome = 'DESVIADO';
+
+      const baseType = isRivalShot ? 'DISPARO RIVAL' : 'DISPARO';
+      registerEvent(baseType, finalPoss, lx, ly, sectorStr);
+
+      setSelectedShotAction(outcome);
+      setGoalType(null);
+      setFoulPlayer('');
+      setAtajadoPossession(null);
+      setAtajadoSelected(outcome === 'ATAJADO');
+      
+      setShowPopup({ x: lx, y: ly, type: 'SHOT', targetGoal });
+      return;
+    }
+
+    // Lógica de Faltas y Tarjetas
+    if (btn.type === 'FALTA_TARJETA') {
+      // Local recibe falta (Visitante la comete)
+      registerEvent('Falta Cometida', Possession.HOME, lx, ly, `Tarjeta a rival | ${sectorStr}`, game.teamAway.id);
+      setShowPopup({ x: lx, y: ly, type: 'FOUL' });
+      return;
+    }
+    if (btn.type === 'FALTA_TARJETA_RECIBIDA') {
+      // Local comete falta
+      registerEvent('Falta Cometida', Possession.AWAY, lx, ly, `Tarjeta recibida | ${sectorStr}`, game.teamHome.id);
+      setShowPopup({ x: lx, y: ly, type: 'FOUL' });
+      return;
+    }
+
+    // Faltas con conmutación o eventos directos
+    if (btn.type === 'CÓRNER CORTO' || btn.type === 'PENAL') {
+      registerEvent(btn.type, Possession.HOME, lx, ly, `${btn.name} a Favor | ${sectorStr}`, game.teamHome.id);
+      return;
+    }
+    if (btn.type === 'FALTA COMETIDA (CÓRNER CORTO)') {
+      registerEvent('CÓRNER CORTO', Possession.HOME, lx, ly, `Córner Corto a Favor (Cometido por rival) | ${sectorStr}`, game.teamAway.id);
+      setPossession(Possession.HOME);
+      return;
+    }
+    if (btn.type === 'FALTA COMETIDA (PENAL)') {
+      registerEvent('PENAL', Possession.HOME, lx, ly, `Penal a Favor (Cometido por rival) | ${sectorStr}`, game.teamAway.id);
+      setPossession(Possession.HOME);
+      return;
+    }
+
+    // Pérdidas (Scenario A)
+    if (btn.type.startsWith('PÉRDIDA_')) {
+      let lossDetails = `Pérdida por ${btn.name} | ${sectorStr}`;
+      if (btn.type === 'PÉRDIDA_FALTA') {
+        registerEvent('Falta Cometida', Possession.AWAY, lx, ly, lossDetails, game.teamHome.id);
+      } else {
+        registerEvent('PÉRDIDA', Possession.AWAY, lx, ly, lossDetails, game.teamHome.id);
+      }
+      setPossession(Possession.AWAY);
+      return;
+    }
+
+    // Recuperos (Scenario B)
+    if (btn.type.startsWith('RECUPERO_')) {
+      let recoveryDetails = `Recupero por ${btn.name} | ${sectorStr}`;
+      if (btn.type === 'RECUPERO_FALTA') {
+        registerEvent('Falta Cometida', Possession.HOME, lx, ly, recoveryDetails, game.teamAway.id);
+      } else {
+        registerEvent('RECUPERO', Possession.HOME, lx, ly, recoveryDetails, game.teamHome.id);
+      }
+      setPossession(Possession.HOME);
+      return;
+    }
+
+    registerEvent(finalType, finalPoss, lx, ly, sectorStr);
+  };
+
+  const renderActionButton = (btn: ActionButton, teamColor: string) => {
+    return (
+      <button
+        key={btn.id}
+        onClick={() => handleTacticalButtonClick(btn)}
+        className="group relative flex flex-col items-center justify-center gap-1.5 p-1 sm:p-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 active:scale-95 transition-all text-center min-h-[46px] select-none w-full shadow-sm"
+        style={{ '--hover-color': teamColor } as React.CSSProperties}
+      >
+        <i className={`${btn.icon} text-[#38bdf8] group-hover:text-white text-[15px] sm:text-[17px] transition-colors`}></i>
+        <span className="text-[8px] sm:text-[9px] font-black text-white/70 group-hover:text-white uppercase tracking-wider leading-none">
+          <span className="hidden sm:inline">{btn.name}</span>
+          <span className="inline sm:hidden">{btn.shortName}</span>
+        </span>
+      </button>
+    );
   };
 
   const handleManualMenu = (x: number, y: number) => {
@@ -1464,6 +1777,22 @@ const LiveGameView: React.FC<{
                   </button>
                 </div>
 
+                <div className="py-2 border-b border-white/10 mb-2">
+                  <p className="contrail-font text-[9px] font-black text-white uppercase tracking-widest mb-3 px-4">Modo de registro</p>
+                  <button
+                    onClick={() => {
+                      const nextMode = (game?.registroMode || 'visual') === 'visual' ? 'botones' : 'visual';
+                      setGame(prev => prev ? { ...prev, registroMode: nextMode } : null);
+                      setSnackbar({ message: `Modo de registro cambiado a: ${nextMode === 'visual' ? 'Visual' : 'Botones'}`, visible: true });
+                      setTimeout(() => setSnackbar(prev => ({ ...prev, visible: false })), 2000);
+                    }}
+                    className="w-full text-left p-4 rounded-xl flex items-center justify-between font-bold text-[11px] uppercase tracking-widest transition-all active:scale-95 hover:bg-white/5 border border-white/10 text-white"
+                  >
+                    <span>{(game?.registroMode || 'visual') === 'visual' ? 'Modo: Visual' : 'Modo: Botones'}</span>
+                    <span className="text-[#38bdf8]"><i className="fa-solid fa-rotate"></i> Cambiar</span>
+                  </button>
+                </div>
+
                 {["1: Configurar juego", "2: Configurar plantel", "3: Configurar acciones"].map((opt, i) => (
                   <button key={i} className="w-full text-left p-4 rounded-xl hover:bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white font-bold text-[11px] uppercase tracking-widest transition-all active:scale-95" onClick={() => setIsMenuOpen(false)}>{opt}</button>
                 ))}
@@ -2060,7 +2389,7 @@ const LiveGameView: React.FC<{
 
                         <div className="flex-1 border-white p-4 rounded-[24px] border-[1px] border-white text-center shadow-inner flex flex-col justify-center min-h-[100px]">
                           <p className="font-lato text-[15px] font-bold text-white uppercase mb-1">Máximo</p>
-                          <p className="text-3xl font-black text-white leading-none">{pMax}</p>
+                            <p className="text-3xl font-black text-white leading-none">{pMax}</p>
                           {maxPassEvent && (
                             <p className="text-[7px] font-bold text-white/50 uppercase mt-1 leading-tight">
                               {maxPassEvent.gameTime}
@@ -2069,6 +2398,217 @@ const LiveGameView: React.FC<{
                         </div>
                       </div>
                     </div>
+                  </div>
+                </div>
+              </div>
+            ) : game?.registroMode === 'botones' ? (
+              <div className="w-full h-full p-2 sm:p-4 flex flex-col items-center justify-center min-h-0 min-w-0">
+                <div 
+                  className="w-full h-full max-w-4xl bg-[#131041]/40 backdrop-blur-[16px] border border-white/10 rounded-[32px] p-3 sm:p-5 flex flex-col justify-between shadow-2xl relative min-h-0 min-w-0 overflow-hidden"
+                >
+                  {/* Header of buttons panel */}
+                  <div className="flex justify-between items-center border-b border-white/10 pb-2 mb-2 sm:mb-3 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-[#38bdf8] animate-pulse"></div>
+                      <span className="font-black text-[10px] sm:text-xs text-white uppercase tracking-widest font-contrail">Modo Botones Tácticos</span>
+                    </div>
+                    <span className="text-[9px] font-black text-white/40 bg-white/5 border border-white/5 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                      Carril: {selectedLane === 'left' ? 'Izquierda' : selectedLane === 'right' ? 'Derecha' : 'Centro'} | Zona: {selectedZone === 'rival' ? 'Rival' : 'Propia'}
+                    </span>
+                  </div>
+
+                  {/* Fila 1: Controladores de Ubicación Espacial */}
+                  <div className="flex flex-row gap-3 w-full mb-3 shrink-0">
+                    {/* Segmented Control 1: Zona (Campo Rival / Campo Propio) */}
+                    <div className="flex-1 flex bg-white/5 border border-white/10 rounded-2xl p-0.5 h-11 shadow-inner relative overflow-hidden backdrop-blur-md">
+                      <button
+                        onClick={() => setSelectedZone('rival')}
+                        className={`flex-1 flex items-center justify-center font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-all rounded-xl ${
+                          selectedZone === 'rival'
+                            ? 'bg-[#38bdf8]/20 text-[#38bdf8] font-black shadow-[inset_0_0_8px_rgba(56,189,248,0.25)] border border-[#38bdf8]/30'
+                            : 'text-white/60 hover:bg-white/5 hover:text-white'
+                        }`}
+                      >
+                        Campo Rival
+                      </button>
+                      <button
+                        onClick={() => setSelectedZone('own')}
+                        className={`flex-1 flex items-center justify-center font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-all rounded-xl ${
+                          selectedZone === 'own'
+                            ? 'bg-[#38bdf8]/20 text-[#38bdf8] font-black shadow-[inset_0_0_8px_rgba(56,189,248,0.25)] border border-[#38bdf8]/30'
+                            : 'text-white/60 hover:bg-white/5 hover:text-white'
+                        }`}
+                      >
+                        Campo Propio
+                      </button>
+                    </div>
+
+                    {/* Segmented Control 2: Carril (Izquierda / Centro / Derecha) */}
+                    <div className="flex-[1.3] flex bg-white/5 border border-white/10 rounded-2xl p-0.5 h-11 shadow-inner relative overflow-hidden backdrop-blur-md">
+                      <button
+                        onClick={() => setSelectedLane('left')}
+                        className={`flex-1 flex items-center justify-center font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-all rounded-xl ${
+                          selectedLane === 'left'
+                            ? 'bg-[#38bdf8]/20 text-[#38bdf8] font-black shadow-[inset_0_0_8px_rgba(56,189,248,0.25)] border border-[#38bdf8]/30'
+                            : 'text-white/60 hover:bg-white/5 hover:text-white'
+                        }`}
+                      >
+                        Izquierda
+                      </button>
+                      <button
+                        onClick={() => setSelectedLane('center')}
+                        className={`flex-1 flex items-center justify-center font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-all rounded-xl ${
+                          selectedLane === 'center'
+                            ? 'bg-[#38bdf8]/20 text-[#38bdf8] font-black shadow-[inset_0_0_8px_rgba(56,189,248,0.25)] border border-[#38bdf8]/30'
+                            : 'text-white/60 hover:bg-white/5 hover:text-white'
+                        }`}
+                      >
+                        Centro
+                      </button>
+                      <button
+                        onClick={() => setSelectedLane('right')}
+                        className={`flex-1 flex items-center justify-center font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-all rounded-xl ${
+                          selectedLane === 'right'
+                            ? 'bg-[#38bdf8]/20 text-[#38bdf8] font-black shadow-[inset_0_0_8px_rgba(56,189,248,0.25)] border border-[#38bdf8]/30'
+                            : 'text-white/60 hover:bg-white/5 hover:text-white'
+                        }`}
+                      >
+                        Derecha
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Lógica Dinámica de Posesión y Bloques Verticales */}
+                  <div className="flex-1 flex flex-col justify-between gap-3 min-h-0 w-full">
+                    {/* Bloque Local */}
+                    {(() => {
+                      const isLocalPossession = possession === Possession.HOME;
+                      const categories = isLocalPossession ? actionsSchema.HOME.local : actionsSchema.AWAY.local;
+                      const primaryColor = game.teamHome.primaryColor || '#6d5dfc';
+
+                      return (
+                        <div 
+                          className={`flex-1 flex flex-col p-2.5 sm:p-3 rounded-2xl border transition-all duration-300 min-h-0 overflow-hidden ${
+                            isLocalPossession 
+                              ? 'shadow-[0_0_12px_rgba(109,93,252,0.15)] border-white/20' 
+                              : 'border-white/5 opacity-80'
+                          }`}
+                          style={{
+                            backgroundColor: `${primaryColor}0f`,
+                            borderColor: isLocalPossession ? `${primaryColor}35` : `${primaryColor}12`
+                          }}
+                        >
+                          <div className="flex justify-between items-center mb-1.5 shrink-0">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: primaryColor }} />
+                              <span className="font-black text-xs text-white uppercase tracking-wider font-contrail">
+                                {game.teamHome.name}
+                              </span>
+                            </div>
+                            <span 
+                              className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border ${
+                                isLocalPossession 
+                                  ? 'bg-[#00fe00]/10 text-[#00fe00] border-[#00fe00]/20 animate-pulse shadow-[0_0_8px_rgba(0,254,0,0.15)]' 
+                                  : 'bg-white/5 text-white/30 border-white/5'
+                              }`}
+                            >
+                              {isLocalPossession ? '● ATACANDO' : 'DEFENDIENDO'}
+                            </span>
+                          </div>
+
+                          <div className="flex-1 flex flex-col justify-center min-h-0">
+                            {categories.length === 1 ? (
+                              <div className="w-full flex flex-col justify-center">
+                                <span className="font-bold text-[10px] sm:text-xs uppercase tracking-widest text-white/60 mb-1.5 block">
+                                  {categories[0].name}
+                                </span>
+                                <div className="grid grid-cols-4 gap-1.5">
+                                  {categories[0].buttons.map(btn => renderActionButton(btn, primaryColor))}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 h-full items-stretch content-center">
+                                {categories.map(cat => (
+                                  <div key={cat.id} className="flex flex-col bg-white/5 border border-white/5 rounded-xl p-1.5 sm:p-2 justify-between min-h-0">
+                                    <span className="font-bold text-[10px] sm:text-xs uppercase tracking-widest text-white/60 mb-1.5 truncate block" title={cat.name}>
+                                      {cat.name}
+                                    </span>
+                                    <div className="grid grid-cols-3 gap-1">
+                                      {cat.buttons.map(btn => renderActionButton(btn, primaryColor))}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Bloque Visitante */}
+                    {(() => {
+                      const isAwayPossession = possession === Possession.AWAY;
+                      const categories = isAwayPossession ? actionsSchema.AWAY.visitante : actionsSchema.HOME.visitante;
+                      const primaryColor = game.teamAway.primaryColor || '#ef4444';
+
+                      return (
+                        <div 
+                          className={`flex-1 flex flex-col p-2.5 sm:p-3 rounded-2xl border transition-all duration-300 min-h-0 overflow-hidden ${
+                            isAwayPossession 
+                              ? 'shadow-[0_0_12px_rgba(239,68,68,0.15)] border-white/20' 
+                              : 'border-white/5 opacity-80'
+                          }`}
+                          style={{
+                            backgroundColor: `${primaryColor}0f`,
+                            borderColor: isAwayPossession ? `${primaryColor}35` : `${primaryColor}12`
+                          }}
+                        >
+                          <div className="flex justify-between items-center mb-1.5 shrink-0">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: primaryColor }} />
+                              <span className="font-black text-xs text-white uppercase tracking-wider font-contrail">
+                                {game.teamAway.name}
+                              </span>
+                            </div>
+                            <span 
+                              className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border ${
+                                isAwayPossession 
+                                  ? 'bg-[#00fe00]/10 text-[#00fe00] border-[#00fe00]/20 animate-pulse shadow-[0_0_8px_rgba(0,254,0,0.15)]' 
+                                  : 'bg-white/5 text-white/30 border-white/5'
+                              }`}
+                            >
+                              {isAwayPossession ? '● ATACANDO' : 'DEFENDIENDO'}
+                            </span>
+                          </div>
+
+                          <div className="flex-1 flex flex-col justify-center min-h-0">
+                            {categories.length === 1 ? (
+                              <div className="w-full flex flex-col justify-center">
+                                <span className="font-bold text-[10px] sm:text-xs uppercase tracking-widest text-white/60 mb-1.5 block">
+                                  {categories[0].name}
+                                </span>
+                                <div className="grid grid-cols-4 gap-1.5">
+                                  {categories[0].buttons.map(btn => renderActionButton(btn, primaryColor))}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 h-full items-stretch content-center">
+                                {categories.map(cat => (
+                                  <div key={cat.id} className="flex flex-col bg-white/5 border border-white/5 rounded-xl p-1.5 sm:p-2 justify-between min-h-0">
+                                    <span className="font-bold text-[10px] sm:text-xs uppercase tracking-widest text-white/60 mb-1.5 truncate block" title={cat.name}>
+                                      {cat.name}
+                                    </span>
+                                    <div className="grid grid-cols-3 gap-1">
+                                      {cat.buttons.map(btn => renderActionButton(btn, primaryColor))}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>

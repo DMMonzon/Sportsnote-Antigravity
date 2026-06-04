@@ -43,6 +43,12 @@ service cloud.firestore {
       allow create: if isAuthorizedUser();
       allow read, update, delete: if isAuthorizedUser() && request.auth.uid == resource.data.ownerId;
     }
+
+    // Regla para la configuración de acciones
+    match /config/{document=**} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
     
     // Bloqueo global: Niega el acceso a cualquier otra colección desconocida
     match /{document=**} {

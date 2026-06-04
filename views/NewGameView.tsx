@@ -99,11 +99,14 @@ const NewGameView: React.FC<NewGameViewProps> = ({ role, onCreate }) => {
   const [teamAwayPrimary, setTeamAwayPrimary] = useState(template?.teamAway.primaryColor || '#FF0000');
   const [teamAwaySecondary, setTeamAwaySecondary] = useState(template?.teamAway.secondaryColor || '#FFFFFF');
 
+  const [registroMode, setRegistroMode] = useState<'visual' | 'botones'>('visual');
+
   const handleStart = () => {
     const newGameId = doc(collection(db, 'matches')).id;
     const newGame: Game = {
       id: newGameId,
       sportType: SportType.HOCKEY,
+      registroMode,
       teamHome: {
         id: 'th',
         name: teamHome,
@@ -226,6 +229,58 @@ const NewGameView: React.FC<NewGameViewProps> = ({ role, onCreate }) => {
             <div className="w-full lg:w-64">
               <TeamPreview name={teamAway} primary={teamAwayPrimary} secondary={teamAwaySecondary} />
             </div>
+          </div>
+        </GlassCard>
+
+        {/* MODALIDAD DE REGISTRO */}
+        <GlassCard className="p-6 lg:p-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-8 h-8 rounded-full bg-[#38bdf8]/20 flex items-center justify-center text-[#38bdf8] text-sm"><i className="fa-solid fa-sliders"></i></div>
+            <h3 className="font-black text-sm text-white uppercase tracking-widest font-contrail">Modalidad de Registro</h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <button
+              onClick={() => setRegistroMode('visual')}
+              className={`p-6 rounded-2xl border text-left transition-all duration-300 flex flex-col gap-3 ${
+                registroMode === 'visual'
+                  ? 'bg-[#38bdf8]/10 border-[#38bdf8] shadow-[0_0_15px_rgba(56,189,248,0.15)]'
+                  : 'bg-white/5 border-white/10 hover:border-[#38bdf8]/40'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
+                  registroMode === 'visual' ? 'border-[#38bdf8]' : 'border-white/30'
+                }`}>
+                  {registroMode === 'visual' && <div className="w-2 h-2 rounded-full bg-[#38bdf8]" />}
+                </div>
+                <span className="font-black text-xs text-white uppercase tracking-wider">Modo Visual</span>
+              </div>
+              <p className="text-[10px] text-white/60 font-bold leading-normal uppercase">
+                Registro táctico interactivo mediante el mapa de juego dinámico.
+              </p>
+            </button>
+
+            <button
+              onClick={() => setRegistroMode('botones')}
+              className={`p-6 rounded-2xl border text-left transition-all duration-300 flex flex-col gap-3 ${
+                registroMode === 'botones'
+                  ? 'bg-[#38bdf8]/10 border-[#38bdf8] shadow-[0_0_15px_rgba(56,189,248,0.15)]'
+                  : 'bg-white/5 border-white/10 hover:border-[#38bdf8]/40'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
+                  registroMode === 'botones' ? 'border-[#38bdf8]' : 'border-white/30'
+                }`}>
+                  {registroMode === 'botones' && <div className="w-2 h-2 rounded-full bg-[#38bdf8]" />}
+                </div>
+                <span className="font-black text-xs text-white uppercase tracking-wider">Modo Botones</span>
+              </div>
+              <p className="text-[10px] text-white/60 font-bold leading-normal uppercase">
+                Registro rápido y tradicional mediante botones segmentados por cuadrantes espaciales.
+              </p>
+            </button>
           </div>
         </GlassCard>
 
