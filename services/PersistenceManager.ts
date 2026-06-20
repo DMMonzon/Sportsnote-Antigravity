@@ -185,11 +185,18 @@ export const PersistenceManager = {
                 timestamp: serverTimestamp(),
                 localTeam: item.data.teamHome?.name || '',
                 visitorTeam: item.data.teamAway?.name || '',
-                stats: {
-                  scoreHome: item.data.scoreHome || 0,
-                  scoreAway: item.data.scoreAway || 0,
-                  eventsCount: item.data.events?.length || 0
-                },
+                stats: item.data.role === 'press'
+                  ? {
+                      ...item.data.stats,
+                      scoreHome: item.data.scoreHome || 0,
+                      scoreAway: item.data.scoreAway || 0,
+                      eventsCount: item.data.events?.length || 0
+                    }
+                  : {
+                      scoreHome: item.data.scoreHome || 0,
+                      scoreAway: item.data.scoreAway || 0,
+                      eventsCount: item.data.events?.length || 0
+                    },
                 isFavorite: item.data.isFavorite || false
               };
               await setDoc(gameRef, payload, { merge: true });
@@ -223,11 +230,18 @@ export const PersistenceManager = {
         timestamp: serverTimestamp(),
         localTeam: game.teamHome?.name || '',
         visitorTeam: game.teamAway?.name || '',
-        stats: {
-          scoreHome: game.scoreHome || 0,
-          scoreAway: game.scoreAway || 0,
-          eventsCount: game.events?.length || 0
-        },
+        stats: game.role === 'press'
+          ? {
+              ...game.stats,
+              scoreHome: game.scoreHome || 0,
+              scoreAway: game.scoreAway || 0,
+              eventsCount: game.events?.length || 0
+            }
+          : {
+              scoreHome: game.scoreHome || 0,
+              scoreAway: game.scoreAway || 0,
+              eventsCount: game.events?.length || 0
+            },
         isFavorite: game.isFavorite || false
       };
       await setDoc(gameRef, payload, { merge: true });

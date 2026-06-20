@@ -106,6 +106,22 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
             </span>
             <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
           </Button>
+
+          <Button
+            variant="secondary"
+            id="mock-login-press"
+            className="w-full h-12 text-xs rounded-[32px] border border-white/20 active:scale-95 transition-all flex items-center justify-center gap-2 text-white/70 hover:text-white"
+            onClick={() => onLogin({
+              id: 'mock_press_user',
+              uid: 'mock_press_user',
+              email: 'press@sportsnote.com',
+              role: UserRole.PRESS,
+              name: 'Periodista Sn'
+            })}
+          >
+            <i className="fa-solid fa-user-pen"></i>
+            <span>INGRESAR COMO PERIODISTA (MOCK)</span>
+          </Button>
         </div>
 
         <p className="mt-12 text-[10px] text-white/30 font-black tracking-[4px] uppercase italic">

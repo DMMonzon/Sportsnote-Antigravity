@@ -1,7 +1,7 @@
 
 export enum UserRole {
   COACH = 'ENTRENADOR',
-  JOURNALIST = 'PERIODISTA',
+  PRESS = 'press',
   ORGANIZER = 'ORGANIZADOR'
 }
 
@@ -62,8 +62,41 @@ export interface GameEvent {
   scoringTeam?: Possession; // Equipo que anotó (para goles)
   tacticId?: string; // ID de la táctica activa durante el evento
   prevPossession?: Possession; // Posesión antes de este evento (para deshacer)
+
+  // Campos adicionales para el Modo Periodista
+  action?: string; // e.g. 'remate_arco_gol'
+  player?: string | null; // nombre del jugador
+  period?: number;
+  team?: 'local' | 'visitante';
+  timestampStr?: string; // formato compacto 'MM:SS'
 }
 
+export interface MatchMetadata {
+  torneo: string;
+  jornada: string;
+  rama: string;
+  categoria: string;
+  estadio: string;
+  hora: string;
+  arbitros: string;
+  localPlayers: Player[];
+  visitantePlayers: Player[];
+  localStarters: string[]; // array de IDs de jugadores titulares
+  visitanteStarters: string[]; // array de IDs de jugadores titulares
+}
+
+export interface TeamStats {
+  gol: number;
+  faltas_cometidas: number;
+  perdidas: number;
+  recuperos: number;
+  [key: string]: any;
+}
+
+export interface MatchStats {
+  local: TeamStats;
+  visitante: TeamStats;
+}
 
 export interface Game {
   id: string;
@@ -84,6 +117,10 @@ export interface Game {
   userId?: string;
   authorId?: string;
   registroMode?: 'visual' | 'botones';
+
+  // Campos adicionales para el Modo Periodista
+  metadata?: MatchMetadata;
+  stats?: MatchStats;
 }
 
 

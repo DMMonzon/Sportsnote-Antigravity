@@ -29,6 +29,9 @@
                         textLow: 'rgba(255, 255, 255, 0.7)',
                         textMuted: '#6b7280',
                     },
+                    screens: {
+                        xs: '480px',
+                    },
                     fontFamily: {
                         contrail: ['Contrail One', 'cursive'],
                         lato: ['Lato', 'sans-serif'],
@@ -140,6 +143,40 @@
         .animate-stagger {
             opacity: 0;
             animation: stagger-fade-in 400ms ease-out forwards;
+        }
+
+        /* Responsive button compression styles */
+        .tactical-btn-text {
+            display: inline-block;
+            transition: all 0.2s ease-in-out;
+        }
+
+        /* Step 1: Reduce text size on narrow screens */
+        @media (max-width: 640px) {
+            .tactical-btn-text {
+                font-size: 7.5px !important;
+            }
+        }
+        
+        @media (max-width: 500px) {
+            .tactical-btn-text {
+                font-size: 7px !important;
+                letter-spacing: 0.01em !important;
+            }
+        }
+
+        /* Step 2: Hide text completely on very narrow screens (< 440px) */
+        @media (max-width: 440px) {
+            .tactical-btn-text {
+                display: none !important;
+            }
+            .tactical-btn {
+                min-height: 38px !important;
+                padding: 4px 2px !important;
+            }
+            .tactical-btn i {
+                font-size: 16px !important;
+            }
         }
     </style>
     <script type="importmap">

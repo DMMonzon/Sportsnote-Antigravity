@@ -9,7 +9,7 @@ export const COLORS = {
 
 export const ROLES = [
   { id: UserRole.COACH, title: 'Entrenador', icon: '📋' },
-  { id: UserRole.JOURNALIST, title: 'Periodista', icon: '🎙️' },
+  { id: UserRole.PRESS, title: 'Periodista', icon: '🎙️' },
   { id: UserRole.ORGANIZER, title: 'Organizador', icon: '🏅' },
 ];
 
