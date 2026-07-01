@@ -479,43 +479,22 @@ const LiveGameView: React.FC<{
   useEffect(() => {
     const fetchAcciones = async () => {
       try {
-        const docRef = doc(db, 'config', 'acciones');
+        // Apuntamos directamente a la nueva colección y al documento estructurado del deporte
+        const docRef = doc(db, 'config_deportes', 'hockey_cesped');
         const docSnap = await getDoc(docRef);
+
         if (docSnap.exists()) {
           const data = docSnap.data();
-          if (data && Array.isArray(data.lista)) {
-            setDbAcciones(data.lista);
-            return;
-          }
+          // Guardamos el objeto completo (con sus modos, categorías y botones hijos)
+          setDbAcciones(data);
+        } else {
+          console.warn("No se encontró el documento de configuración en /config_deportes/hockey_cesped");
         }
       } catch (err) {
-        console.warn('Failed to load from doc config/acciones:', err);
-      }
-
-      try {
-        const colRef = collection(db, 'config', 'acciones', 'items');
-        const snap = await getDocs(colRef);
-        if (!snap.empty) {
-          const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          setDbAcciones(list);
-          return;
-        }
-      } catch (err) {
-        console.warn('Failed to load from subcol config/acciones/items:', err);
-      }
-
-      try {
-        const colRef = collection(db, 'acciones');
-        const snap = await getDocs(colRef);
-        if (!snap.empty) {
-          const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          setDbAcciones(list);
-          return;
-        }
-      } catch (err) {
-        console.warn('Failed to load from root collection acciones:', err);
+        console.error('Error al recuperar las acciones dinámicas de Firestore:', err);
       }
     };
+
     fetchAcciones();
   }, []);
 
@@ -957,7 +936,7 @@ const LiveGameView: React.FC<{
     if (btn.type.startsWith('DISPARO_') || btn.type.startsWith('DISPARO_RIVAL_')) {
       const isRivalShot = btn.type.startsWith('DISPARO_RIVAL_');
       const targetGoal = ly < 50 ? 'TOP' : 'BOTTOM';
-      
+
       let outcome: 'GOL' | 'ATAJADO' | 'DESVIADO' = 'GOL';
       if (btn.type.includes('GOL')) outcome = 'GOL';
       else if (btn.type.includes('ATAJADO')) outcome = 'ATAJADO';
@@ -971,7 +950,7 @@ const LiveGameView: React.FC<{
       setFoulPlayer('');
       setAtajadoPossession(null);
       setAtajadoSelected(outcome === 'ATAJADO');
-      
+
       setShowPopup({ x: lx, y: ly, type: 'SHOT', targetGoal });
       return;
     }
@@ -1424,43 +1403,60 @@ const LiveGameView: React.FC<{
 
   const confirmFinishGame = async () => {
     setShowFinishConfirm(false);
-    if (id && game && auth.currentUser) {
-      try {
-        const payload = {
-          ...game,
-          authorId: auth.currentUser.uid,
-          timestamp: serverTimestamp(),
-          localTeam: game.teamHome.name,
-          visitorTeam: game.teamAway.name,
-          stats: isPressMode ? {
-            local: {
-              gol: game.scoreHome,
-              faltas_cometidas: getStat(['FALTA'], game.teamHome.id),
-              perdidas: 0,
-              recuperos: 0
-            },
-            visitante: {
-              gol: game.scoreAway,
-              faltas_cometidas: getStat(['FALTA'], game.teamAway.id),
-              perdidas: 0,
-              recuperos: 0
-            }
-          } : {
-            scoreHome: game.scoreHome,
-            scoreAway: game.scoreAway,
-            eventsCount: game.events.length
+    
+    if (!id || !game || !auth.currentUser) {
+      console.error("❌ No se puede finalizar el partido: Faltan datos esenciales (ID, Game o Auth).");
+      return;
+    }
+
+    try {
+      setIsLoading(true); // Feedback visual de guardado
+
+      const payload = {
+        ...game,
+        authorId: auth.currentUser.uid,
+        timestamp: serverTimestamp(),
+        localTeam: game.teamHome.name,
+        visitorTeam: game.teamAway.name,
+        stats: isPressMode ? {
+          local: {
+            gol: game.scoreHome,
+            faltas_cometidas: getStat(['FALTA'], game.teamHome.id),
+            perdidas: 0,
+            recuperos: 0
           },
-          isFavorite: game.isFavorite || false
-        };
-        await setDoc(doc(db, 'matches', id), payload, { merge: true });
-        console.log('Partido guardado en Firebase exitosamente');
-        
-        StorageService.clearActiveGame();
-        onExitGame(game);
-        navigate(`/summary/${game.id}`);
-      } catch (error) {
-        console.error('Error al guardar el partido en Firebase:', error);
-      }
+          visitante: {
+            gol: game.scoreAway,
+            faltas_cometidas: getStat(['FALTA'], game.teamAway.id),
+            perdidas: 0,
+            recuperos: 0
+          }
+        } : {
+          scoreHome: game.scoreHome,
+          scoreAway: game.scoreAway,
+          eventsCount: game.events.length
+        },
+        isFavorite: game.isFavorite || false
+      };
+
+      // 1. Esperamos a que Firebase confirme el guardado exitoso
+      await setDoc(doc(db, 'matches', id), payload, { merge: true });
+      console.log('✅ Partido guardado en Firebase exitosamente');
+      
+      // 2. Limpiamos almacenamiento local de sesión activa
+      StorageService.clearActiveGame();
+      onExitGame(game);
+      
+      // 3. Forzamos la redirección usando el id limpio de useParams
+      console.log(`🚀 Redireccionando a /summary/${id}`);
+      navigate(`/summary/${id}`, { replace: true });
+
+    } catch (error) {
+      console.error('❌ Error crítico al guardar el partido en Firebase:', error);
+      setSnackbar({ message: "Error al guardar en la nube. Inténtalo de nuevo.", visible: true });
+      setTimeout(() => setSnackbar(prev => ({ ...prev, visible: false })), 3500);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -1499,7 +1495,15 @@ const LiveGameView: React.FC<{
       type = 'DISPARO_GOL';
       scoringTeam = isLocal ? Possession.HOME : Possession.AWAY;
       nextPoss = opponentPossession; // Possession switches after goal
-      details += ` | GOL!`;
+      // Formato enriquecido para gol en modo periodista
+      const teamLabel = team; // 'local' o 'visitante'
+      const playerStr = playerObj ? ` #${playerObj.number}` : '';
+      let originStr = '';
+      if (lastSecondaryAction) {
+        if (lastSecondaryAction.includes('CÓRNER CORTO') || lastSecondaryAction.includes('CORTO')) originStr = 'De córner corto';
+        else if (lastSecondaryAction.includes('PENAL')) originStr = 'De penal';
+      }
+      details = `Disparo al arco / GOL / jugador ${teamLabel}${playerStr}${originStr ? ` / ${originStr}` : ''}`;
     } else if (outcome === 'desviado') {
       type = 'DISPARO_DESVIADO';
       nextPoss = opponentPossession; // Possession switches after miss
@@ -1736,51 +1740,51 @@ const LiveGameView: React.FC<{
       <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${isModal ? 'pb-6' : ''}`}>
         <div className="flex flex-col gap-3">
           <h4 className="contrail-font text-[10px] font-black text-white/50 uppercase tracking-widest border-b border-white/5 pb-1">Ataque y Progresión</h4>
-          <PressStatCard 
-            title="Disparos" 
-            homeValue={homeShots} 
-            awayValue={awayShots} 
-            homeColor={homeColor} 
-            awayColor={awayColor} 
+          <PressStatCard
+            title="Disparos"
+            homeValue={homeShots}
+            awayValue={awayShots}
+            homeColor={homeColor}
+            awayColor={awayColor}
             icon={<i className="fa-solid fa-crosshairs text-white text-[10px]"></i>}
           />
-          <PressStatCard 
-            title="Córner Corto" 
-            homeValue={homeCC} 
-            awayValue={awayCC} 
-            homeColor={homeColor} 
-            awayColor={awayColor} 
+          <PressStatCard
+            title="Córner Corto"
+            homeValue={homeCC}
+            awayValue={awayCC}
+            homeColor={homeColor}
+            awayColor={awayColor}
             icon={<i className="fa-solid fa-flag text-white text-[10px]"></i>}
           />
-          <PressStatCard 
-            title="Penales" 
-            homeValue={homePenal} 
-            awayValue={awayPenal} 
-            homeColor={homeColor} 
-            awayColor={awayColor} 
+          <PressStatCard
+            title="Penales"
+            homeValue={homePenal}
+            awayValue={awayPenal}
+            homeColor={homeColor}
+            awayColor={awayColor}
             icon={<i className="fa-solid fa-bullseye text-white text-[10px]"></i>}
           />
-          <PressStatCard 
-            title="Ingreso Área" 
-            homeValue={homeArea} 
-            awayValue={awayArea} 
-            homeColor={homeColor} 
-            awayColor={awayColor} 
+          <PressStatCard
+            title="Ingreso Área"
+            homeValue={homeArea}
+            awayValue={awayArea}
+            homeColor={homeColor}
+            awayColor={awayColor}
             icon={<i className="fa-solid fa-arrow-right-to-bracket text-white text-[10px]"></i>}
           />
-          <PressStatCard 
-            title="Ingreso 23Y" 
-            homeValue={home23} 
-            awayValue={away23} 
-            homeColor={homeColor} 
-            awayColor={awayColor} 
+          <PressStatCard
+            title="Ingreso 23Y"
+            homeValue={home23}
+            awayValue={away23}
+            homeColor={homeColor}
+            awayColor={awayColor}
             icon={<i className="fa-solid fa-bezier-curve text-white text-[10px]"></i>}
           />
         </div>
 
         <div className="flex flex-col gap-3">
           <h4 className="contrail-font text-[10px] font-black text-white/50 uppercase tracking-widest border-b border-white/5 pb-1">Control e Infracciones</h4>
-          
+
           <div className="bg-[#1e293b]/35 border border-white/10 p-3.5 rounded-2xl flex flex-col gap-1.5 shadow-sm">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
@@ -1797,36 +1801,36 @@ const LiveGameView: React.FC<{
             </div>
           </div>
 
-          <PressStatCard 
-            title="Faltas" 
-            homeValue={homeFouls} 
-            awayValue={awayFouls} 
-            homeColor={homeColor} 
-            awayColor={awayColor} 
+          <PressStatCard
+            title="Faltas"
+            homeValue={homeFouls}
+            awayValue={awayFouls}
+            homeColor={homeColor}
+            awayColor={awayColor}
             icon={<i className="fa-solid fa-triangle-exclamation text-white text-[10px]"></i>}
           />
-          <PressStatCard 
-            title="Tarjeta Verde" 
-            homeValue={homeVerde} 
-            awayValue={awayVerde} 
-            homeColor={homeColor} 
-            awayColor={awayColor} 
+          <PressStatCard
+            title="Tarjeta Verde"
+            homeValue={homeVerde}
+            awayValue={awayVerde}
+            homeColor={homeColor}
+            awayColor={awayColor}
             icon={<span className="w-2 h-3 bg-green-500 rounded-[2px] block"></span>}
           />
-          <PressStatCard 
-            title="Tarjeta Amarilla" 
-            homeValue={homeAmarilla} 
-            awayValue={awayAmarilla} 
-            homeColor={homeColor} 
-            awayColor={awayColor} 
+          <PressStatCard
+            title="Tarjeta Amarilla"
+            homeValue={homeAmarilla}
+            awayValue={awayAmarilla}
+            homeColor={homeColor}
+            awayColor={awayColor}
             icon={<span className="w-2 h-3 bg-yellow-500 rounded-[2px] block"></span>}
           />
-          <PressStatCard 
-            title="Tarjeta Roja" 
-            homeValue={homeRoja} 
-            awayValue={awayRoja} 
-            homeColor={homeColor} 
-            awayColor={awayColor} 
+          <PressStatCard
+            title="Tarjeta Roja"
+            homeValue={homeRoja}
+            awayValue={awayRoja}
+            homeColor={homeColor}
+            awayColor={awayColor}
             icon={<span className="w-2 h-3 bg-red-500 rounded-[2px] block"></span>}
           />
         </div>
@@ -1920,8 +1924,8 @@ const LiveGameView: React.FC<{
     const isLocal = team === 'local';
     const teamName = isLocal ? game.teamHome.name : game.teamAway.name;
     const players = isLocal ? game.teamHome.players : game.teamAway.players;
-    const currentStarters = isLocal 
-      ? (game.metadata?.localStarters || []) 
+    const currentStarters = isLocal
+      ? (game.metadata?.localStarters || [])
       : (game.metadata?.visitanteStarters || []);
 
     const toggleStarter = (playerId: string) => {
@@ -1965,7 +1969,7 @@ const LiveGameView: React.FC<{
                 <h3 className="contrail-font text-lg font-black text-white uppercase tracking-widest">Titulares: {teamName}</h3>
                 <p className="text-[10px] text-white/50 uppercase font-bold mt-1">Selecciona los 11 jugadores iniciales</p>
               </div>
-              <button 
+              <button
                 onClick={() => setShowStartersModal(null)}
                 className="text-white/60 hover:text-white text-xl font-bold bg-white/5 hover:bg-white/10 w-10 h-10 rounded-full flex items-center justify-center transition-colors"
               >
@@ -1980,11 +1984,10 @@ const LiveGameView: React.FC<{
                   <button
                     key={p.id}
                     onClick={() => toggleStarter(p.id)}
-                    className={`p-3 rounded-xl border flex items-center justify-between transition-all text-left ${
-                      isSelected 
-                        ? 'bg-[#00fe00]/10 border-[#00fe00]/40 text-[#00fe00] shadow-[0_0_10px_rgba(0,254,0,0.1)]' 
-                        : 'bg-white/5 border-white/5 text-white hover:border-white/20'
-                    }`}
+                    className={`p-3 rounded-xl border flex items-center justify-between transition-all text-left ${isSelected
+                      ? 'bg-[#00fe00]/10 border-[#00fe00]/40 text-[#00fe00] shadow-[0_0_10px_rgba(0,254,0,0.1)]'
+                      : 'bg-white/5 border-white/5 text-white hover:border-white/20'
+                      }`}
                   >
                     <div className="flex items-center gap-2.5 truncate">
                       <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 ${isSelected ? 'bg-[#00fe00] text-black' : 'bg-white/10 text-white/60'}`}>
@@ -2028,7 +2031,7 @@ const LiveGameView: React.FC<{
       <Portal>
         <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-[9999] overflow-y-auto">
           <div className="w-full max-w-xl bg-[#131041]/90 border border-white/10 rounded-[32px] p-6 shadow-2xl flex flex-col max-h-[90vh]">
-            
+
             <div className="flex justify-between items-center mb-5 border-b border-white/10 pb-3 shrink-0">
               <div>
                 <span className="text-[9px] font-black text-[#ef4444] bg-[#ef4444]/10 border border-[#ef4444]/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider mb-1 block w-max animate-pulse">
@@ -2038,7 +2041,7 @@ const LiveGameView: React.FC<{
                   Consecuencias de la Falta
                 </h3>
               </div>
-              <button 
+              <button
                 onClick={handleCancelFoul}
                 className="text-white/60 hover:text-white text-xl font-bold bg-white/5 hover:bg-white/10 w-10 h-10 rounded-full flex items-center justify-center transition-colors"
               >
@@ -2048,11 +2051,50 @@ const LiveGameView: React.FC<{
 
             <div className="flex-1 overflow-y-auto no-scrollbar space-y-5 py-2">
               <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-black text-white/50 uppercase tracking-widest">
+                  Sanción Disciplinaria (Tarjeta)
+                </label>
+                <div className="grid grid-cols-3 gap-3">
+                  <button
+                    onClick={() => { const nc = selectedFoulCard === 'verde' ? null : 'verde'; setSelectedFoulCard(nc); if (!nc) setSelectedFoulPlayer(null); }}
+                    className={`py-3 rounded-xl border flex items-center justify-center gap-2.5 transition-all text-xs font-bold ${selectedFoulCard === 'verde'
+                      ? 'bg-green-500/20 border-green-500 text-green-400 font-black shadow-md'
+                      : 'bg-white/5 border-white/5 text-white/70 hover:border-white/10 hover:text-white'
+                      }`}
+                  >
+                    <span className="w-2.5 h-4 bg-green-500 rounded-[2px] block"></span>
+                    <span>Verde</span>
+                  </button>
+                  <button
+                    onClick={() => { const nc = selectedFoulCard === 'amarilla' ? null : 'amarilla'; setSelectedFoulCard(nc); if (!nc) setSelectedFoulPlayer(null); }}
+                    className={`py-3 rounded-xl border flex items-center justify-center gap-2.5 transition-all text-xs font-bold ${selectedFoulCard === 'amarilla'
+                      ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400 font-black shadow-md'
+                      : 'bg-white/5 border-white/5 text-white/70 hover:border-white/10 hover:text-white'
+                      }`}
+                  >
+                    <span className="w-2.5 h-4 bg-yellow-500 rounded-[2px] block"></span>
+                    <span>Amarilla</span>
+                  </button>
+                  <button
+                    onClick={() => { const nc = selectedFoulCard === 'roja' ? null : 'roja'; setSelectedFoulCard(nc); if (!nc) setSelectedFoulPlayer(null); }}
+                    className={`py-3 rounded-xl border flex items-center justify-center gap-2.5 transition-all text-xs font-bold ${selectedFoulCard === 'roja'
+                      ? 'bg-red-500/20 border-red-500 text-red-400 font-black shadow-md'
+                      : 'bg-white/5 border-white/5 text-white/70 hover:border-white/10 hover:text-white'
+                      }`}
+                  >
+                    <span className="w-2.5 h-4 bg-red-500 rounded-[2px] block"></span>
+                    <span>Roja</span>
+                  </button>
+                </div>
+              </div>
+
+              {selectedFoulCard && (
+              <div className="flex flex-col gap-2 animate-in slide-in-from-top duration-300">
                 <label className="text-[10px] font-black text-white/50 uppercase tracking-widest flex justify-between">
                   <span>Asignar Jugador Infractor ({committingTeamName})</span>
                   {selectedFoulPlayer && (
-                    <button 
-                      onClick={() => setSelectedFoulPlayer(null)} 
+                    <button
+                      onClick={() => setSelectedFoulPlayer(null)}
                       className="text-primary hover:underline font-bold"
                     >
                       Limpiar
@@ -2066,11 +2108,10 @@ const LiveGameView: React.FC<{
                       <button
                         key={p.id}
                         onClick={() => setSelectedFoulPlayer(isSelected ? null : p.id)}
-                        className={`p-2.5 rounded-xl border flex items-center gap-2 transition-all text-left truncate ${
-                          isSelected 
-                            ? 'bg-primary/20 border-primary text-white shadow-md' 
-                            : 'bg-white/5 border-white/5 text-white/70 hover:border-white/10 hover:text-white'
-                        }`}
+                        className={`p-2.5 rounded-xl border flex items-center gap-2 transition-all text-left truncate ${isSelected
+                          ? 'bg-primary/20 border-primary text-white shadow-md'
+                          : 'bg-white/5 border-white/5 text-white/70 hover:border-white/10 hover:text-white'
+                          }`}
                       >
                         <span className={`w-5 h-5 rounded-lg flex items-center justify-center text-[9px] font-black shrink-0 ${isSelected ? 'bg-primary text-white' : 'bg-white/10 text-white/50'}`}>
                           {p.number}
@@ -2081,47 +2122,7 @@ const LiveGameView: React.FC<{
                   })}
                 </div>
               </div>
-
-              <div className="flex flex-col gap-2">
-                <label className="text-[10px] font-black text-white/50 uppercase tracking-widest">
-                  Sanción Disciplinaria (Tarjeta)
-                </label>
-                <div className="grid grid-cols-3 gap-3">
-                  <button
-                    onClick={() => setSelectedFoulCard(selectedFoulCard === 'verde' ? null : 'verde')}
-                    className={`py-3 rounded-xl border flex items-center justify-center gap-2.5 transition-all text-xs font-bold ${
-                      selectedFoulCard === 'verde'
-                        ? 'bg-green-500/20 border-green-500 text-green-400 font-black shadow-md'
-                        : 'bg-white/5 border-white/5 text-white/70 hover:border-white/10 hover:text-white'
-                    }`}
-                  >
-                    <span className="w-2.5 h-4 bg-green-500 rounded-[2px] block"></span>
-                    <span>Verde</span>
-                  </button>
-                  <button
-                    onClick={() => setSelectedFoulCard(selectedFoulCard === 'amarilla' ? null : 'amarilla')}
-                    className={`py-3 rounded-xl border flex items-center justify-center gap-2.5 transition-all text-xs font-bold ${
-                      selectedFoulCard === 'amarilla'
-                        ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400 font-black shadow-md'
-                        : 'bg-white/5 border-white/5 text-white/70 hover:border-white/10 hover:text-white'
-                    }`}
-                  >
-                    <span className="w-2.5 h-4 bg-yellow-500 rounded-[2px] block"></span>
-                    <span>Amarilla</span>
-                  </button>
-                  <button
-                    onClick={() => setSelectedFoulCard(selectedFoulCard === 'roja' ? null : 'roja')}
-                    className={`py-3 rounded-xl border flex items-center justify-center gap-2.5 transition-all text-xs font-bold ${
-                      selectedFoulCard === 'roja'
-                        ? 'bg-red-500/20 border-red-500 text-red-400 font-black shadow-md'
-                        : 'bg-white/5 border-white/5 text-white/70 hover:border-white/10 hover:text-white'
-                    }`}
-                  >
-                    <span className="w-2.5 h-4 bg-red-500 rounded-[2px] block"></span>
-                    <span>Roja</span>
-                  </button>
-                </div>
-              </div>
+              )}
 
               <div className="flex flex-col gap-2">
                 <label className="text-[10px] font-black text-white/50 uppercase tracking-widest">
@@ -2130,22 +2131,20 @@ const LiveGameView: React.FC<{
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => setSelectedFoulFija(selectedFoulFija === 'corner_corto' ? null : 'corner_corto')}
-                    className={`py-3 rounded-xl border flex items-center justify-center gap-2.5 transition-all text-xs font-bold ${
-                      selectedFoulFija === 'corner_corto'
-                        ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400 font-black shadow-md'
-                        : 'bg-white/5 border-white/5 text-white/70 hover:border-white/10 hover:text-white'
-                    }`}
+                    className={`py-3 rounded-xl border flex items-center justify-center gap-2.5 transition-all text-xs font-bold ${selectedFoulFija === 'corner_corto'
+                      ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400 font-black shadow-md'
+                      : 'bg-white/5 border-white/5 text-white/70 hover:border-white/10 hover:text-white'
+                      }`}
                   >
                     <i className="fa-solid fa-flag text-xs"></i>
                     <span>Córner Corto</span>
                   </button>
                   <button
                     onClick={() => setSelectedFoulFija(selectedFoulFija === 'penal' ? null : 'penal')}
-                    className={`py-3 rounded-xl border flex items-center justify-center gap-2.5 transition-all text-xs font-bold ${
-                      selectedFoulFija === 'penal'
-                        ? 'bg-purple-500/20 border-purple-500 text-purple-400 font-black shadow-md'
-                        : 'bg-white/5 border-white/5 text-white/70 hover:border-white/10 hover:text-white'
-                    }`}
+                    className={`py-3 rounded-xl border flex items-center justify-center gap-2.5 transition-all text-xs font-bold ${selectedFoulFija === 'penal'
+                      ? 'bg-purple-500/20 border-purple-500 text-purple-400 font-black shadow-md'
+                      : 'bg-white/5 border-white/5 text-white/70 hover:border-white/10 hover:text-white'
+                      }`}
                   >
                     <i className="fa-solid fa-bullseye text-xs"></i>
                     <span>Penal</span>
@@ -2235,7 +2234,7 @@ const LiveGameView: React.FC<{
                 </h3>
                 <p className="text-[10px] text-white/50 uppercase font-bold mt-1">Selecciona el jugador que remató ({teamName})</p>
               </div>
-              <button 
+              <button
                 onClick={() => setActiveActionForAssign(null)}
                 className="text-white/60 hover:text-white text-xl font-bold bg-white/5 hover:bg-white/10 w-10 h-10 rounded-full flex items-center justify-center transition-colors"
               >
@@ -2284,8 +2283,81 @@ const LiveGameView: React.FC<{
     );
   };
 
+  // ==========================================
+  // JUGADORES/TITULARES Y EVENTOS DE PERIODISTA
+  // ==========================================
+
+  /**
+   * Controlador único y genérico para procesar las acciones del JSON dinámico
+   */
+  const handlePressDynamicAction = (boton: any, team: 'local' | 'visitante') => {
+    if (!game) return;
+    if (!isRunning) {
+      setSnackbar({ message: "Inicia el cronómetro para registrar acciones", visible: true });
+      setTimeout(() => setSnackbar(prev => ({ ...prev, visible: false })), 2500);
+      return;
+    }
+
+    const isLocal = team === 'local';
+    const teamId = isLocal ? game.teamHome.id : game.teamAway.id;
+    const teamPossession = isLocal ? Possession.HOME : Possession.AWAY;
+
+    const lx = 50;
+    const ly = 25;
+
+    switch (boton.flujo_consecuencia) {
+      case "abrir_modal_jugador_ataque":
+        setActiveActionForAssign({
+          team,
+          cardId: 'disparo_arco',
+          subActionId: boton.id.replace('remate_', '') as any
+        });
+        break;
+
+      case "registro_directo_sin_modal":
+        registerEvent(
+          boton.kpi_principal, // Registra el string 'Ingreso en área'
+          teamPossession,
+          lx,
+          ly,
+          `${boton.nombre}: Registro limpio`,
+          teamId,
+          undefined,
+          undefined,
+          null,
+          boton.kpi_principal,
+          team
+        );
+        break;
+
+      case "abrir_modal_infraccion_con_cambio_posesion":
+        setActiveFoul({
+          team,
+          type: 'committed',
+          subAction: boton.nombre
+        });
+        break;
+
+      case "abrir_modal_infraccion_mantiene_posesion":
+        setActiveFoul({
+          team,
+          type: 'received',
+          subAction: boton.nombre
+        });
+        break;
+
+      default:
+        console.warn(`Flujo de consecuencia no reconocido: ${boton.flujo_consecuencia}`);
+        break;
+    }
+  };
+
+  /**
+   * Renderizador Dinámico de Bloques de Equipo Basado en el JSON de Firestore
+   */
   const renderPressTeamBlock = (team: 'local' | 'visitante') => {
-    if (!game) return null;
+    if (!game || !dbAcciones || Object.keys(dbAcciones).length === 0) return null;
+
     const isLocal = team === 'local';
     const teamObj = isLocal ? game.teamHome : game.teamAway;
     const teamColor = teamObj.primaryColor || (isLocal ? '#6d5dfc' : '#ef4444');
@@ -2293,8 +2365,8 @@ const LiveGameView: React.FC<{
 
     if (!isCurrentPossession) {
       return (
-        <div 
-          className="flex-none h-14 md:h-16 flex items-center p-4 rounded-3xl border border-white/5 bg-white/5 hover:bg-white/10 transition-all shadow-sm cursor-pointer animate-in fade-in duration-300 opacity-55 hover:opacity-85"
+        <div
+          className="flex-none h-14 md:h-16 flex items-center p-4 rounded-3xl border border-white/5 bg-white/5 hover:bg-white/10 transition-all shadow-sm cursor-pointer opacity-55 hover:opacity-85"
           onClick={() => {
             setPossession(isLocal ? Possession.HOME : Possession.AWAY);
             if (navigator.vibrate) navigator.vibrate(50);
@@ -2313,16 +2385,19 @@ const LiveGameView: React.FC<{
               className="py-2 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#00fe00] text-white font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-2"
             >
               <i className="fa-solid fa-shield-halved text-[#00fe00] text-[10px] animate-pulse"></i>
-              <span>Quite / Recuperar Posesión</span>
+              <span>Recuperar Posesión</span>
             </button>
           </div>
         </div>
       );
     }
 
+    // Extraemos las categorías de acciones cargadas desde el documento raíz
+    const accionesPeriodista = (dbAcciones as any).modos?.periodista?.bloque_acciones || [];
+
     return (
-      <div 
-        className="flex-1 flex flex-col p-3 sm:p-4 rounded-3xl border border-white/10 shadow-2xl gap-2 animate-in fade-in duration-300 min-h-0 overflow-hidden"
+      <div
+        className="flex-1 flex flex-col p-3 sm:p-4 rounded-3xl border border-white/10 shadow-2xl gap-3 min-h-0 overflow-hidden"
         style={{
           backgroundColor: `${teamColor}08`,
           borderColor: `${teamColor}30`,
@@ -2348,138 +2423,64 @@ const LiveGameView: React.FC<{
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col md:flex-row gap-2 items-stretch min-h-0 w-full">
-          
-          <div className="flex-1 flex flex-col gap-1.5 w-full min-h-0">
-            
-            <div className="flex-1 border border-white/5 rounded-xl bg-black/20 p-2 flex flex-col gap-1 min-h-0">
-              <span className="font-bold text-[9px] uppercase tracking-widest text-white/55 shrink-0">
-                Disparo al Arco
-              </span>
-              <div className="flex-1 grid grid-cols-3 gap-1.5 w-full">
-                <button
-                  onClick={() => setActiveActionForAssign({ team, cardId: 'disparo_arco', subActionId: 'gol' })}
-                  className="rounded-lg bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 text-green-400 font-black text-[10px] uppercase tracking-wider transition-colors flex items-center justify-center gap-1 min-h-[36px]"
-                  title="Gol"
-                >
-                  <i className="fa-solid fa-futbol text-[10px]"></i>
-                  <span className="hidden sm:inline">GOL</span>
-                </button>
-                <button
-                  onClick={() => setActiveActionForAssign({ team, cardId: 'disparo_arco', subActionId: 'atajado' })}
-                  className="rounded-lg bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 font-black text-[10px] uppercase tracking-wider transition-colors flex items-center justify-center gap-1 min-h-[36px]"
-                  title="Atajado"
-                >
-                  <i className="fa-solid fa-hand text-[10px]"></i>
-                  <span className="hidden sm:inline">Atajado</span>
-                </button>
-                <button
-                  onClick={() => setActiveActionForAssign({ team, cardId: 'disparo_arco', subActionId: 'desviado' })}
-                  className="rounded-lg bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 text-orange-400 font-black text-[10px] uppercase tracking-wider transition-colors flex items-center justify-center gap-1 min-h-[36px]"
-                  title="Desviado"
-                >
-                  <i className="fa-solid fa-xmark text-[10px]"></i>
-                  <span className="hidden sm:inline">Desviado</span>
-                </button>
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch min-h-0 w-full">
+          {accionesPeriodista.map((bloque: any) => (
+            <div key={bloque.categoria} className="flex-1 flex flex-col gap-2 min-h-0">
+              <h4 className="font-bold text-[9px] uppercase tracking-widest text-white/40 border-b border-white/5 pb-0.5">
+                {bloque.categoria}
+              </h4>
+
+              <div className="flex-1 flex flex-col gap-2 justify-center">
+                {bloque.cards.map((card: any) => {
+                  const isGolCard = card.id === 'disparo_al_arco';
+                  const isFaltaCometida = card.id === 'faltas_cometidas';
+
+                  return (
+                    <div
+                      key={card.id}
+                      className="flex-1 border border-white/5 rounded-xl bg-black/20 p-2 flex flex-col gap-1 min-h-0 justify-center"
+                    >
+                      <span className="font-bold text-[9px] uppercase tracking-widest text-white/55 shrink-0 flex justify-between">
+                        <span>{card.titulo}</span>
+                        {card.subtitulo && (
+                          <span className={`text-[7px] font-black uppercase ${isFaltaCometida ? 'text-[#ef4444]' : 'text-[#00fe00]'}`}>
+                            {card.subtitulo}
+                          </span>
+                        )}
+                      </span>
+
+                      <div className="flex-1 flex gap-2 w-full items-center">
+                        {card.botones.map((btn: any) => {
+                          let btnStyleClass = "bg-white/5 hover:bg-white/10 border-white/10 text-white";
+                          if (isGolCard) {
+                            if (btn.id.includes('gol')) btnStyleClass = "bg-green-500/10 hover:bg-green-500/20 border-green-500/30 text-green-400";
+                            else if (btn.id.includes('atajado')) btnStyleClass = "bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/30 text-blue-400";
+                            else btnStyleClass = "bg-orange-500/10 hover:bg-orange-500/20 border-orange-500/30 text-orange-400";
+                          } else if (isFaltaCometida) {
+                            btnStyleClass = "bg-[#ef4444]/5 hover:bg-[#ef4444]/15 border-[#ef4444]/10 text-white/90";
+                          } else if (card.id === 'faltas_recibidas') {
+                            btnStyleClass = "bg-[#00fe00]/5 hover:bg-[#00fe00]/15 border-[#00fe00]/10 text-white/90";
+                          }
+
+                          return (
+                            <button
+                              key={btn.id}
+                              onClick={() => handlePressDynamicAction(btn, team)}
+                              className={`flex-1 rounded-lg border font-black text-[10px] uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 min-h-[40px] px-2 ${btnStyleClass}`}
+                              title={btn.nombre}
+                            >
+                              <span className="truncate">{btn.nombre}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-
-            <div className="flex-1 border border-white/5 rounded-xl bg-black/20 p-2 flex flex-col gap-1 min-h-0">
-              <span className="font-bold text-[9px] uppercase tracking-widest text-white/55 shrink-0">
-                Ingreso Área
-              </span>
-              <div className="flex-1 grid grid-cols-2 gap-1.5 w-full">
-                <button
-                  onClick={() => handleEntry(team, 'area', 'Jugada')}
-                  className="rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-[10px] uppercase tracking-wider transition-colors flex items-center justify-center gap-1 min-h-[36px]"
-                  title="Jugada"
-                >
-                  <i className="fa-solid fa-people-group text-[9px] text-white/55"></i>
-                  <span className="hidden sm:inline">Jugada</span>
-                </button>
-                <button
-                  onClick={() => handleEntry(team, 'area', 'Pase')}
-                  className="rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-[10px] uppercase tracking-wider transition-colors flex items-center justify-center gap-1 min-h-[36px]"
-                  title="Pase"
-                >
-                  <i className="fa-solid fa-magnifying-glass-arrow-right text-[9px] text-white/55"></i>
-                  <span className="hidden sm:inline">Pase</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 border border-white/5 rounded-xl bg-black/20 p-2 flex flex-col gap-1 min-h-0">
-              <span className="font-bold text-[9px] uppercase tracking-widest text-white/55 shrink-0">
-                Ingreso 23Y
-              </span>
-              <div className="flex-1 grid grid-cols-2 gap-1.5 w-full">
-                <button
-                  onClick={() => handleEntry(team, '23y', 'Jugada')}
-                  className="rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-[10px] uppercase tracking-wider transition-colors flex items-center justify-center gap-1 min-h-[36px]"
-                  title="Jugada"
-                >
-                  <i className="fa-solid fa-people-group text-[9px] text-white/55"></i>
-                  <span className="hidden sm:inline">Jugada</span>
-                </button>
-                <button
-                  onClick={() => handleEntry(team, '23y', 'Pase')}
-                  className="rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-[10px] uppercase tracking-wider transition-colors flex items-center justify-center gap-1 min-h-[36px]"
-                  title="Pase"
-                >
-                  <i className="fa-solid fa-magnifying-glass-arrow-right text-[9px] text-white/55"></i>
-                  <span className="hidden sm:inline">Pase</span>
-                </button>
-              </div>
-            </div>
-
-          </div>
-
-          <div className="flex-1 flex flex-col gap-1.5 w-full min-h-0">
-            
-            <div className="flex-1 border border-white/5 rounded-xl bg-black/20 p-2 flex flex-col gap-1 min-h-0">
-              <span className="font-bold text-[9px] uppercase tracking-widest text-white/55 flex justify-between shrink-0">
-                <span>Faltas Cometidas</span>
-                <span className="text-[7px] text-[#ef4444] font-black uppercase">Cambia posesión</span>
-              </span>
-              <div className="flex-1 grid grid-cols-3 grid-rows-2 gap-1.5 w-full">
-                {[{name: 'Pie', icon: 'fa-shoe-prints'}, {name: 'Reclamo', icon: 'fa-bullhorn'}, {name: 'Física', icon: 'fa-hand-fist'}, {name: 'Elevada', icon: 'fa-arrow-up'}, {name: 'Obstrucción', icon: 'fa-ban'}, {name: '5 Yardas', icon: 'fa-ruler-horizontal'}].map(foul => (
-                  <button
-                    key={foul.name}
-                    onClick={() => setActiveFoul({ team, type: 'committed', subAction: foul.name })}
-                    className="rounded-lg bg-[#ef4444]/5 hover:bg-[#ef4444]/15 border border-[#ef4444]/10 text-white/90 hover:text-white font-bold text-[10px] uppercase tracking-wider transition-colors flex items-center justify-center gap-1 min-h-[36px]"
-                    title={foul.name}
-                  >
-                    <i className={`fa-solid ${foul.icon} text-[9px]`}></i>
-                    <span className="hidden sm:inline">{foul.name}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex-1 border border-white/5 rounded-xl bg-black/20 p-2 flex flex-col gap-1 min-h-0">
-              <span className="font-bold text-[9px] uppercase tracking-widest text-white/55 flex justify-between shrink-0">
-                <span>Faltas Recibidas</span>
-                <span className="text-[7px] text-[#00fe00] font-black uppercase">Mantiene posesión</span>
-              </span>
-              <div className="flex-1 grid grid-cols-3 grid-rows-2 gap-1.5 w-full">
-                {[{name: 'Pie', icon: 'fa-shoe-prints'}, {name: 'Reclamo', icon: 'fa-bullhorn'}, {name: 'Física', icon: 'fa-hand-fist'}, {name: 'Elevada', icon: 'fa-arrow-up'}, {name: 'Obstrucción', icon: 'fa-ban'}, {name: '5 Yardas', icon: 'fa-ruler-horizontal'}].map(foul => (
-                  <button
-                    key={foul.name}
-                    onClick={() => setActiveFoul({ team, type: 'received', subAction: foul.name })}
-                    className="rounded-lg bg-[#00fe00]/5 hover:bg-[#00fe00]/15 border border-[#00fe00]/10 text-white/90 hover:text-white font-bold text-[10px] uppercase tracking-wider transition-colors flex items-center justify-center gap-1 min-h-[36px]"
-                    title={foul.name}
-                  >
-                    <i className={`fa-solid ${foul.icon} text-[9px]`}></i>
-                    <span className="hidden sm:inline">{foul.name}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-          </div>
-
+          ))}
         </div>
-
       </div>
     );
   };
@@ -2488,12 +2489,10 @@ const LiveGameView: React.FC<{
     return (
       <div className="w-full h-full p-2 sm:p-4 flex flex-col items-stretch min-h-0 min-w-0">
         <div className="w-full h-full bg-[#131041]/40 backdrop-blur-[16px] border border-white/10 rounded-[32px] p-3 sm:p-4 flex flex-col gap-2 shadow-2xl relative min-h-0 min-w-0 overflow-hidden">
-
           <div className="flex-grow flex flex-col gap-2 items-stretch min-h-0 w-full">
             {renderPressTeamBlock('local')}
             {renderPressTeamBlock('visitante')}
           </div>
-
         </div>
       </div>
     );
@@ -2506,7 +2505,7 @@ const LiveGameView: React.FC<{
           <div className="text-red-400 text-center px-6">
             <div className="text-4xl mb-4 text-white"><i className="fa-solid fa-triangle-exclamation"></i></div>
             <p className="font-bold text-sm uppercase">{loadError}</p>
-            <button 
+            <button
               onClick={() => navigate('/dashboard')}
               className="mt-6 px-6 py-3 bg-[#1e293b]/45 backdrop-blur-md border border-white/10/10 rounded-full font-black text-xs uppercase hover:bg-[#1e293b]/45 backdrop-blur-md border border-white/10/20 transition-colors"
             >
@@ -3025,7 +3024,7 @@ const LiveGameView: React.FC<{
               <>
                 <span className="text-4xl mb-4">⚠️</span>
                 <p className="mb-6 font-bold text-white text-center">{loadError}</p>
-                <button 
+                <button
                   onClick={() => {
                     StorageService.clearActiveGame();
                     window.location.reload();
@@ -3045,1105 +3044,1102 @@ const LiveGameView: React.FC<{
         ) : (
           <>
             {!isLandscape && (
-          <aside className="hidden lg:flex w-[320px] flex-col p-5 bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border-r border-white/10 overflow-y-auto no-scrollbar">
-            {isPressMode ? (
-              renderPressSidebarLeft()
-            ) : (
-            <div className="flex flex-col gap-6 pb-10">
-              <h3 className="contrail-font text-[16px] font-black text-white uppercase tracking-wider border-b border-white/10 pb-2 italic">Análisis en Tiempo Real</h3>
+              <aside className="hidden lg:flex w-[320px] flex-col p-5 bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border-r border-white/10 overflow-y-auto no-scrollbar">
+                {isPressMode ? (
+                  renderPressSidebarLeft()
+                ) : (
+                  <div className="flex flex-col gap-6 pb-10">
+                    <h3 className="contrail-font text-[16px] font-black text-white uppercase tracking-wider border-b border-white/10 pb-2 italic">Análisis en Tiempo Real</h3>
 
-              <EntryAnalysisCard
-                title="Ingresos al Área"
-                icon={<i className="fa-solid fa-arrow-right-to-bracket text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
-                homeTotal={Object.values(statsArea.home).reduce((a: number, b: number) => a + b, 0)}
-                awayTotal={Object.values(statsArea.away).reduce((a: number, b: number) => a + b, 0)}
-              >
-                <SectorRectangle
-                  label="Ingresos al área rival"
-                  teamColor={game.teamAway.primaryColor || '#ef4444'}
-                  stats={statsArea.home}
-                  sectors={['Extremo Izquierdo', 'Centro Izquierda', 'Centro', 'Centro Derecha', 'Extremo Derecho']}
-                  borderPosition="top"
-                />
-                <SectorRectangle
-                  label="Ingresos del rival a mi área"
-                  teamColor={game.teamHome.primaryColor || '#6d5dfc'}
-                  stats={statsArea.away}
-                  sectors={['Extremo Izquierdo', 'Centro Izquierda', 'Centro', 'Centro Derecha', 'Extremo Derecho']}
-                  borderPosition="bottom"
-                />
-              </EntryAnalysisCard>
-
-              <EntryAnalysisCard
-                title="Ingresos a 23 Yardas"
-                icon={<i className="fa-solid fa-bezier-curve text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
-                homeTotal={Object.values(stats23.home).reduce((a: number, b: number) => a + b, 0)}
-                awayTotal={Object.values(stats23.away).reduce((a: number, b: number) => a + b, 0)}
-              >
-                <SectorRectangle
-                  label="Ingresos a 23 yardas rival"
-                  teamColor={game.teamAway.primaryColor || '#ef4444'}
-                  stats={stats23.home}
-                  sectors={['Izquierda', 'Centro', 'Derecha']}
-                  borderPosition="top"
-                  type="zone23"
-                />
-                <SectorRectangle
-                  label="Ingresos del rival a mis 23 yardas"
-                  teamColor={game.teamHome.primaryColor || '#6d5dfc'}
-                  stats={stats23.away}
-                  sectors={['Izquierda', 'Centro', 'Derecha']}
-                  borderPosition="bottom"
-                  type="zone23"
-                />
-              </EntryAnalysisCard>
-
-              <StatComparisonCard
-                title="Córners Cortos"
-                icon={<i className="fa-solid fa-flag text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
-                homeData={getDetailedStat(['CÓRNER CORTO'], game.teamHome.id)}
-                awayData={getDetailedStat(['CÓRNER CORTO'], game.teamAway.id)}
-                allEvents={game.events}
-                homeColor={game.teamHome.primaryColor || '#6d5dfc'}
-                awayColor={game.teamAway.primaryColor || '#ef4444'}
-              />
-              <StatComparisonCard
-                title="Penales"
-                icon={<i className="fa-solid fa-bullseye text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
-                homeData={getDetailedStat(['PENAL'], game.teamHome.id)}
-                awayData={getDetailedStat(['PENAL'], game.teamAway.id)}
-                allEvents={game.events}
-                homeColor={game.teamHome.primaryColor || '#6d5dfc'}
-                awayColor={game.teamAway.primaryColor || '#ef4444'}
-              />
-
-              {/* Remates Totales Sidebar - MOVED FROM RIGHT */}
-              <div className="border-white p-4 rounded-[24px] border-[1px] border-white shadow-sm flex flex-col gap-3">
-                <div className={`flex justify-between items-center ${shotsTotalSidebarExpanded ? 'border-b border-white/10 pb-2' : ''}`}>
-                  <div className="flex items-center gap-2">
-                    <i className="fa-solid fa-futbol text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>
-                    <p className="contrail-font text-[15px] font-black text-white uppercase tracking-wider leading-none">Remates Totales</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl font-black text-white">{landscapeShots.home}/{landscapeShots.away}</span>
-                    <button
-                      onClick={() => setShotsTotalSidebarExpanded(!shotsTotalSidebarExpanded)}
-                      className={`w-5 h-5 flex items-center justify-center rounded-full bg-white/5 transition-transform duration-300 ${shotsTotalSidebarExpanded ? 'rotate-180' : ''}`}
+                    <EntryAnalysisCard
+                      title="Ingresos al Área"
+                      icon={<i className="fa-solid fa-arrow-right-to-bracket text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
+                      homeTotal={Object.values(statsArea.home).reduce((a: number, b: number) => a + b, 0)}
+                      awayTotal={Object.values(statsArea.away).reduce((a: number, b: number) => a + b, 0)}
                     >
-                      <span className="text-[8px] text-white font-black" style={{ color: '#ffffff' }}>▼</span>
-                    </button>
-                  </div>
-                </div>
+                      <SectorRectangle
+                        label="Ingresos al área rival"
+                        teamColor={game.teamAway.primaryColor || '#ef4444'}
+                        stats={statsArea.home}
+                        sectors={['Extremo Izquierdo', 'Centro Izquierda', 'Centro', 'Centro Derecha', 'Extremo Derecho']}
+                        borderPosition="top"
+                      />
+                      <SectorRectangle
+                        label="Ingresos del rival a mi área"
+                        teamColor={game.teamHome.primaryColor || '#6d5dfc'}
+                        stats={statsArea.away}
+                        sectors={['Extremo Izquierdo', 'Centro Izquierda', 'Centro', 'Centro Derecha', 'Extremo Derecho']}
+                        borderPosition="bottom"
+                      />
+                    </EntryAnalysisCard>
 
-                {shotsTotalSidebarExpanded && (
-                  <div className="flex flex-col gap-3 animate-in slide-in-from-top duration-300">
-                    <div className="flex items-center gap-3 py-1 border-b border-white/10/30">
-                      <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
-                      <div className="grid grid-cols-3 flex-1 gap-2">
-                        <div className="flex items-center gap-1">
-                          <span className="font-lato text-[15px] font-bold text-white uppercase">Gol:</span>
-                          <span className="text-[16px] font-black text-white leading-none">{getStat(['GOL'], game.teamHome.id)}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="font-lato text-[15px] font-bold text-white uppercase">Ata:</span>
-                          <span className="text-[16px] font-black text-white leading-none">{getStat(['ATAJADO'], game.teamHome.id)}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="font-lato text-[15px] font-bold text-white uppercase">Des:</span>
-                          <span className="text-[16px] font-black text-white leading-none">{getStat(['DESVIADO'], game.teamHome.id)}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 py-1">
-                      <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
-                      <div className="grid grid-cols-3 flex-1 gap-2">
-                        <div className="flex items-center gap-1">
-                          <span className="font-lato text-[15px] font-bold text-white uppercase">Gol:</span>
-                          <span className="text-[16px] font-black text-white leading-none">{getStat(['GOL'], game.teamAway.id)}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="font-lato text-[15px] font-bold text-white uppercase">Ata:</span>
-                          <span className="text-[16px] font-black text-white leading-none">{getStat(['ATAJADO'], game.teamAway.id)}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="font-lato text-[15px] font-bold text-white uppercase">Des:</span>
-                          <span className="text-[16px] font-black text-white leading-none">{getStat(['DESVIADO'], game.teamAway.id)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-            )}
-          </aside>
-        )}
+                    <EntryAnalysisCard
+                      title="Ingresos a 23 Yardas"
+                      icon={<i className="fa-solid fa-bezier-curve text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
+                      homeTotal={Object.values(stats23.home).reduce((a: number, b: number) => a + b, 0)}
+                      awayTotal={Object.values(stats23.away).reduce((a: number, b: number) => a + b, 0)}
+                    >
+                      <SectorRectangle
+                        label="Ingresos a 23 yardas rival"
+                        teamColor={game.teamAway.primaryColor || '#ef4444'}
+                        stats={stats23.home}
+                        sectors={['Izquierda', 'Centro', 'Derecha']}
+                        borderPosition="top"
+                        type="zone23"
+                      />
+                      <SectorRectangle
+                        label="Ingresos del rival a mis 23 yardas"
+                        teamColor={game.teamHome.primaryColor || '#6d5dfc'}
+                        stats={stats23.away}
+                        sectors={['Izquierda', 'Centro', 'Derecha']}
+                        borderPosition="bottom"
+                        type="zone23"
+                      />
+                    </EntryAnalysisCard>
 
-        <div className={`flex-1 relative ${isLandscape ? 'p-0' : 'p-2'} flex gap-0 overflow-hidden min-w-0 min-h-0`}>
-          {isLandscape && !isPressMode && (
-            <aside className="hidden md:flex w-[80px] bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border-r border-white/10 flex-col items-center py-4 gap-6 z-50 shadow-lg shrink-0">
-              <div className="flex flex-col items-center gap-1">
-                <span className="text-xl"><i className="fa-solid fa-futbol"></i></span>
-                <span className="text-[12px] font-black">{landscapeShots.home}/{landscapeShots.away}</span>
-                <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Tiros</span>
-              </div>
-              <div className="flex flex-col items-center gap-1">
-                <span className="text-xl">⚠️</span>
-                <span className="text-[12px] font-black">{landscapeFouls.home}/{landscapeFouls.away}</span>
-                <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Faltas</span>
-              </div>
-              <div className="flex flex-col items-center gap-1">
-                <span className="text-xl"><i className="fa-solid fa-arrow-trend-down"></i></span>
-                <span className="text-[12px] font-black">{turnoversHome}</span>
-                <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Pérd.</span>
-              </div>
-              <div className="flex flex-col items-center gap-1">
-                <span className="text-xl"><i className="fa-solid fa-arrow-trend-up"></i></span>
-                <span className="text-[12px] font-black">{stealsHome}</span>
-                <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Recup.</span>
-              </div>
-            </aside>
-          )}
+                    <StatComparisonCard
+                      title="Córners Cortos"
+                      icon={<i className="fa-solid fa-flag text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
+                      homeData={getDetailedStat(['CÓRNER CORTO'], game.teamHome.id)}
+                      awayData={getDetailedStat(['CÓRNER CORTO'], game.teamAway.id)}
+                      allEvents={game.events}
+                      homeColor={game.teamHome.primaryColor || '#6d5dfc'}
+                      awayColor={game.teamAway.primaryColor || '#ef4444'}
+                    />
+                    <StatComparisonCard
+                      title="Penales"
+                      icon={<i className="fa-solid fa-bullseye text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
+                      homeData={getDetailedStat(['PENAL'], game.teamHome.id)}
+                      awayData={getDetailedStat(['PENAL'], game.teamAway.id)}
+                      allEvents={game.events}
+                      homeColor={game.teamHome.primaryColor || '#6d5dfc'}
+                      awayColor={game.teamAway.primaryColor || '#ef4444'}
+                    />
 
-          <div className="relative bg-white/5 overflow-hidden" style={{ flexGrow: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 0, minWidth: 0 }}>
-            {activeView === 'list' ? (
-              <div className={`relative ${isLandscape ? 'w-[92%] h-[92%]' : 'w-full h-full'}`}>
-                <div className="w-full h-full bg-[#1e293b]/45 backdrop-blur-md border border-white/10 rounded-[32px] border-2 border-white/10 flex flex-col p-6 animate-in slide-in-from-bottom duration-300 overflow-hidden shadow-xl">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="contrail-font text-sm font-black text-white uppercase tracking-widest">Listado de Acciones</h3>
-                    <button onClick={() => setActiveView('field')} className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/5 px-4 py-2 rounded-full">Cerrar</button>
-                  </div>
-                  <FilterChips />
-                  <div className="flex-1 overflow-y-auto space-y-3 no-scrollbar pb-4">
-                    {filteredEvents.map((e) => {
-                      let title = e.type;
-                      let subtitle = e.transcription || e.details || '';
-                      const isOwn = e.teamId === game.teamHome.id || e.scoringTeam === Possession.HOME;
-
-                      if (e.type.includes('DISPARO') || e.type.includes('GOL')) {
-                        const baseTitle = isOwn ? 'Disparo propio' : 'Disparo rival';
-                        let outcome = '';
-                        if (e.type.includes('GOL')) outcome = 'Gol';
-                        else if (e.type.includes('ATAJADO')) outcome = 'Atajado';
-                        else if (e.type.includes('DESVIADO')) outcome = 'Desviado';
-                        title = outcome ? `${baseTitle} (${outcome})` : baseTitle;
-                      } else if (e.type.includes('FALTA')) {
-                        title = isOwn ? 'Falta propia' : 'Falta recibida';
-                        const isCard = subtitle.includes('AMARILLA') || subtitle.includes('VERDE') || subtitle.includes('ROJA');
-                        const isCortoPenal = subtitle.includes('Provoca C.Corto/Penal');
-                        if (isCortoPenal) {
-                          subtitle = 'Provoca Córner Corto o Penal';
-                        } else if (!isCard && !e.transcription) {
-                          subtitle = '';
-                        }
-                      }
-
-                      return (
-                        <div key={e.id} className="bg-[#1e293b]/45 backdrop-blur-md border border-white/10/60 border border-white/10 p-4 rounded-2xl flex flex-col gap-2">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                              <span className="text-primary font-black text-xs bg-primary/10 px-2 py-1 rounded shrink-0">{e.gameTime}</span>
-                              <div className="flex items-center gap-2">
-                                {(e.type.includes('DISPARO') || e.type.includes('GOL') || e.type.includes('FALTA')) && (
-                                  <span
-                                    className="text-[10px] font-black px-2 py-0.5 rounded border border-current shrink-0 min-w-[24px] text-center"
-                                    style={{
-                                      color: isOwn ? (game.teamHome.primaryColor || '#6d5dfc') : (game.teamAway.primaryColor || '#ef4444'),
-                                      borderColor: isOwn ? (game.teamHome.primaryColor || '#6d5dfc') : (game.teamAway.primaryColor || '#ef4444'),
-                                      backgroundColor: isOwn ? `${game.teamHome.primaryColor || '#6d5dfc'}11` : `${game.teamAway.primaryColor || '#ef4444'}11`
-                                    }}
-                                  >
-                                    {isOwn ? 'L' : 'V'}
-                                  </span>
-                                )}
-                                <p className="text-white text-sm font-bold uppercase">{title}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <button onClick={() => setEventToEdit(e)} className="text-primary p-2">✏️</button>
-                              <button onClick={() => deleteEvent(e.id)} className="text-red-400 p-2">✕</button>
-                            </div>
-                          </div>
-                          {e.isTranscribing ? (
-                            <div className="flex items-center gap-2 py-2">
-                              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                              <span className="text-xs font-bold text-primary animate-pulse tracking-widest uppercase">Transcribiendo...</span>
-                            </div>
-                          ) : subtitle ? (
-                            <p className={`text-[10px] font-black uppercase ${e.transcription ? 'text-white italic bg-primary/5 p-3 rounded-xl border border-primary/10' : 'text-white'}`}>
-                              {subtitle}
-                            </p>
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            ) : activeView === 'stats' ? (
-              isPressMode ? (
-                <div className={`relative ${isLandscape ? 'w-[92%] h-[92%]' : 'w-full h-full'}`}>
-                  <div className="w-full h-full bg-[#1e293b]/45 backdrop-blur-md border border-white/10 rounded-[32px] border-2 border-white/10 flex flex-col p-6 animate-in slide-in-from-bottom duration-300 overflow-hidden shadow-xl">
-                    <div className="flex justify-between items-center mb-6">
-                      <h3 className="contrail-font text-sm font-black text-white uppercase tracking-widest font-contrail">Estadísticas de Transmisión</h3>
-                      <button onClick={() => setActiveView('field')} className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/5 px-4 py-2 rounded-full">Cerrar</button>
-                    </div>
-                    <div className="flex-grow overflow-y-auto no-scrollbar">
-                      <div className="flex flex-wrap gap-1.5 mb-6 justify-center">
-                        {[{ id: 'ALL', label: 'Todo' }, { id: 1, label: '1Q' }, { id: 2, label: '2Q' }, { id: 3, label: '3Q' }, { id: 4, label: '4Q' }].map(p => (
-                          <button
-                            key={p.id}
-                            onClick={() => setPeriodFilter(p.id as PeriodFilter)}
-                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border ${periodFilter === p.id
-                              ? 'bg-primary text-white border-primary shadow-md'
-                              : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white/60 border-white/10 hover:border-primary/40'
-                              }`}
-                          >
-                            {p.label}
-                          </button>
-                        ))}
-                      </div>
-                      {renderPressStatsContent(true)}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className={`relative ${isLandscape ? 'w-[92%] h-[92%]' : 'w-full h-full'}`}>
-                  <div className="w-full h-full bg-[#1e293b]/45 backdrop-blur-md border border-white/10 rounded-[32px] border-2 border-white/10 flex flex-col p-6 animate-in slide-in-from-bottom duration-300 overflow-hidden shadow-xl">
-                    <div className="flex justify-between items-center mb-6">
-                      <h3 className="contrail-font text-sm font-black text-white uppercase tracking-widest">Estadísticas Detalladas</h3>
-                    <button onClick={() => setActiveView('field')} className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/5 px-4 py-2 rounded-full">Cerrar</button>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto no-scrollbar">
-                    <div className="flex flex-wrap gap-1.5 mb-6 justify-center">
-                      {[{ id: 'ALL', label: 'Todo' }, { id: 1, label: '1Q' }, { id: 2, label: '2Q' }, { id: 3, label: '3Q' }, { id: 4, label: '4Q' }].map(p => (
-                        <button
-                          key={p.id}
-                          onClick={() => setPeriodFilter(p.id as PeriodFilter)}
-                          className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border ${periodFilter === p.id
-                            ? 'bg-primary text-white border-primary shadow-md'
-                            : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white/60 border-white/10 hover:border-primary/40'
-                            }`}
-                        >
-                          {p.label}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="border-white p-6 rounded-[24px] border-[1px] border-white mb-6 shadow-inner flex flex-col gap-4">
-                      <div className={`flex justify-between items-center ${possessionExpanded ? 'border-b border-white/10 pb-3' : ''}`}>
+                    {/* Remates Totales Sidebar - MOVED FROM RIGHT */}
+                    <div className="border-white p-4 rounded-[24px] border-[1px] border-white shadow-sm flex flex-col gap-3">
+                      <div className={`flex justify-between items-center ${shotsTotalSidebarExpanded ? 'border-b border-white/10 pb-2' : ''}`}>
                         <div className="flex items-center gap-2">
-                          <i className="fa-solid fa-stopwatch text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>
-                          <h4 className="contrail-font text-[15px] font-black text-white uppercase tracking-wider">Posesión</h4>
+                          <i className="fa-solid fa-futbol text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>
+                          <p className="contrail-font text-[15px] font-black text-white uppercase tracking-wider leading-none">Remates Totales</p>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="text-lg font-black text-white">{localPct}% / {awayPct}%</span>
+                          <span className="text-2xl font-black text-white">{landscapeShots.home}/{landscapeShots.away}</span>
                           <button
-                            onClick={() => setPossessionExpanded(!possessionExpanded)}
-                            className={`w-6 h-6 flex items-center justify-center rounded-full bg-white/5 transition-transform duration-300 ${possessionExpanded ? 'rotate-180' : ''}`}
+                            onClick={() => setShotsTotalSidebarExpanded(!shotsTotalSidebarExpanded)}
+                            className={`w-5 h-5 flex items-center justify-center rounded-full bg-white/5 transition-transform duration-300 ${shotsTotalSidebarExpanded ? 'rotate-180' : ''}`}
                           >
-                            <span className="text-[10px] text-white font-black" style={{ color: '#ffffff' }}>▼</span>
+                            <span className="text-[8px] text-white font-black" style={{ color: '#ffffff' }}>▼</span>
                           </button>
                         </div>
                       </div>
 
-                      {possessionExpanded && (
-                        <div className="animate-in slide-in-from-top duration-300">
-                          <div className="flex justify-between items-center mb-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
-                              <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider">Posesión Local</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider">Posesión Visita</span>
-                              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
+                      {shotsTotalSidebarExpanded && (
+                        <div className="flex flex-col gap-3 animate-in slide-in-from-top duration-300">
+                          <div className="flex items-center gap-3 py-1 border-b border-white/10/30">
+                            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
+                            <div className="grid grid-cols-3 flex-1 gap-2">
+                              <div className="flex items-center gap-1">
+                                <span className="font-lato text-[15px] font-bold text-white uppercase">Gol:</span>
+                                <span className="text-[16px] font-black text-white leading-none">{getStat(['GOL'], game.teamHome.id)}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="font-lato text-[15px] font-bold text-white uppercase">Ata:</span>
+                                <span className="text-[16px] font-black text-white leading-none">{getStat(['ATAJADO'], game.teamHome.id)}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="font-lato text-[15px] font-bold text-white uppercase">Des:</span>
+                                <span className="text-[16px] font-black text-white leading-none">{getStat(['DESVIADO'], game.teamHome.id)}</span>
+                              </div>
                             </div>
                           </div>
-                          <div className="w-full h-10 bg-white/5 rounded-2xl overflow-hidden flex shadow-inner border border-white/10">
-                            <div
-                              className="h-full transition-all duration-700 ease-out flex items-center justify-center text-[16px] font-black text-white drop-shadow-sm"
-                              style={{ width: `${localPct}%`, backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}
-                            >
-                              {localPct > 15 && `${localPct}%`}
-                            </div>
-                            <div
-                              className="h-full transition-all duration-700 ease-out flex items-center justify-center text-[16px] font-black text-white drop-shadow-sm"
-                              style={{ width: `${awayPct}%`, backgroundColor: game.teamAway.primaryColor || '#ef4444' }}
-                            >
-                              {awayPct > 15 && `${awayPct}%`}
+                          <div className="flex items-center gap-3 py-1">
+                            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
+                            <div className="grid grid-cols-3 flex-1 gap-2">
+                              <div className="flex items-center gap-1">
+                                <span className="font-lato text-[15px] font-bold text-white uppercase">Gol:</span>
+                                <span className="text-[16px] font-black text-white leading-none">{getStat(['GOL'], game.teamAway.id)}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="font-lato text-[15px] font-bold text-white uppercase">Ata:</span>
+                                <span className="text-[16px] font-black text-white leading-none">{getStat(['ATAJADO'], game.teamAway.id)}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="font-lato text-[15px] font-bold text-white uppercase">Des:</span>
+                                <span className="text-[16px] font-black text-white leading-none">{getStat(['DESVIADO'], game.teamAway.id)}</span>
+                              </div>
                             </div>
                           </div>
                         </div>
                       )}
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Remates Totales Unificados */}
-                      <div className="border-white p-5 rounded-[28px] border-[1px] border-white shadow-sm flex flex-col gap-4">
-                        <div className="flex justify-between items-center mb-2">
-                          <div className="flex items-center gap-2">
-                            <i className="fa-solid fa-futbol text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>
-                            <p className="contrail-font text-[15px] font-black text-white uppercase tracking-wider">Remates Totales</p>
-                          </div>
-                          <div className="text-2xl font-black text-white">
-                            {getStat(['DISPARO'], game.teamHome.id)} <span className="text-white/40">-</span> {getStat(['DISPARO'], game.teamAway.id)}
-                          </div>
-                        </div>
-                        
-                        <div className="flex flex-col gap-4">
-                          {/* Local */}
-                          <div className="bg-[#1e293b]/45 backdrop-blur-md border border-white p-4 border-[1px] border-white flex flex-col md:flex-row justify-between items-center gap-4">
-                            <div className="flex items-center gap-3 w-full md:w-1/4">
-                              <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
-                              <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider">{game.teamHome.name}</span>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2 md:gap-4 flex-1 w-full">
-                              <div className="text-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10/30 p-2 rounded-xl shadow-sm border border-white/10/30">
-                                <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Gol</p>
-                                <p className="text-lg font-black text-white">{getStat(['GOL'], game.teamHome.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['GOL'], game.teamHome.id) / (getStat(['DISPARO'], game.teamHome.id) || 1)) * 100)}%)</span></p>
-                              </div>
-                              <div className="text-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10/30 p-2 rounded-xl shadow-sm border border-white/10/30">
-                                <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Atajado</p>
-                                <p className="text-lg font-black text-white">{getStat(['ATAJADO'], game.teamHome.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['ATAJADO'], game.teamHome.id) / (getStat(['DISPARO'], game.teamHome.id) || 1)) * 100)}%)</span></p>
-                              </div>
-                              <div className="text-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10/30 p-2 rounded-xl shadow-sm border border-white/10/30">
-                                <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Desv.</p>
-                                <p className="text-lg font-black text-white">{getStat(['DESVIADO'], game.teamHome.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['DESVIADO'], game.teamHome.id) / (getStat(['DISPARO'], game.teamHome.id) || 1)) * 100)}%)</span></p>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Visitante */}
-                          <div className="bg-[#1e293b]/45 backdrop-blur-md border border-white p-4 border-[1px] border-white flex flex-col md:flex-row justify-between items-center gap-4">
-                            <div className="flex items-center gap-3 w-full md:w-1/4">
-                              <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
-                              <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider">{game.teamAway.name}</span>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2 md:gap-4 flex-1 w-full">
-                              <div className="text-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10/30 p-2 rounded-xl shadow-sm border border-white/10/30">
-                                <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Gol</p>
-                                <p className="text-lg font-black text-white">{getStat(['GOL'], game.teamAway.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['GOL'], game.teamAway.id) / (getStat(['DISPARO'], game.teamAway.id) || 1)) * 100)}%)</span></p>
-                              </div>
-                              <div className="text-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10/30 p-2 rounded-xl shadow-sm border border-white/10/30">
-                                <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Atajado</p>
-                                <p className="text-lg font-black text-white">{getStat(['ATAJADO'], game.teamAway.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['ATAJADO'], game.teamAway.id) / (getStat(['DISPARO'], game.teamAway.id) || 1)) * 100)}%)</span></p>
-                              </div>
-                              <div className="text-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10/30 p-2 rounded-xl shadow-sm border border-white/10/30">
-                                <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Desv.</p>
-                                <p className="text-lg font-black text-white">{getStat(['DESVIADO'], game.teamAway.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['DESVIADO'], game.teamAway.id) / (getStat(['DISPARO'], game.teamAway.id) || 1)) * 100)}%)</span></p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 gap-4">
-                        <div className="flex flex-col gap-4">
-                          <h4 className="contrail-font text-[16px] font-black text-white uppercase tracking-wider px-2 italic">Local</h4>
-                          <StatDetailCard title="Pérdidas" icon={<i className="fa-solid fa-arrow-trend-down text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>} data={getDetailedStat(['PÉRDIDA', 'PERDIDA', 'TURNOVER'], game.teamHome.id)} colorClass="text-orange-600" />
-                          <StatDetailCard title="Recuperos" icon={<i className="fa-solid fa-arrow-trend-up text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>} data={getDetailedStat(['RECUPERO'], game.teamHome.id)} colorClass="text-emerald-600" />
-                          <StatDetailCard title="Faltas" icon={<i className="fa-solid fa-triangle-exclamation text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>} data={getDetailedStat(['FALTA'], game.teamHome.id)} colorClass="text-red-600" />
-                        </div>
-                      </div>
-
-                      {/* Ingresos al Área */}
-                      <EntryAnalysisCard
-                        title="Ingresos al Área"
-                        icon={<i className="fa-solid fa-arrow-right-to-bracket text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
-                        homeTotal={Object.values(statsArea.home).reduce((a: number, b: number) => a + b, 0)}
-                        awayTotal={Object.values(statsArea.away).reduce((a: number, b: number) => a + b, 0)}
-                      >
-                        <SectorRectangle
-                          label="Ingresos a área rival"
-                          teamColor={game.teamAway.primaryColor || '#ef4444'}
-                          stats={statsArea.home}
-                          sectors={['Extremo Izquierdo', 'Centro Izquierda', 'Centro', 'Centro Derecha', 'Extremo Derecho']}
-                          borderPosition="top"
-                        />
-                        <SectorRectangle
-                          label="Ingresos del rival a mi área"
-                          teamColor={game.teamHome.primaryColor || '#6d5dfc'}
-                          stats={statsArea.away}
-                          sectors={['Extremo Izquierdo', 'Centro Izquierda', 'Centro', 'Centro Derecha', 'Extremo Derecho']}
-                          borderPosition="bottom"
-                        />
-                      </EntryAnalysisCard>
-
-                      {/* Ingresos a 23 Yardas */}
-                      <EntryAnalysisCard
-                        title="Ingresos a 23 Yardas"
-                        icon={<i className="fa-solid fa-bezier-curve text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
-                        homeTotal={Object.values(stats23.home).reduce((a: number, b: number) => a + b, 0)}
-                        awayTotal={Object.values(stats23.away).reduce((a: number, b: number) => a + b, 0)}
-                      >
-                        <SectorRectangle
-                          label="Ingresos a 23 yardas rival"
-                          teamColor={game.teamAway.primaryColor || '#ef4444'}
-                          stats={stats23.home}
-                          sectors={['Izquierda', 'Centro', 'Derecha']}
-                          borderPosition="top"
-                          type="zone23"
-                        />
-                        <SectorRectangle
-                          label="Ingresos del rival a mis 23 yardas"
-                          teamColor={game.teamHome.primaryColor || '#6d5dfc'}
-                          stats={stats23.away}
-                          sectors={['Izquierda', 'Centro', 'Derecha']}
-                          borderPosition="bottom"
-                          type="zone23"
-                        />
-                      </EntryAnalysisCard>
-
-                      <StatComparisonCard
-                        title="Córners Cortos"
-                        icon={<i className="fa-solid fa-flag text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
-                        homeData={getDetailedStat(['CÓRNER CORTO'], game.teamHome.id)}
-                        awayData={getDetailedStat(['CÓRNER CORTO'], game.teamAway.id)}
-                        allEvents={game.events}
-                        homeColor={game.teamHome.primaryColor || '#6d5dfc'}
-                        awayColor={game.teamAway.primaryColor || '#ef4444'}
-                      />
-                      <StatComparisonCard
-                        title="Penales"
-                        icon={<i className="fa-solid fa-bullseye text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
-                        homeData={getDetailedStat(['PENAL'], game.teamHome.id)}
-                        awayData={getDetailedStat(['PENAL'], game.teamAway.id)}
-                        allEvents={game.events}
-                        homeColor={game.teamHome.primaryColor || '#6d5dfc'}
-                        awayColor={game.teamAway.primaryColor || '#ef4444'}
-                      />
-                    </div>
-
-                    <div className="mt-8 mb-6">
-                      <h3 className="contrail-font text-[15px] font-black text-white uppercase tracking-wider mb-4 border-b border-white/10 pb-2 italic flex items-center gap-2">
-                        <i className="fa-solid fa-magnifying-glass-arrow-right text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i> Análisis de Pases
-                      </h3>
-
-                      <div className="flex flex-row items-stretch gap-3">
-                        <div className="flex-1 border-white p-4 rounded-[24px] border-[1px] border-white text-center shadow-inner flex flex-col justify-center min-h-[100px]">
-                          <p className="font-lato text-[15px] font-bold text-white uppercase mb-1">Mínimo</p>
-                          <p className="text-3xl font-black text-white leading-none">{pMin}</p>
-                          {minPassEvent && (
-                            <p className="text-[7px] font-bold text-white/50 uppercase mt-1 leading-tight">
-                              {minPassEvent.gameTime}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="flex-[1.2] bg-primary p-4 rounded-[28px] shadow-xl shadow-primary/20 text-center flex flex-col justify-center border-2 border-white min-h-[110px]">
-                          <p className="font-lato text-[15px] font-bold text-white/70 uppercase mb-1">Promedio</p>
-                          <p className="text-5xl font-black text-white leading-none">{pAvg}</p>
-                          <p className="font-lato text-[12px] font-bold text-white uppercase mt-1 tracking-widest">Pases / Cadena</p>
-                        </div>
-
-                        <div className="flex-1 border-white p-4 rounded-[24px] border-[1px] border-white text-center shadow-inner flex flex-col justify-center min-h-[100px]">
-                          <p className="font-lato text-[15px] font-bold text-white uppercase mb-1">Máximo</p>
-                            <p className="text-3xl font-black text-white leading-none">{pMax}</p>
-                          {maxPassEvent && (
-                            <p className="text-[7px] font-bold text-white/50 uppercase mt-1 leading-tight">
-                              {maxPassEvent.gameTime}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
                   </div>
-                </div>
-              </div>
-            )) : isPressMode ? (
-              renderPressLayout()
-            ) : game?.registroMode === 'botones' ? (
-              <div className="w-full h-full p-2 sm:p-4 flex flex-col items-center justify-center min-h-0 min-w-0">
-                <div 
-                  className="w-full h-full max-w-4xl bg-[#131041]/40 backdrop-blur-[16px] border border-white/10 rounded-[32px] p-3 sm:p-5 flex flex-col justify-between shadow-2xl relative min-h-0 min-w-0 overflow-hidden"
-                >
-                  {/* Header of buttons panel */}
-                  <div className="flex justify-between items-center border-b border-white/10 pb-2 mb-2 sm:mb-3 shrink-0">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-[#38bdf8] animate-pulse"></div>
-                      <span className="font-black text-[10px] sm:text-xs text-white uppercase tracking-widest font-contrail">Modo Botones Tácticos</span>
-                    </div>
-                    <span className="text-[9px] font-black text-white/40 bg-white/5 border border-white/5 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                      Carril: {selectedLane === 'left' ? 'Izquierda' : selectedLane === 'right' ? 'Derecha' : 'Centro'} | Zona: {selectedZone === 'rival' ? 'Rival' : 'Propia'}
-                    </span>
+                )}
+              </aside>
+            )}
+
+            <div className={`flex-1 relative ${isLandscape ? 'p-0' : 'p-2'} flex gap-0 overflow-hidden min-w-0 min-h-0`}>
+              {isLandscape && !isPressMode && (
+                <aside className="hidden md:flex w-[80px] bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border-r border-white/10 flex-col items-center py-4 gap-6 z-50 shadow-lg shrink-0">
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-xl"><i className="fa-solid fa-futbol"></i></span>
+                    <span className="text-[12px] font-black">{landscapeShots.home}/{landscapeShots.away}</span>
+                    <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Tiros</span>
                   </div>
-
-                  {/* Fila 1: Controladores de Ubicación Espacial */}
-                  <div className="flex flex-row gap-3 w-full mb-3 shrink-0">
-                    {/* Segmented Control 1: Zona (Campo Rival / Campo Propio) */}
-                    <div className="flex-1 flex bg-white/5 border border-white/10 rounded-2xl p-0.5 h-11 shadow-inner relative overflow-hidden backdrop-blur-md">
-                      <button
-                        onClick={() => setSelectedZone('rival')}
-                        className={`flex-1 flex items-center justify-center font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-all rounded-xl ${
-                          selectedZone === 'rival'
-                            ? 'bg-[#38bdf8]/20 text-[#38bdf8] font-black shadow-[inset_0_0_8px_rgba(56,189,248,0.25)] border border-[#38bdf8]/30'
-                            : 'text-white/60 hover:bg-white/5 hover:text-white'
-                        }`}
-                      >
-                        Campo Rival
-                      </button>
-                      <button
-                        onClick={() => setSelectedZone('own')}
-                        className={`flex-1 flex items-center justify-center font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-all rounded-xl ${
-                          selectedZone === 'own'
-                            ? 'bg-[#38bdf8]/20 text-[#38bdf8] font-black shadow-[inset_0_0_8px_rgba(56,189,248,0.25)] border border-[#38bdf8]/30'
-                            : 'text-white/60 hover:bg-white/5 hover:text-white'
-                        }`}
-                      >
-                        Campo Propio
-                      </button>
-                    </div>
-
-                    {/* Segmented Control 2: Carril (Izquierda / Centro / Derecha) */}
-                    <div className="flex-[1.3] flex bg-white/5 border border-white/10 rounded-2xl p-0.5 h-11 shadow-inner relative overflow-hidden backdrop-blur-md">
-                      <button
-                        onClick={() => setSelectedLane('left')}
-                        className={`flex-1 flex items-center justify-center font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-all rounded-xl ${
-                          selectedLane === 'left'
-                            ? 'bg-[#38bdf8]/20 text-[#38bdf8] font-black shadow-[inset_0_0_8px_rgba(56,189,248,0.25)] border border-[#38bdf8]/30'
-                            : 'text-white/60 hover:bg-white/5 hover:text-white'
-                        }`}
-                      >
-                        Izquierda
-                      </button>
-                      <button
-                        onClick={() => setSelectedLane('center')}
-                        className={`flex-1 flex items-center justify-center font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-all rounded-xl ${
-                          selectedLane === 'center'
-                            ? 'bg-[#38bdf8]/20 text-[#38bdf8] font-black shadow-[inset_0_0_8px_rgba(56,189,248,0.25)] border border-[#38bdf8]/30'
-                            : 'text-white/60 hover:bg-white/5 hover:text-white'
-                        }`}
-                      >
-                        Centro
-                      </button>
-                      <button
-                        onClick={() => setSelectedLane('right')}
-                        className={`flex-1 flex items-center justify-center font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-all rounded-xl ${
-                          selectedLane === 'right'
-                            ? 'bg-[#38bdf8]/20 text-[#38bdf8] font-black shadow-[inset_0_0_8px_rgba(56,189,248,0.25)] border border-[#38bdf8]/30'
-                            : 'text-white/60 hover:bg-white/5 hover:text-white'
-                        }`}
-                      >
-                        Derecha
-                      </button>
-                    </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-xl">⚠️</span>
+                    <span className="text-[12px] font-black">{landscapeFouls.home}/{landscapeFouls.away}</span>
+                    <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Faltas</span>
                   </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-xl"><i className="fa-solid fa-arrow-trend-down"></i></span>
+                    <span className="text-[12px] font-black">{turnoversHome}</span>
+                    <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Pérd.</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-xl"><i className="fa-solid fa-arrow-trend-up"></i></span>
+                    <span className="text-[12px] font-black">{stealsHome}</span>
+                    <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Recup.</span>
+                  </div>
+                </aside>
+              )}
 
-                  {/* Lógica Dinámica de Posesión y Bloques Verticales */}
-                  <div className="flex-1 flex flex-col justify-between gap-3 min-h-0 w-full">
-                    {/* Bloque Local */}
-                    {(() => {
-                      const isLocalPossession = possession === Possession.HOME;
-                      const categories = isLocalPossession ? actionsSchema.HOME.local : actionsSchema.AWAY.local;
-                      const primaryColor = game.teamHome.primaryColor || '#6d5dfc';
+              <div className="relative bg-white/5 overflow-hidden" style={{ flexGrow: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 0, minWidth: 0 }}>
+                {activeView === 'list' ? (
+                  <div className={`relative ${isLandscape ? 'w-[92%] h-[92%]' : 'w-full h-full'}`}>
+                    <div className="w-full h-full bg-[#1e293b]/45 backdrop-blur-md border border-white/10 rounded-[32px] border-2 border-white/10 flex flex-col p-6 animate-in slide-in-from-bottom duration-300 overflow-hidden shadow-xl">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="contrail-font text-sm font-black text-white uppercase tracking-widest">Listado de Acciones</h3>
+                        <button onClick={() => setActiveView('field')} className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/5 px-4 py-2 rounded-full">Cerrar</button>
+                      </div>
+                      <FilterChips />
+                      <div className="flex-1 overflow-y-auto space-y-3 no-scrollbar pb-4">
+                        {filteredEvents.map((e) => {
+                          let title = e.type;
+                          let subtitle = e.transcription || e.details || '';
+                          const isOwn = e.teamId === game.teamHome.id || e.scoringTeam === Possession.HOME;
 
-                      return (
-                        <div 
-                          className={`flex-1 flex flex-col p-2.5 sm:p-3 rounded-2xl border transition-all duration-300 min-h-0 overflow-hidden ${
-                            isLocalPossession 
-                              ? 'shadow-[0_0_12px_rgba(109,93,252,0.15)] border-white/20' 
-                              : 'border-white/5 opacity-80'
-                          }`}
-                          style={{
-                            backgroundColor: `${primaryColor}0f`,
-                            borderColor: isLocalPossession ? `${primaryColor}35` : `${primaryColor}12`
-                          }}
-                        >
-                          <div className="flex justify-between items-center mb-1.5 shrink-0">
-                            <div className="flex items-center gap-2">
-                              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: primaryColor }} />
-                              <span className="font-black text-xs text-white uppercase tracking-wider font-contrail">
-                                {game.teamHome.name}
-                              </span>
-                            </div>
-                            <span 
-                              className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border ${
-                                isLocalPossession 
-                                  ? 'bg-[#00fe00]/10 text-[#00fe00] border-[#00fe00]/20 animate-pulse shadow-[0_0_8px_rgba(0,254,0,0.15)]' 
-                                  : 'bg-white/5 text-white/30 border-white/5'
-                              }`}
-                            >
-                              {isLocalPossession ? '● ATACANDO' : 'DEFENDIENDO'}
-                            </span>
-                          </div>
+                          if (e.type.includes('DISPARO') || e.type.includes('GOL')) {
+                            const baseTitle = isPressMode
+                              ? (isOwn ? 'Disparo al arco / Local' : 'Disparo al arco / Visitante')
+                              : (isOwn ? 'Disparo propio' : 'Disparo rival');
+                            let outcome = '';
+                            if (e.type.includes('GOL')) outcome = 'Gol';
+                            else if (e.type.includes('ATAJADO')) outcome = 'Atajado';
+                            else if (e.type.includes('DESVIADO')) outcome = 'Desviado';
+                            title = outcome ? `${baseTitle} (${outcome})` : baseTitle;
+                          } else if (e.type.includes('FALTA')) {
+                            if (isPressMode) {
+                              const teamLabel = isOwn ? 'Local' : 'Visitante';
+                              title = `${teamLabel}: falta cometida`;
+                            } else {
+                              title = isOwn ? 'Falta propia' : 'Falta recibida';
+                            }
+                            const isCard = subtitle.includes('AMARILLA') || subtitle.includes('VERDE') || subtitle.includes('ROJA');
+                            const isCortoPenal = subtitle.includes('Provoca C.Corto/Penal');
+                            if (isCortoPenal) {
+                              subtitle = 'Provoca Córner Corto o Penal';
+                            } else if (!isCard && !e.transcription) {
+                              subtitle = '';
+                            }
+                          }
 
-                          <div className="flex-1 flex flex-col justify-center min-h-0">
-                            {categories.length === 1 ? (
-                              <div className="w-full flex flex-col justify-center">
-                                <span className="font-bold text-[10px] sm:text-xs uppercase tracking-widest text-white/60 mb-1.5 block">
-                                  {categories[0].name}
-                                </span>
-                                <div className="grid grid-cols-4 gap-1.5">
-                                  {categories[0].buttons.map(btn => renderActionButton(btn, primaryColor))}
+                          return (
+                            <div key={e.id} className="bg-[#1e293b]/45 backdrop-blur-md border border-white/10/60 border border-white/10 p-4 rounded-2xl flex flex-col gap-2">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                  <span className="text-primary font-black text-xs bg-primary/10 px-2 py-1 rounded shrink-0">{e.gameTime}</span>
+                                  <div className="flex items-center gap-2">
+                                    {(e.type.includes('DISPARO') || e.type.includes('GOL') || e.type.includes('FALTA')) && (
+                                      <span
+                                        className="text-[10px] font-black px-2 py-0.5 rounded border border-current shrink-0 min-w-[24px] text-center"
+                                        style={{
+                                          color: isOwn ? (game.teamHome.primaryColor || '#6d5dfc') : (game.teamAway.primaryColor || '#ef4444'),
+                                          borderColor: isOwn ? (game.teamHome.primaryColor || '#6d5dfc') : (game.teamAway.primaryColor || '#ef4444'),
+                                          backgroundColor: isOwn ? `${game.teamHome.primaryColor || '#6d5dfc'}11` : `${game.teamAway.primaryColor || '#ef4444'}11`
+                                        }}
+                                      >
+                                        {isOwn ? 'L' : 'V'}
+                                      </span>
+                                    )}
+                                    <p className="text-white text-sm font-bold uppercase">{title}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button onClick={() => setEventToEdit(e)} className="text-primary p-2">✏️</button>
+                                  <button onClick={() => deleteEvent(e.id)} className="text-red-400 p-2">✕</button>
                                 </div>
                               </div>
-                            ) : (
-                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 h-full items-stretch content-center">
-                                {categories.map(cat => (
-                                  <div key={cat.id} className="flex flex-col bg-white/5 border border-white/5 rounded-xl p-1.5 sm:p-2 justify-between min-h-0">
-                                    <span className="font-bold text-[10px] sm:text-xs uppercase tracking-widest text-white/60 mb-1.5 truncate block" title={cat.name}>
-                                      {cat.name}
-                                    </span>
-                                    <div className="grid grid-cols-3 gap-1">
-                                      {cat.buttons.map(btn => renderActionButton(btn, primaryColor))}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-                    {/* Bloque Visitante */}
-                    {(() => {
-                      const isAwayPossession = possession === Possession.AWAY;
-                      const categories = isAwayPossession ? actionsSchema.AWAY.visitante : actionsSchema.HOME.visitante;
-                      const primaryColor = game.teamAway.primaryColor || '#ef4444';
-
-                      return (
-                        <div 
-                          className={`flex-1 flex flex-col p-2.5 sm:p-3 rounded-2xl border transition-all duration-300 min-h-0 overflow-hidden ${
-                            isAwayPossession 
-                              ? 'shadow-[0_0_12px_rgba(239,68,68,0.15)] border-white/20' 
-                              : 'border-white/5 opacity-80'
-                          }`}
-                          style={{
-                            backgroundColor: `${primaryColor}0f`,
-                            borderColor: isAwayPossession ? `${primaryColor}35` : `${primaryColor}12`
-                          }}
-                        >
-                          <div className="flex justify-between items-center mb-1.5 shrink-0">
-                            <div className="flex items-center gap-2">
-                              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: primaryColor }} />
-                              <span className="font-black text-xs text-white uppercase tracking-wider font-contrail">
-                                {game.teamAway.name}
-                              </span>
-                            </div>
-                            <span 
-                              className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border ${
-                                isAwayPossession 
-                                  ? 'bg-[#00fe00]/10 text-[#00fe00] border-[#00fe00]/20 animate-pulse shadow-[0_0_8px_rgba(0,254,0,0.15)]' 
-                                  : 'bg-white/5 text-white/30 border-white/5'
-                              }`}
-                            >
-                              {isAwayPossession ? '● ATACANDO' : 'DEFENDIENDO'}
-                            </span>
-                          </div>
-
-                          <div className="flex-1 flex flex-col justify-center min-h-0">
-                            {categories.length === 1 ? (
-                              <div className="w-full flex flex-col justify-center">
-                                <span className="font-bold text-[10px] sm:text-xs uppercase tracking-widest text-white/60 mb-1.5 block">
-                                  {categories[0].name}
-                                </span>
-                                <div className="grid grid-cols-4 gap-1.5">
-                                  {categories[0].buttons.map(btn => renderActionButton(btn, primaryColor))}
+                              {e.isTranscribing ? (
+                                <div className="flex items-center gap-2 py-2">
+                                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                                  <span className="text-xs font-bold text-primary animate-pulse tracking-widest uppercase">Transcribiendo...</span>
                                 </div>
-                              </div>
-                            ) : (
-                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 h-full items-stretch content-center">
-                                {categories.map(cat => (
-                                  <div key={cat.id} className="flex flex-col bg-white/5 border border-white/5 rounded-xl p-1.5 sm:p-2 justify-between min-h-0">
-                                    <span className="font-bold text-[10px] sm:text-xs uppercase tracking-widest text-white/60 mb-1.5 truncate block" title={cat.name}>
-                                      {cat.name}
-                                    </span>
-                                    <div className="grid grid-cols-3 gap-1">
-                                      {cat.buttons.map(btn => renderActionButton(btn, primaryColor))}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div
-                key={`pitch-wrapper-${orientationTrigger}`}
-                className="relative flex items-center justify-center mx-auto"
-                style={{
-                  aspectRatio: isLandscape ? '5 / 3' : '3 / 5',
-                  height: '100%',
-                  maxWidth: '100%',
-                  maxHeight: '100%',
-                  margin: 'auto'
-                }}
-              >
-                <PitchMap
-                  possession={possession}
-                  isRunning={isRunning}
-                  isLandscape={isLandscape}
-                  isFlipped={isFlipped}
-                  teamHome={game?.teamHome}
-                  teamAway={game?.teamAway}
-                  onAction={handlePitchAction}
-                  onManualMenu={handleManualMenu}
-                />
-
-                {feedback && (() => {
-                  let dispX = feedback.x;
-                  let dispY = feedback.y;
-
-                  if (isFlipped) {
-                    dispX = 100 - dispX;
-                    dispY = 100 - dispY;
-                  }
-                  if (isLandscape) {
-                    const temp = dispX;
-                    dispX = dispY;
-                    dispY = 100 - temp;
-                  }
-
-                  const isNearTop = dispY < 15;
-                  
-                  let leftPos = `${dispX}%`;
-                  let hTransform = '-translate-x-1/2';
-                  if (dispX < 15) {
-                      leftPos = '20px';
-                      hTransform = 'translate-x-0';
-                  } else if (dispX > 85) {
-                      leftPos = 'calc(100% - 20px)';
-                      hTransform = '-translate-x-full';
-                  }
-
-                  return (
-                    <div
-                      key={feedback.id}
-                      className="absolute z-[400] pointer-events-none transition-all duration-200"
-                      style={{
-                        left: leftPos,
-                        top: `${dispY}%`,
-                        opacity: feedback.fading ? 0 : 1,
-                        transform: feedback.fading ? 'scale(0.95)' : 'scale(1)',
-                      }}
-                    >
-                      <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1e293b]/45 backdrop-blur-md border border-white/10/80 backdrop-blur-md border border-white/50 shadow-lg ${hTransform} ${isNearTop ? 'translate-y-4' : '-translate-y-10'} ${feedback.fading ? '' : 'animate-in zoom-in slide-in-from-bottom-2 duration-200'}`}>
-                        <span className="text-sm">{feedback.icon}</span>
-                        <span className="text-[10px] font-black text-white uppercase tracking-wider whitespace-nowrap">{feedback.text}</span>
+                              ) : subtitle ? (
+                                <p className={`text-[10px] font-black uppercase ${e.transcription ? 'text-white italic bg-primary/5 p-3 rounded-xl border border-primary/10' : 'text-white'}`}>
+                                  {subtitle}
+                                </p>
+                              ) : null}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
-                  );
-                })()}
+                  </div>
+                ) : activeView === 'stats' ? (
+                  isPressMode ? (
+                    <div className={`relative ${isLandscape ? 'w-[92%] h-[92%]' : 'w-full h-full'}`}>
+                      <div className="w-full h-full bg-[#1e293b]/45 backdrop-blur-md border border-white/10 rounded-[32px] border-2 border-white/10 flex flex-col p-6 animate-in slide-in-from-bottom duration-300 overflow-hidden shadow-xl">
+                        <div className="flex justify-between items-center mb-6">
+                          <h3 className="contrail-font text-sm font-black text-white uppercase tracking-widest font-contrail">Estadísticas de Transmisión</h3>
+                          <button onClick={() => setActiveView('field')} className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/5 px-4 py-2 rounded-full">Cerrar</button>
+                        </div>
+                        <div className="flex-grow overflow-y-auto no-scrollbar">
+                          <div className="flex flex-wrap gap-1.5 mb-6 justify-center">
+                            {[{ id: 'ALL', label: 'Todo' }, { id: 1, label: '1Q' }, { id: 2, label: '2Q' }, { id: 3, label: '3Q' }, { id: 4, label: '4Q' }].map(p => (
+                              <button
+                                key={p.id}
+                                onClick={() => setPeriodFilter(p.id as PeriodFilter)}
+                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border ${periodFilter === p.id
+                                  ? 'bg-primary text-white border-primary shadow-md'
+                                  : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white/60 border-white/10 hover:border-primary/40'
+                                  }`}
+                              >
+                                {p.label}
+                              </button>
+                            ))}
+                          </div>
+                          {renderPressStatsContent(true)}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className={`relative ${isLandscape ? 'w-[92%] h-[92%]' : 'w-full h-full'}`}>
+                      <div className="w-full h-full bg-[#1e293b]/45 backdrop-blur-md border border-white/10 rounded-[32px] border-2 border-white/10 flex flex-col p-6 animate-in slide-in-from-bottom duration-300 overflow-hidden shadow-xl">
+                        <div className="flex justify-between items-center mb-6">
+                          <h3 className="contrail-font text-sm font-black text-white uppercase tracking-widest">Estadísticas Detalladas</h3>
+                          <button onClick={() => setActiveView('field')} className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/5 px-4 py-2 rounded-full">Cerrar</button>
+                        </div>
 
-                {showPopup && (
-                  <Portal>
-                    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                      <div
-                        className="relative bg-[#1e293b]/45 backdrop-blur-md border border-white/10 shadow-2xl rounded-[40px] p-8 flex flex-col gap-4 min-w-[300px] max-w-sm border border-white/10 animate-in zoom-in duration-200 text-center"
-                        onClick={e => e.stopPropagation()}
-                      >
-                        <p className="contrail-font text-[10px] font-black text-white uppercase tracking-widest border-b border-white/10 pb-3 mb-2">Resultado de Acción</p>
-                      {showPopup.type === 'FOUL' ? (
-                        <div className="flex flex-col gap-3">
-                          {foulCardType === 'AMARILLA' ? (
-                            <div className="flex flex-col gap-3 animate-in fade-in zoom-in duration-200">
-                              <div className="flex flex-col gap-2">
-                                <label className="text-[8px] font-bold text-white uppercase">Jugador #</label>
-                                <input
-                                  type="text"
-                                  value={foulPlayer}
-                                  onChange={(e) => setFoulPlayer(e.target.value)}
-                                  className="w-full bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:border-primary"
-                                  placeholder="Ej: 8"
-                                />
-                              </div>
-                              <div className="flex flex-col gap-2 bg-yellow-50/50 p-2 rounded-xl border border-yellow-100">
-                                <label className="text-[7px] font-black text-yellow-700 uppercase">Minutos Sanción (Amarilla)</label>
-                                <input
-                                  type="text"
-                                  value={foulMinutes}
-                                  onChange={(e) => setFoulMinutes(e.target.value)}
-                                  className="w-full bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-yellow-200 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:border-yellow-400"
-                                  placeholder="Ej: 5"
-                                />
-                              </div>
+                        <div className="flex-1 overflow-y-auto no-scrollbar">
+                          <div className="flex flex-wrap gap-1.5 mb-6 justify-center">
+                            {[{ id: 'ALL', label: 'Todo' }, { id: 1, label: '1Q' }, { id: 2, label: '2Q' }, { id: 3, label: '3Q' }, { id: 4, label: '4Q' }].map(p => (
                               <button
-                                className="w-full py-3 rounded-xl bg-yellow-400 text-white font-black text-xs uppercase shadow-lg shadow-yellow-100 active:scale-95 transition-all"
-                                onClick={() => updateLastEvent('FALTA (AMARILLA) / PÉRDIDA', `AMARILLA${foulMinutes ? ` (${foulMinutes} minutos)` : ''}${foulPlayer ? ` - Jugador #${foulPlayer}` : ''}`)}
+                                key={p.id}
+                                onClick={() => setPeriodFilter(p.id as PeriodFilter)}
+                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border ${periodFilter === p.id
+                                  ? 'bg-primary text-white border-primary shadow-md'
+                                  : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white/60 border-white/10 hover:border-primary/40'
+                                  }`}
                               >
-                                Confirmar Amarilla
+                                {p.label}
                               </button>
-                              <button
-                                className="text-[8px] font-black text-white uppercase text-center py-1 hover:text-primary transition-colors"
-                                onClick={() => setFoulCardType('NONE')}
-                              >
-                                Atrás
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex flex-col gap-3">
-                              <div className="grid grid-cols-2 gap-2">
-                                <button className="text-[10px] font-black text-white py-3 rounded-xl bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 flex flex-col items-center justify-center gap-1.5 hover:bg-green-50 transition-colors" onClick={() => updateLastEvent('FALTA (VERDE)', 'VERDE')}>
-                                  <span className="w-5 h-7 bg-green-500 rounded-sm shadow-sm"></span>
-                                  <span>VERDE</span>
-                                </button>
-                                <button className="text-[10px] font-black text-white py-3 rounded-xl bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 flex flex-col items-center justify-center gap-1.5 hover:bg-yellow-50 transition-colors" onClick={() => setFoulCardType('AMARILLA')}>
-                                  <span className="w-5 h-7 bg-yellow-400 rounded-sm shadow-sm"></span>
-                                  <span>AMARILLA</span>
-                                </button>
-                                <button className="text-[10px] font-black text-white py-3 rounded-xl bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 flex flex-col items-center justify-center gap-1.5 hover:bg-red-50 transition-colors" onClick={() => updateLastEvent('FALTA (ROJA)', 'ROJA')}>
-                                  <span className="w-5 h-7 bg-red-600 rounded-sm shadow-sm"></span>
-                                  <span>ROJA</span>
-                                </button>
+                            ))}
+                          </div>
+
+                          <div className="border-white p-6 rounded-[24px] border-[1px] border-white mb-6 shadow-inner flex flex-col gap-4">
+                            <div className={`flex justify-between items-center ${possessionExpanded ? 'border-b border-white/10 pb-3' : ''}`}>
+                              <div className="flex items-center gap-2">
+                                <i className="fa-solid fa-stopwatch text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>
+                                <h4 className="contrail-font text-[15px] font-black text-white uppercase tracking-wider">Posesión</h4>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-lg font-black text-white">{localPct}% / {awayPct}%</span>
                                 <button
-                                  className="text-[10px] font-black text-white py-3 rounded-xl bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 flex flex-col items-center justify-center gap-1.5 hover:bg-white/5 transition-colors"
-                                  onClick={() => updateLastEvent('FALTA COMETIDA', 'Sin tarjeta')}
+                                  onClick={() => setPossessionExpanded(!possessionExpanded)}
+                                  className={`w-6 h-6 flex items-center justify-center rounded-full bg-white/5 transition-transform duration-300 ${possessionExpanded ? 'rotate-180' : ''}`}
                                 >
-                                  <div className="w-5 h-7 border-2 border-dashed border-onSurfaceVariant/30 rounded-sm flex items-center justify-center">
-                                    <span className="text-[8px] text-white/40">✕</span>
-                                  </div>
-                                  <span>SIN TARJETA</span>
+                                  <span className="text-[10px] text-white font-black" style={{ color: '#ffffff' }}>▼</span>
                                 </button>
                               </div>
                             </div>
-                          )}
-                        </div>
-                      ) : showPopup.type === 'CORTO_PENAL' ? (
-                        <div className="flex flex-col gap-2">
-                          <button className="text-[10px] font-black text-indigo-600 py-3 rounded-xl bg-indigo-50 border border-indigo-100 uppercase flex items-center justify-center gap-2" onClick={() => registerEvent('CÓRNER CORTO', possession, showPopup.x, showPopup.y, "Córner Corto a Favor")}><i className="fa-solid fa-hockey-puck"></i> C. CORTO</button>
-                          <button className="text-[10px] font-black text-purple-600 py-3 rounded-xl bg-purple-50 border border-purple-100 uppercase flex items-center justify-center gap-2" onClick={() => registerEvent('PENAL', possession, showPopup.x, showPopup.y, "Penal a Favor")}><i className="fa-solid fa-bullseye"></i> PENAL</button>
-                        </div>
-                      ) : showPopup.type === 'SHOT' ? (
-                        <div className="flex flex-col gap-3 relative">
-                          <button
-                            onClick={handleClosePopup}
-                            className="absolute -top-3 -right-3 w-8 h-8 flex items-center justify-center bg-white/5 rounded-full text-white hover:bg-white/10 transition-colors font-black"
-                          >
-                            ✕
-                          </button>
-                          <p className="text-[9px] font-black text-white uppercase mb-1">Resultado del Remate</p>
-                          
-                          <div className="grid grid-cols-3 gap-2 mb-1">
-                            <button 
-                              className={`py-3 rounded-xl text-[10px] font-black uppercase flex flex-col items-center gap-1 transition-all border ${selectedShotAction === 'GOL' ? 'bg-primary text-white border-primary shadow-md' : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white border-white/10'}`}
-                              onClick={() => setSelectedShotAction('GOL')}
-                            >
-                              <span className="text-sm"><i className="fa-solid fa-futbol"></i></span> GOL
-                            </button>
-                            <button 
-                              className={`py-3 rounded-xl text-[10px] font-black uppercase flex flex-col items-center gap-1 transition-all border ${selectedShotAction === 'ATAJADO' ? 'bg-primary text-white border-primary shadow-md' : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white border-white/10'}`}
-                              onClick={() => setSelectedShotAction('ATAJADO')}
-                            >
-                              <span className="text-sm"><i className="fa-solid fa-shield-halved"></i></span> ATAJADO
-                            </button>
-                            <button 
-                              className={`py-3 rounded-xl text-[10px] font-black uppercase flex flex-col items-center gap-1 transition-all border ${selectedShotAction === 'DESVIADO' ? 'bg-primary text-white border-primary shadow-md' : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white border-white/10'}`}
-                              onClick={() => setSelectedShotAction('DESVIADO')}
-                            >
-                              <span className="text-sm"><i className="fa-solid fa-wind"></i></span> DESV.
-                            </button>
+
+                            {possessionExpanded && (
+                              <div className="animate-in slide-in-from-top duration-300">
+                                <div className="flex justify-between items-center mb-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
+                                    <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider">Posesión Local</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider">Posesión Visita</span>
+                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
+                                  </div>
+                                </div>
+                                <div className="w-full h-10 bg-white/5 rounded-2xl overflow-hidden flex shadow-inner border border-white/10">
+                                  <div
+                                    className="h-full transition-all duration-700 ease-out flex items-center justify-center text-[16px] font-black text-white drop-shadow-sm"
+                                    style={{ width: `${localPct}%`, backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}
+                                  >
+                                    {localPct > 15 && `${localPct}%`}
+                                  </div>
+                                  <div
+                                    className="h-full transition-all duration-700 ease-out flex items-center justify-center text-[16px] font-black text-white drop-shadow-sm"
+                                    style={{ width: `${awayPct}%`, backgroundColor: game.teamAway.primaryColor || '#ef4444' }}
+                                  >
+                                    {awayPct > 15 && `${awayPct}%`}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
 
-                          {selectedShotAction === 'ATAJADO' && (
-                            <div className="flex flex-col gap-2 mb-1 animate-in slide-in-from-top duration-200">
-                              <p className="text-[8px] font-bold text-white uppercase">Posesión tras el atajo:</p>
-                              <div className="grid grid-cols-2 gap-2">
-                                <button 
-                                  className={`py-2 rounded-lg text-[9px] font-black uppercase transition-all border ${atajadoPossession === 'MANTIENE' ? 'bg-green-500 text-white border-green-600' : 'bg-green-50 text-green-700 border-green-200'}`}
-                                  onClick={() => setAtajadoPossession('MANTIENE')}
-                                >
-                                  Mantiene
-                                </button>
-                                <button 
-                                  className={`py-2 rounded-lg text-[9px] font-black uppercase transition-all border ${atajadoPossession === 'PIERDE' ? 'bg-red-500 text-white border-red-600' : 'bg-red-50 text-red-700 border-red-200'}`}
-                                  onClick={() => setAtajadoPossession('PIERDE')}
-                                >
-                                  Pierde
-                                </button>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Remates Totales Unificados */}
+                            <div className="border-white p-5 rounded-[28px] border-[1px] border-white shadow-sm flex flex-col gap-4">
+                              <div className="flex justify-between items-center mb-2">
+                                <div className="flex items-center gap-2">
+                                  <i className="fa-solid fa-futbol text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>
+                                  <p className="contrail-font text-[15px] font-black text-white uppercase tracking-wider">Remates Totales</p>
+                                </div>
+                                <div className="text-2xl font-black text-white">
+                                  {getStat(['DISPARO'], game.teamHome.id)} <span className="text-white/40">-</span> {getStat(['DISPARO'], game.teamAway.id)}
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col gap-4">
+                                {/* Local */}
+                                <div className="bg-[#1e293b]/45 backdrop-blur-md border border-white p-4 border-[1px] border-white flex flex-col md:flex-row justify-between items-center gap-4">
+                                  <div className="flex items-center gap-3 w-full md:w-1/4">
+                                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
+                                    <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider">{game.teamHome.name}</span>
+                                  </div>
+                                  <div className="grid grid-cols-3 gap-2 md:gap-4 flex-1 w-full">
+                                    <div className="text-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10/30 p-2 rounded-xl shadow-sm border border-white/10/30">
+                                      <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Gol</p>
+                                      <p className="text-lg font-black text-white">{getStat(['GOL'], game.teamHome.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['GOL'], game.teamHome.id) / (getStat(['DISPARO'], game.teamHome.id) || 1)) * 100)}%)</span></p>
+                                    </div>
+                                    <div className="text-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10/30 p-2 rounded-xl shadow-sm border border-white/10/30">
+                                      <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Atajado</p>
+                                      <p className="text-lg font-black text-white">{getStat(['ATAJADO'], game.teamHome.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['ATAJADO'], game.teamHome.id) / (getStat(['DISPARO'], game.teamHome.id) || 1)) * 100)}%)</span></p>
+                                    </div>
+                                    <div className="text-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10/30 p-2 rounded-xl shadow-sm border border-white/10/30">
+                                      <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Desv.</p>
+                                      <p className="text-lg font-black text-white">{getStat(['DESVIADO'], game.teamHome.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['DESVIADO'], game.teamHome.id) / (getStat(['DISPARO'], game.teamHome.id) || 1)) * 100)}%)</span></p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Visitante */}
+                                <div className="bg-[#1e293b]/45 backdrop-blur-md border border-white p-4 border-[1px] border-white flex flex-col md:flex-row justify-between items-center gap-4">
+                                  <div className="flex items-center gap-3 w-full md:w-1/4">
+                                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
+                                    <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider">{game.teamAway.name}</span>
+                                  </div>
+                                  <div className="grid grid-cols-3 gap-2 md:gap-4 flex-1 w-full">
+                                    <div className="text-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10/30 p-2 rounded-xl shadow-sm border border-white/10/30">
+                                      <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Gol</p>
+                                      <p className="text-lg font-black text-white">{getStat(['GOL'], game.teamAway.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['GOL'], game.teamAway.id) / (getStat(['DISPARO'], game.teamAway.id) || 1)) * 100)}%)</span></p>
+                                    </div>
+                                    <div className="text-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10/30 p-2 rounded-xl shadow-sm border border-white/10/30">
+                                      <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Atajado</p>
+                                      <p className="text-lg font-black text-white">{getStat(['ATAJADO'], game.teamAway.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['ATAJADO'], game.teamAway.id) / (getStat(['DISPARO'], game.teamAway.id) || 1)) * 100)}%)</span></p>
+                                    </div>
+                                    <div className="text-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10/30 p-2 rounded-xl shadow-sm border border-white/10/30">
+                                      <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Desv.</p>
+                                      <p className="text-lg font-black text-white">{getStat(['DESVIADO'], game.teamAway.id)} <span className="text-[9px] opacity-50">({Math.round((getStat(['DESVIADO'], game.teamAway.id) / (getStat(['DISPARO'], game.teamAway.id) || 1)) * 100)}%)</span></p>
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
                             </div>
-                          )}
+                            <div className="grid grid-cols-1 gap-4">
+                              <div className="flex flex-col gap-4">
+                                <h4 className="contrail-font text-[16px] font-black text-white uppercase tracking-wider px-2 italic">Local</h4>
+                                <StatDetailCard title="Pérdidas" icon={<i className="fa-solid fa-arrow-trend-down text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>} data={getDetailedStat(['PÉRDIDA', 'PERDIDA', 'TURNOVER'], game.teamHome.id)} colorClass="text-orange-600" />
+                                <StatDetailCard title="Recuperos" icon={<i className="fa-solid fa-arrow-trend-up text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>} data={getDetailedStat(['RECUPERO'], game.teamHome.id)} colorClass="text-emerald-600" />
+                                <StatDetailCard title="Faltas" icon={<i className="fa-solid fa-triangle-exclamation text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>} data={getDetailedStat(['FALTA'], game.teamHome.id)} colorClass="text-red-600" />
+                              </div>
+                            </div>
 
-                          <div className="flex flex-col gap-2 mt-2">
-                            <label className="text-[8px] font-bold text-white uppercase">Jugador #</label>
-                            <input
-                              type="number"
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              value={foulPlayer}
-                              onChange={(e) => setFoulPlayer(e.target.value)}
-                              className="w-full bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 rounded-lg px-2 py-2 text-xs font-bold focus:outline-none focus:border-primary"
-                              placeholder="Ej: 8"
+                            {/* Ingresos al Área */}
+                            <EntryAnalysisCard
+                              title="Ingresos al Área"
+                              icon={<i className="fa-solid fa-arrow-right-to-bracket text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
+                              homeTotal={Object.values(statsArea.home).reduce((a: number, b: number) => a + b, 0)}
+                              awayTotal={Object.values(statsArea.away).reduce((a: number, b: number) => a + b, 0)}
+                            >
+                              <SectorRectangle
+                                label="Ingresos a área rival"
+                                teamColor={game.teamAway.primaryColor || '#ef4444'}
+                                stats={statsArea.home}
+                                sectors={['Extremo Izquierdo', 'Centro Izquierda', 'Centro', 'Centro Derecha', 'Extremo Derecho']}
+                                borderPosition="top"
+                              />
+                              <SectorRectangle
+                                label="Ingresos del rival a mi área"
+                                teamColor={game.teamHome.primaryColor || '#6d5dfc'}
+                                stats={statsArea.away}
+                                sectors={['Extremo Izquierdo', 'Centro Izquierda', 'Centro', 'Centro Derecha', 'Extremo Derecho']}
+                                borderPosition="bottom"
+                              />
+                            </EntryAnalysisCard>
+
+                            {/* Ingresos a 23 Yardas */}
+                            <EntryAnalysisCard
+                              title="Ingresos a 23 Yardas"
+                              icon={<i className="fa-solid fa-bezier-curve text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
+                              homeTotal={Object.values(stats23.home).reduce((a: number, b: number) => a + b, 0)}
+                              awayTotal={Object.values(stats23.away).reduce((a: number, b: number) => a + b, 0)}
+                            >
+                              <SectorRectangle
+                                label="Ingresos a 23 yardas rival"
+                                teamColor={game.teamAway.primaryColor || '#ef4444'}
+                                stats={stats23.home}
+                                sectors={['Izquierda', 'Centro', 'Derecha']}
+                                borderPosition="top"
+                                type="zone23"
+                              />
+                              <SectorRectangle
+                                label="Ingresos del rival a mis 23 yardas"
+                                teamColor={game.teamHome.primaryColor || '#6d5dfc'}
+                                stats={stats23.away}
+                                sectors={['Izquierda', 'Centro', 'Derecha']}
+                                borderPosition="bottom"
+                                type="zone23"
+                              />
+                            </EntryAnalysisCard>
+
+                            <StatComparisonCard
+                              title="Córners Cortos"
+                              icon={<i className="fa-solid fa-flag text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
+                              homeData={getDetailedStat(['CÓRNER CORTO'], game.teamHome.id)}
+                              awayData={getDetailedStat(['CÓRNER CORTO'], game.teamAway.id)}
+                              allEvents={game.events}
+                              homeColor={game.teamHome.primaryColor || '#6d5dfc'}
+                              awayColor={game.teamAway.primaryColor || '#ef4444'}
+                            />
+                            <StatComparisonCard
+                              title="Penales"
+                              icon={<i className="fa-solid fa-bullseye text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
+                              homeData={getDetailedStat(['PENAL'], game.teamHome.id)}
+                              awayData={getDetailedStat(['PENAL'], game.teamAway.id)}
+                              allEvents={game.events}
+                              homeColor={game.teamHome.primaryColor || '#6d5dfc'}
+                              awayColor={game.teamAway.primaryColor || '#ef4444'}
                             />
                           </div>
-                          
-                          <div className="flex flex-col gap-2 mb-2">
-                            <label className="text-[8px] font-bold text-white uppercase">Origen de la jugada</label>
-                            <div className="grid grid-cols-4 gap-1.5">
-                              {[
-                                { id: 'Individual', label: 'Indiv.' },
-                                { id: 'Colectiva', label: 'Colect.' },
-                                { id: 'Penal', label: 'Penal' },
-                                { id: 'Corto', label: 'C. Corto' },
-                              ].map((type) => (
-                                <button
-                                  key={type.id}
-                                  onClick={() => setGoalType(type.id as any)}
-                                  className={`py-2 rounded-lg text-[8px] font-black uppercase transition-all ${goalType === type.id
-                                    ? 'bg-primary text-white shadow-sm'
-                                    : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 text-white'
-                                    }`}
-                                >
-                                  {type.label}
-                                </button>
-                              ))}
+
+                          <div className="mt-8 mb-6">
+                            <h3 className="contrail-font text-[15px] font-black text-white uppercase tracking-wider mb-4 border-b border-white/10 pb-2 italic flex items-center gap-2">
+                              <i className="fa-solid fa-magnifying-glass-arrow-right text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i> Análisis de Pases
+                            </h3>
+
+                            <div className="flex flex-row items-stretch gap-3">
+                              <div className="flex-1 border-white p-4 rounded-[24px] border-[1px] border-white text-center shadow-inner flex flex-col justify-center min-h-[100px]">
+                                <p className="font-lato text-[15px] font-bold text-white uppercase mb-1">Mínimo</p>
+                                <p className="text-3xl font-black text-white leading-none">{pMin}</p>
+                                {minPassEvent && (
+                                  <p className="text-[7px] font-bold text-white/50 uppercase mt-1 leading-tight">
+                                    {minPassEvent.gameTime}
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="flex-[1.2] bg-primary p-4 rounded-[28px] shadow-xl shadow-primary/20 text-center flex flex-col justify-center border-2 border-white min-h-[110px]">
+                                <p className="font-lato text-[15px] font-bold text-white/70 uppercase mb-1">Promedio</p>
+                                <p className="text-5xl font-black text-white leading-none">{pAvg}</p>
+                                <p className="font-lato text-[12px] font-bold text-white uppercase mt-1 tracking-widest">Pases / Cadena</p>
+                              </div>
+
+                              <div className="flex-1 border-white p-4 rounded-[24px] border-[1px] border-white text-center shadow-inner flex flex-col justify-center min-h-[100px]">
+                                <p className="font-lato text-[15px] font-bold text-white uppercase mb-1">Máximo</p>
+                                <p className="text-3xl font-black text-white leading-none">{pMax}</p>
+                                {maxPassEvent && (
+                                  <p className="text-[7px] font-bold text-white/50 uppercase mt-1 leading-tight">
+                                    {maxPassEvent.gameTime}
+                                  </p>
+                                )}
+                              </div>
                             </div>
                           </div>
-
-                          <button 
-                            className={`w-full py-4 mt-2 rounded-xl font-black text-xs uppercase shadow-md transition-all ${
-                              (selectedShotAction && (selectedShotAction !== 'ATAJADO' || atajadoPossession))
-                              ? 'bg-primary text-white active:scale-95'
-                              : 'bg-white/10 text-white/50 opacity-50 cursor-not-allowed'
-                            }`}
-                            disabled={!selectedShotAction || (selectedShotAction === 'ATAJADO' && !atajadoPossession)}
-                            onClick={() => {
-                              if (selectedShotAction === 'GOL') {
-                                handleGoalConfirmation(showPopup.targetGoal === 'TOP' ? { home: 1, away: 0 } : { home: 0, away: 1 }, showPopup.targetGoal === 'TOP' ? Possession.AWAY : Possession.HOME);
-                              } else if (selectedShotAction === 'ATAJADO') {
-                                if (atajadoPossession === 'MANTIENE') {
-                                  updateLastEvent('DISPARO (ATAJADO)', `ATAJADO${foulPlayer ? ` (#${foulPlayer})` : ''} | Mantiene posesión`, undefined, possession);
-                                } else {
-                                  updateLastEvent('DISPARO (ATAJADO)', `ATAJADO${foulPlayer ? ` (#${foulPlayer})` : ''} | Pierde posesión`, undefined, possession === Possession.HOME ? Possession.AWAY : Possession.HOME);
-                                }
-                              } else if (selectedShotAction === 'DESVIADO') {
-                                updateLastEvent('DISPARO (DESVIADO)', `DESVIADO${foulPlayer ? ` - Jugador #${foulPlayer}` : ''}`, undefined, possession === Possession.HOME ? Possession.AWAY : Possession.HOME);
-                              }
-                            }}
-                          >
-                            Continuar
-                          </button>
                         </div>
-                      ) : null}
-
-                      <button className="text-[8px] font-black text-white uppercase mt-4 text-center py-2 hover:text-primary transition-colors border-t border-white/10" onClick={handleClosePopup}>Cerrar</button>
+                      </div>
                     </div>
-                  </div>
-                </Portal>
-                )}
+                  )) : isPressMode ? (
+                    renderPressLayout()
+                  ) : game?.registroMode === 'botones' ? (
+                    <div className="w-full h-full p-2 sm:p-4 flex flex-col items-center justify-center min-h-0 min-w-0">
+                      <div
+                        className="w-full h-full max-w-4xl bg-[#131041]/40 backdrop-blur-[16px] border border-white/10 rounded-[32px] p-3 sm:p-5 flex flex-col justify-between shadow-2xl relative min-h-0 min-w-0 overflow-hidden"
+                      >
+                        {/* Header of buttons panel */}
+                        <div className="flex justify-between items-center border-b border-white/10 pb-2 mb-2 sm:mb-3 shrink-0">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-[#38bdf8] animate-pulse"></div>
+                            <span className="font-black text-[10px] sm:text-xs text-white uppercase tracking-widest font-contrail">Modo Botones Tácticos</span>
+                          </div>
+                          <span className="text-[9px] font-black text-white/40 bg-white/5 border border-white/5 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                            Carril: {selectedLane === 'left' ? 'Izquierda' : selectedLane === 'right' ? 'Derecha' : 'Centro'} | Zona: {selectedZone === 'rival' ? 'Rival' : 'Propia'}
+                          </span>
+                        </div>
 
-                {!isRunning && possession === Possession.NONE && seconds === 0 && (
-                  <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500 z-50">
-                    <div
-                      className="bg-[#1e293b]/45 backdrop-blur-md border border-white/10 p-8 rounded-[40px] shadow-2xl border border-white/10 max-w-xs transform animate-bounce-short"
-                    >
-                      <div className="text-4xl mb-4 text-white"><i className="fa-solid fa-hockey-puck"></i></div>
-                      <h3 className="contrail-font contrail-font text-2xl text-white uppercase mb-2">¡Casi Listos!</h3>
-                      <p className="text-[13px] font-bold text-white uppercase leading-relaxed tracking-wider">Selecciona qué equipo inicia con la posesión haciendo click en su marcador arriba.</p>
+                        {/* Fila 1: Controladores de Ubicación Espacial */}
+                        <div className="flex flex-row gap-3 w-full mb-3 shrink-0">
+                          {/* Segmented Control 1: Zona (Campo Rival / Campo Propio) */}
+                          <div className="flex-1 flex bg-white/5 border border-white/10 rounded-2xl p-0.5 h-11 shadow-inner relative overflow-hidden backdrop-blur-md">
+                            <button
+                              onClick={() => setSelectedZone('rival')}
+                              className={`flex-1 flex items-center justify-center font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-all rounded-xl ${selectedZone === 'rival'
+                                ? 'bg-[#38bdf8]/20 text-[#38bdf8] font-black shadow-[inset_0_0_8px_rgba(56,189,248,0.25)] border border-[#38bdf8]/30'
+                                : 'text-white/60 hover:bg-white/5 hover:text-white'
+                                }`}
+                            >
+                              Campo Rival
+                            </button>
+                            <button
+                              onClick={() => setSelectedZone('own')}
+                              className={`flex-1 flex items-center justify-center font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-all rounded-xl ${selectedZone === 'own'
+                                ? 'bg-[#38bdf8]/20 text-[#38bdf8] font-black shadow-[inset_0_0_8px_rgba(56,189,248,0.25)] border border-[#38bdf8]/30'
+                                : 'text-white/60 hover:bg-white/5 hover:text-white'
+                                }`}
+                            >
+                              Campo Propio
+                            </button>
+                          </div>
+
+                          {/* Segmented Control 2: Carril (Izquierda / Centro / Derecha) */}
+                          <div className="flex-[1.3] flex bg-white/5 border border-white/10 rounded-2xl p-0.5 h-11 shadow-inner relative overflow-hidden backdrop-blur-md">
+                            <button
+                              onClick={() => setSelectedLane('left')}
+                              className={`flex-1 flex items-center justify-center font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-all rounded-xl ${selectedLane === 'left'
+                                ? 'bg-[#38bdf8]/20 text-[#38bdf8] font-black shadow-[inset_0_0_8px_rgba(56,189,248,0.25)] border border-[#38bdf8]/30'
+                                : 'text-white/60 hover:bg-white/5 hover:text-white'
+                                }`}
+                            >
+                              Izquierda
+                            </button>
+                            <button
+                              onClick={() => setSelectedLane('center')}
+                              className={`flex-1 flex items-center justify-center font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-all rounded-xl ${selectedLane === 'center'
+                                ? 'bg-[#38bdf8]/20 text-[#38bdf8] font-black shadow-[inset_0_0_8px_rgba(56,189,248,0.25)] border border-[#38bdf8]/30'
+                                : 'text-white/60 hover:bg-white/5 hover:text-white'
+                                }`}
+                            >
+                              Centro
+                            </button>
+                            <button
+                              onClick={() => setSelectedLane('right')}
+                              className={`flex-1 flex items-center justify-center font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-all rounded-xl ${selectedLane === 'right'
+                                ? 'bg-[#38bdf8]/20 text-[#38bdf8] font-black shadow-[inset_0_0_8px_rgba(56,189,248,0.25)] border border-[#38bdf8]/30'
+                                : 'text-white/60 hover:bg-white/5 hover:text-white'
+                                }`}
+                            >
+                              Derecha
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Lógica Dinámica de Posesión y Bloques Verticales */}
+                        <div className="flex-1 flex flex-col justify-between gap-3 min-h-0 w-full">
+                          {/* Bloque Local */}
+                          {(() => {
+                            const isLocalPossession = possession === Possession.HOME;
+                            const categories = isLocalPossession ? actionsSchema.HOME.local : actionsSchema.AWAY.local;
+                            const primaryColor = game.teamHome.primaryColor || '#6d5dfc';
+
+                            return (
+                              <div
+                                className={`flex-1 flex flex-col p-2.5 sm:p-3 rounded-2xl border transition-all duration-300 min-h-0 overflow-hidden ${isLocalPossession
+                                  ? 'shadow-[0_0_12px_rgba(109,93,252,0.15)] border-white/20'
+                                  : 'border-white/5 opacity-80'
+                                  }`}
+                                style={{
+                                  backgroundColor: `${primaryColor}0f`,
+                                  borderColor: isLocalPossession ? `${primaryColor}35` : `${primaryColor}12`
+                                }}
+                              >
+                                <div className="flex justify-between items-center mb-1.5 shrink-0">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: primaryColor }} />
+                                    <span className="font-black text-xs text-white uppercase tracking-wider font-contrail">
+                                      {game.teamHome.name}
+                                    </span>
+                                  </div>
+                                  <span
+                                    className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border ${isLocalPossession
+                                      ? 'bg-[#00fe00]/10 text-[#00fe00] border-[#00fe00]/20 animate-pulse shadow-[0_0_8px_rgba(0,254,0,0.15)]'
+                                      : 'bg-white/5 text-white/30 border-white/5'
+                                      }`}
+                                  >
+                                    {isLocalPossession ? '● ATACANDO' : 'DEFENDIENDO'}
+                                  </span>
+                                </div>
+
+                                <div className="flex-1 flex flex-col justify-center min-h-0">
+                                  {categories.length === 1 ? (
+                                    <div className="w-full flex flex-col justify-center">
+                                      <span className="font-bold text-[10px] sm:text-xs uppercase tracking-widest text-white/60 mb-1.5 block">
+                                        {categories[0].name}
+                                      </span>
+                                      <div className="grid grid-cols-4 gap-1.5">
+                                        {categories[0].buttons.map(btn => renderActionButton(btn, primaryColor))}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 h-full items-stretch content-center">
+                                      {categories.map(cat => (
+                                        <div key={cat.id} className="flex flex-col bg-white/5 border border-white/5 rounded-xl p-1.5 sm:p-2 justify-between min-h-0">
+                                          <span className="font-bold text-[10px] sm:text-xs uppercase tracking-widest text-white/60 mb-1.5 truncate block" title={cat.name}>
+                                            {cat.name}
+                                          </span>
+                                          <div className="grid grid-cols-3 gap-1">
+                                            {cat.buttons.map(btn => renderActionButton(btn, primaryColor))}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
+
+                          {/* Bloque Visitante */}
+                          {(() => {
+                            const isAwayPossession = possession === Possession.AWAY;
+                            const categories = isAwayPossession ? actionsSchema.AWAY.visitante : actionsSchema.HOME.visitante;
+                            const primaryColor = game.teamAway.primaryColor || '#ef4444';
+
+                            return (
+                              <div
+                                className={`flex-1 flex flex-col p-2.5 sm:p-3 rounded-2xl border transition-all duration-300 min-h-0 overflow-hidden ${isAwayPossession
+                                  ? 'shadow-[0_0_12px_rgba(239,68,68,0.15)] border-white/20'
+                                  : 'border-white/5 opacity-80'
+                                  }`}
+                                style={{
+                                  backgroundColor: `${primaryColor}0f`,
+                                  borderColor: isAwayPossession ? `${primaryColor}35` : `${primaryColor}12`
+                                }}
+                              >
+                                <div className="flex justify-between items-center mb-1.5 shrink-0">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: primaryColor }} />
+                                    <span className="font-black text-xs text-white uppercase tracking-wider font-contrail">
+                                      {game.teamAway.name}
+                                    </span>
+                                  </div>
+                                  <span
+                                    className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border ${isAwayPossession
+                                      ? 'bg-[#00fe00]/10 text-[#00fe00] border-[#00fe00]/20 animate-pulse shadow-[0_0_8px_rgba(0,254,0,0.15)]'
+                                      : 'bg-white/5 text-white/30 border-white/5'
+                                      }`}
+                                  >
+                                    {isAwayPossession ? '● ATACANDO' : 'DEFENDIENDO'}
+                                  </span>
+                                </div>
+
+                                <div className="flex-1 flex flex-col justify-center min-h-0">
+                                  {categories.length === 1 ? (
+                                    <div className="w-full flex flex-col justify-center">
+                                      <span className="font-bold text-[10px] sm:text-xs uppercase tracking-widest text-white/60 mb-1.5 block">
+                                        {categories[0].name}
+                                      </span>
+                                      <div className="grid grid-cols-4 gap-1.5">
+                                        {categories[0].buttons.map(btn => renderActionButton(btn, primaryColor))}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 h-full items-stretch content-center">
+                                      {categories.map(cat => (
+                                        <div key={cat.id} className="flex flex-col bg-white/5 border border-white/5 rounded-xl p-1.5 sm:p-2 justify-between min-h-0">
+                                          <span className="font-bold text-[10px] sm:text-xs uppercase tracking-widest text-white/60 mb-1.5 truncate block" title={cat.name}>
+                                            {cat.name}
+                                          </span>
+                                          <div className="grid grid-cols-3 gap-1">
+                                            {cat.buttons.map(btn => renderActionButton(btn, primaryColor))}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
                     </div>
+                  ) : (
+                  <div
+                    key={`pitch-wrapper-${orientationTrigger}`}
+                    className="relative flex items-center justify-center mx-auto"
+                    style={{
+                      aspectRatio: isLandscape ? '5 / 3' : '3 / 5',
+                      height: '100%',
+                      maxWidth: '100%',
+                      maxHeight: '100%',
+                      margin: 'auto'
+                    }}
+                  >
+                    <PitchMap
+                      possession={possession}
+                      isRunning={isRunning}
+                      isLandscape={isLandscape}
+                      isFlipped={isFlipped}
+                      teamHome={game?.teamHome}
+                      teamAway={game?.teamAway}
+                      onAction={handlePitchAction}
+                      onManualMenu={handleManualMenu}
+                    />
+
+                    {feedback && (() => {
+                      let dispX = feedback.x;
+                      let dispY = feedback.y;
+
+                      if (isFlipped) {
+                        dispX = 100 - dispX;
+                        dispY = 100 - dispY;
+                      }
+                      if (isLandscape) {
+                        const temp = dispX;
+                        dispX = dispY;
+                        dispY = 100 - temp;
+                      }
+
+                      const isNearTop = dispY < 15;
+
+                      let leftPos = `${dispX}%`;
+                      let hTransform = '-translate-x-1/2';
+                      if (dispX < 15) {
+                        leftPos = '20px';
+                        hTransform = 'translate-x-0';
+                      } else if (dispX > 85) {
+                        leftPos = 'calc(100% - 20px)';
+                        hTransform = '-translate-x-full';
+                      }
+
+                      return (
+                        <div
+                          key={feedback.id}
+                          className="absolute z-[400] pointer-events-none transition-all duration-200"
+                          style={{
+                            left: leftPos,
+                            top: `${dispY}%`,
+                            opacity: feedback.fading ? 0 : 1,
+                            transform: feedback.fading ? 'scale(0.95)' : 'scale(1)',
+                          }}
+                        >
+                          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1e293b]/45 backdrop-blur-md border border-white/10/80 backdrop-blur-md border border-white/50 shadow-lg ${hTransform} ${isNearTop ? 'translate-y-4' : '-translate-y-10'} ${feedback.fading ? '' : 'animate-in zoom-in slide-in-from-bottom-2 duration-200'}`}>
+                            <span className="text-sm">{feedback.icon}</span>
+                            <span className="text-[10px] font-black text-white uppercase tracking-wider whitespace-nowrap">{feedback.text}</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {showPopup && (
+                      <Portal>
+                        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                          <div
+                            className="relative bg-[#1e293b]/45 backdrop-blur-md border border-white/10 shadow-2xl rounded-[40px] p-8 flex flex-col gap-4 min-w-[300px] max-w-sm border border-white/10 animate-in zoom-in duration-200 text-center"
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <p className="contrail-font text-[10px] font-black text-white uppercase tracking-widest border-b border-white/10 pb-3 mb-2">Resultado de Acción</p>
+                            {showPopup.type === 'FOUL' ? (
+                              <div className="flex flex-col gap-3">
+                                {foulCardType === 'AMARILLA' ? (
+                                  <div className="flex flex-col gap-3 animate-in fade-in zoom-in duration-200">
+                                    <div className="flex flex-col gap-2">
+                                      <label className="text-[8px] font-bold text-white uppercase">Jugador #</label>
+                                      <input
+                                        type="text"
+                                        value={foulPlayer}
+                                        onChange={(e) => setFoulPlayer(e.target.value)}
+                                        className="w-full bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:border-primary"
+                                        placeholder="Ej: 8"
+                                      />
+                                    </div>
+                                    <div className="flex flex-col gap-2 bg-yellow-50/50 p-2 rounded-xl border border-yellow-100">
+                                      <label className="text-[7px] font-black text-yellow-700 uppercase">Minutos Sanción (Amarilla)</label>
+                                      <input
+                                        type="text"
+                                        value={foulMinutes}
+                                        onChange={(e) => setFoulMinutes(e.target.value)}
+                                        className="w-full bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-yellow-200 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:border-yellow-400"
+                                        placeholder="Ej: 5"
+                                      />
+                                    </div>
+                                    <button
+                                      className="w-full py-3 rounded-xl bg-yellow-400 text-white font-black text-xs uppercase shadow-lg shadow-yellow-100 active:scale-95 transition-all"
+                                      onClick={() => updateLastEvent('FALTA (AMARILLA) / PÉRDIDA', `AMARILLA${foulMinutes ? ` (${foulMinutes} minutos)` : ''}${foulPlayer ? ` - Jugador #${foulPlayer}` : ''}`)}
+                                    >
+                                      Confirmar Amarilla
+                                    </button>
+                                    <button
+                                      className="text-[8px] font-black text-white uppercase text-center py-1 hover:text-primary transition-colors"
+                                      onClick={() => setFoulCardType('NONE')}
+                                    >
+                                      Atrás
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col gap-3">
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <button className="text-[10px] font-black text-white py-3 rounded-xl bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 flex flex-col items-center justify-center gap-1.5 hover:bg-green-50 transition-colors" onClick={() => updateLastEvent('FALTA (VERDE)', 'VERDE')}>
+                                        <span className="w-5 h-7 bg-green-500 rounded-sm shadow-sm"></span>
+                                        <span>VERDE</span>
+                                      </button>
+                                      <button className="text-[10px] font-black text-white py-3 rounded-xl bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 flex flex-col items-center justify-center gap-1.5 hover:bg-yellow-50 transition-colors" onClick={() => setFoulCardType('AMARILLA')}>
+                                        <span className="w-5 h-7 bg-yellow-400 rounded-sm shadow-sm"></span>
+                                        <span>AMARILLA</span>
+                                      </button>
+                                      <button className="text-[10px] font-black text-white py-3 rounded-xl bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 flex flex-col items-center justify-center gap-1.5 hover:bg-red-50 transition-colors" onClick={() => updateLastEvent('FALTA (ROJA)', 'ROJA')}>
+                                        <span className="w-5 h-7 bg-red-600 rounded-sm shadow-sm"></span>
+                                        <span>ROJA</span>
+                                      </button>
+                                      <button
+                                        className="text-[10px] font-black text-white py-3 rounded-xl bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 flex flex-col items-center justify-center gap-1.5 hover:bg-white/5 transition-colors"
+                                        onClick={() => updateLastEvent('FALTA COMETIDA', 'Sin tarjeta')}
+                                      >
+                                        <div className="w-5 h-7 border-2 border-dashed border-onSurfaceVariant/30 rounded-sm flex items-center justify-center">
+                                          <span className="text-[8px] text-white/40">✕</span>
+                                        </div>
+                                        <span>SIN TARJETA</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ) : showPopup.type === 'CORTO_PENAL' ? (
+                              <div className="flex flex-col gap-2">
+                                <button className="text-[10px] font-black text-indigo-600 py-3 rounded-xl bg-indigo-50 border border-indigo-100 uppercase flex items-center justify-center gap-2" onClick={() => registerEvent('CÓRNER CORTO', possession, showPopup.x, showPopup.y, "Córner Corto a Favor")}><i className="fa-solid fa-hockey-puck"></i> C. CORTO</button>
+                                <button className="text-[10px] font-black text-purple-600 py-3 rounded-xl bg-purple-50 border border-purple-100 uppercase flex items-center justify-center gap-2" onClick={() => registerEvent('PENAL', possession, showPopup.x, showPopup.y, "Penal a Favor")}><i className="fa-solid fa-bullseye"></i> PENAL</button>
+                              </div>
+                            ) : showPopup.type === 'SHOT' ? (
+                              <div className="flex flex-col gap-3 relative">
+                                <button
+                                  onClick={handleClosePopup}
+                                  className="absolute -top-3 -right-3 w-8 h-8 flex items-center justify-center bg-white/5 rounded-full text-white hover:bg-white/10 transition-colors font-black"
+                                >
+                                  ✕
+                                </button>
+                                <p className="text-[9px] font-black text-white uppercase mb-1">Resultado del Remate</p>
+
+                                <div className="grid grid-cols-3 gap-2 mb-1">
+                                  <button
+                                    className={`py-3 rounded-xl text-[10px] font-black uppercase flex flex-col items-center gap-1 transition-all border ${selectedShotAction === 'GOL' ? 'bg-primary text-white border-primary shadow-md' : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white border-white/10'}`}
+                                    onClick={() => setSelectedShotAction('GOL')}
+                                  >
+                                    <span className="text-sm"><i className="fa-solid fa-futbol"></i></span> GOL
+                                  </button>
+                                  <button
+                                    className={`py-3 rounded-xl text-[10px] font-black uppercase flex flex-col items-center gap-1 transition-all border ${selectedShotAction === 'ATAJADO' ? 'bg-primary text-white border-primary shadow-md' : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white border-white/10'}`}
+                                    onClick={() => setSelectedShotAction('ATAJADO')}
+                                  >
+                                    <span className="text-sm"><i className="fa-solid fa-shield-halved"></i></span> ATAJADO
+                                  </button>
+                                  <button
+                                    className={`py-3 rounded-xl text-[10px] font-black uppercase flex flex-col items-center gap-1 transition-all border ${selectedShotAction === 'DESVIADO' ? 'bg-primary text-white border-primary shadow-md' : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white border-white/10'}`}
+                                    onClick={() => setSelectedShotAction('DESVIADO')}
+                                  >
+                                    <span className="text-sm"><i className="fa-solid fa-wind"></i></span> DESV.
+                                  </button>
+                                </div>
+
+                                {selectedShotAction === 'ATAJADO' && (
+                                  <div className="flex flex-col gap-2 mb-1 animate-in slide-in-from-top duration-200">
+                                    <p className="text-[8px] font-bold text-white uppercase">Posesión tras el atajo:</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <button
+                                        className={`py-2 rounded-lg text-[9px] font-black uppercase transition-all border ${atajadoPossession === 'MANTIENE' ? 'bg-green-500 text-white border-green-600' : 'bg-green-50 text-green-700 border-green-200'}`}
+                                        onClick={() => setAtajadoPossession('MANTIENE')}
+                                      >
+                                        Mantiene
+                                      </button>
+                                      <button
+                                        className={`py-2 rounded-lg text-[9px] font-black uppercase transition-all border ${atajadoPossession === 'PIERDE' ? 'bg-red-500 text-white border-red-600' : 'bg-red-50 text-red-700 border-red-200'}`}
+                                        onClick={() => setAtajadoPossession('PIERDE')}
+                                      >
+                                        Pierde
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+
+                                <div className="flex flex-col gap-2 mt-2">
+                                  <label className="text-[8px] font-bold text-white uppercase">Jugador #</label>
+                                  <input
+                                    type="number"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    value={foulPlayer}
+                                    onChange={(e) => setFoulPlayer(e.target.value)}
+                                    className="w-full bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 rounded-lg px-2 py-2 text-xs font-bold focus:outline-none focus:border-primary"
+                                    placeholder="Ej: 8"
+                                  />
+                                </div>
+
+                                <div className="flex flex-col gap-2 mb-2">
+                                  <label className="text-[8px] font-bold text-white uppercase">Origen de la jugada</label>
+                                  <div className="grid grid-cols-4 gap-1.5">
+                                    {[
+                                      { id: 'Individual', label: 'Indiv.' },
+                                      { id: 'Colectiva', label: 'Colect.' },
+                                      { id: 'Penal', label: 'Penal' },
+                                      { id: 'Corto', label: 'C. Corto' },
+                                    ].map((type) => (
+                                      <button
+                                        key={type.id}
+                                        onClick={() => setGoalType(type.id as any)}
+                                        className={`py-2 rounded-lg text-[8px] font-black uppercase transition-all ${goalType === type.id
+                                          ? 'bg-primary text-white shadow-sm'
+                                          : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 text-white'
+                                          }`}
+                                      >
+                                        {type.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                <button
+                                  className={`w-full py-4 mt-2 rounded-xl font-black text-xs uppercase shadow-md transition-all ${(selectedShotAction && (selectedShotAction !== 'ATAJADO' || atajadoPossession))
+                                    ? 'bg-primary text-white active:scale-95'
+                                    : 'bg-white/10 text-white/50 opacity-50 cursor-not-allowed'
+                                    }`}
+                                  disabled={!selectedShotAction || (selectedShotAction === 'ATAJADO' && !atajadoPossession)}
+                                  onClick={() => {
+                                    if (selectedShotAction === 'GOL') {
+                                      handleGoalConfirmation(showPopup.targetGoal === 'TOP' ? { home: 1, away: 0 } : { home: 0, away: 1 }, showPopup.targetGoal === 'TOP' ? Possession.AWAY : Possession.HOME);
+                                    } else if (selectedShotAction === 'ATAJADO') {
+                                      if (atajadoPossession === 'MANTIENE') {
+                                        updateLastEvent('DISPARO (ATAJADO)', `ATAJADO${foulPlayer ? ` (#${foulPlayer})` : ''} | Mantiene posesión`, undefined, possession);
+                                      } else {
+                                        updateLastEvent('DISPARO (ATAJADO)', `ATAJADO${foulPlayer ? ` (#${foulPlayer})` : ''} | Pierde posesión`, undefined, possession === Possession.HOME ? Possession.AWAY : Possession.HOME);
+                                      }
+                                    } else if (selectedShotAction === 'DESVIADO') {
+                                      updateLastEvent('DISPARO (DESVIADO)', `DESVIADO${foulPlayer ? ` - Jugador #${foulPlayer}` : ''}`, undefined, possession === Possession.HOME ? Possession.AWAY : Possession.HOME);
+                                    }
+                                  }}
+                                >
+                                  Continuar
+                                </button>
+                              </div>
+                            ) : null}
+
+                            <button className="text-[8px] font-black text-white uppercase mt-4 text-center py-2 hover:text-primary transition-colors border-t border-white/10" onClick={handleClosePopup}>Cerrar</button>
+                          </div>
+                        </div>
+                      </Portal>
+                    )}
+
+                    {!isRunning && possession === Possession.NONE && seconds === 0 && (
+                      <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500 z-50">
+                        <div
+                          className="bg-[#1e293b]/45 backdrop-blur-md border border-white/10 p-8 rounded-[40px] shadow-2xl border border-white/10 max-w-xs transform animate-bounce-short"
+                        >
+                          <div className="text-4xl mb-4 text-white"><i className="fa-solid fa-hockey-puck"></i></div>
+                          <h3 className="contrail-font contrail-font text-2xl text-white uppercase mb-2">¡Casi Listos!</h3>
+                          <p className="text-[13px] font-bold text-white uppercase leading-relaxed tracking-wider">Selecciona qué equipo inicia con la posesión haciendo click en su marcador arriba.</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
-          </div>
 
-          {isLandscape && !isPressMode && (
-            <aside className="hidden md:flex w-[80px] bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border-l border-white/10 flex-col items-center py-6 gap-6 z-50 shadow-lg shrink-0">
-              <p className="contrail-font text-[16px] font-black text-white uppercase tracking-wider leading-none mb-2">Notas</p>
-              <button
-                onClick={(e) => { e.stopPropagation(); handleVoiceNote(); }}
-                className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all shadow-md border-2 ${isRecording ? 'bg-red-600 text-white animate-pulse border-red-400' : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border-primary text-primary'}`}
-              >
-                {isRecording ? '⏺' : '<i className="fa-solid fa-microphone"></i>'}
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); setShowNoteModal(true); }}
-                className="w-14 h-14 rounded-2xl flex items-center justify-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-primary border-2 border-primary active:scale-90 shadow-md text-xl"
-              >
-                <i className="fa-solid fa-clipboard-list"></i>
-              </button>
-            </aside>
-          )}
-        </div>
+              {isLandscape && !isPressMode && (
+                <aside className="hidden md:flex w-[80px] bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border-l border-white/10 flex-col items-center py-6 gap-6 z-50 shadow-lg shrink-0">
+                  <p className="contrail-font text-[16px] font-black text-white uppercase tracking-wider leading-none mb-2">Notas</p>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleVoiceNote(); }}
+                    className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all shadow-md border-2 ${isRecording ? 'bg-red-600 text-white animate-pulse border-red-400' : 'bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border-primary text-primary'}`}
+                  >
+                    {isRecording ? '⏺' : '<i className="fa-solid fa-microphone"></i>'}
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowNoteModal(true); }}
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-primary border-2 border-primary active:scale-90 shadow-md text-xl"
+                  >
+                    <i className="fa-solid fa-clipboard-list"></i>
+                  </button>
+                </aside>
+              )}
+            </div>
 
-        {
-          !isLandscape && (
-            <aside className="hidden lg:flex w-[320px] flex-col p-4 bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border-l border-white/10 overflow-y-auto no-scrollbar">
-              {isPressMode ? (
-                renderPressSidebarRight()
-              ) : (
-                <div className="flex flex-col gap-4 pb-10">
-                <h3 className="contrail-font text-[16px] font-black text-white uppercase tracking-wider border-b border-white/10 pb-2 italic">Estadísticas En vivo</h3>
+            {
+              !isLandscape && (
+                <aside className="hidden lg:flex w-[320px] flex-col p-4 bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border-l border-white/10 overflow-y-auto no-scrollbar">
+                  {isPressMode ? (
+                    renderPressSidebarRight()
+                  ) : (
+                    <div className="flex flex-col gap-4 pb-10">
+                      <h3 className="contrail-font text-[16px] font-black text-white uppercase tracking-wider border-b border-white/10 pb-2 italic">Estadísticas En vivo</h3>
 
-                {/* Posesión Sidebar */}
-                <div className="border-white p-4 rounded-[24px] border-[1px] border-white shadow-inner flex flex-col gap-2">
-                  <div className={`flex justify-between items-center ${possessionSidebarExpanded ? 'border-b border-white/10 pb-2 mb-1' : ''}`}>
-                    <div className="flex items-center gap-2">
-                      <i className="fa-solid fa-stopwatch text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>
-                      <p className="contrail-font text-[15px] font-black text-white uppercase tracking-wider leading-none">Posesión</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-lg font-black text-white">{localPct}% / {awayPct}%</span>
-                      <button
-                        onClick={() => setPossessionSidebarExpanded(!possessionSidebarExpanded)}
-                        className={`w-5 h-5 flex items-center justify-center rounded-full bg-white/5 transition-transform duration-300 ${possessionSidebarExpanded ? 'rotate-180' : ''}`}
-                      >
-                        <span className="text-[8px] text-white font-black" style={{ color: '#ffffff' }}>▼</span>
-                      </button>
-                    </div>
-                  </div>
+                      {/* Posesión Sidebar */}
+                      <div className="border-white p-4 rounded-[24px] border-[1px] border-white shadow-inner flex flex-col gap-2">
+                        <div className={`flex justify-between items-center ${possessionSidebarExpanded ? 'border-b border-white/10 pb-2 mb-1' : ''}`}>
+                          <div className="flex items-center gap-2">
+                            <i className="fa-solid fa-stopwatch text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>
+                            <p className="contrail-font text-[15px] font-black text-white uppercase tracking-wider leading-none">Posesión</p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-lg font-black text-white">{localPct}% / {awayPct}%</span>
+                            <button
+                              onClick={() => setPossessionSidebarExpanded(!possessionSidebarExpanded)}
+                              className={`w-5 h-5 flex items-center justify-center rounded-full bg-white/5 transition-transform duration-300 ${possessionSidebarExpanded ? 'rotate-180' : ''}`}
+                            >
+                              <span className="text-[8px] text-white font-black" style={{ color: '#ffffff' }}>▼</span>
+                            </button>
+                          </div>
+                        </div>
 
-                  {possessionSidebarExpanded && (
-                    <div className="animate-in slide-in-from-top duration-300">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
-                          {localPct}%
-                        </span>
-                        <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                          {awayPct}%
-                          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
-                        </span>
+                        {possessionSidebarExpanded && (
+                          <div className="animate-in slide-in-from-top duration-300">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
+                                {localPct}%
+                              </span>
+                              <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                                {awayPct}%
+                                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
+                              </span>
+                            </div>
+                            <div className="w-full h-4 bg-white/5 rounded-full overflow-hidden flex border border-white/10">
+                              <div className="h-full transition-all duration-700" style={{ width: `${localPct}%`, backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
+                              <div className="h-full transition-all duration-700" style={{ width: `${awayPct}%`, backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div className="w-full h-4 bg-white/5 rounded-full overflow-hidden flex border border-white/10">
-                        <div className="h-full transition-all duration-700" style={{ width: `${localPct}%`, backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
-                        <div className="h-full transition-all duration-700" style={{ width: `${awayPct}%`, backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
+
+
+                      {/* Desgloses Detallados Sidebar */}
+                      <StatDetailCard title="Pérdidas" data={getDetailedStat(['PÉRDIDA', 'PERDIDA', 'TURNOVER'], game.teamHome.id)} colorClass="text-orange-600" compact={true} icon={<i className="fa-solid fa-arrow-trend-down text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>} />
+                      <StatDetailCard title="Recuperos" data={getDetailedStat(['RECUPERO'], game.teamHome.id)} colorClass="text-emerald-600" compact={true} icon={<i className="fa-solid fa-arrow-trend-up text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>} />
+                      <StatDetailCard title="Faltas" data={getDetailedStat(['FALTA'], game.teamHome.id)} colorClass="text-red-600" compact={true} icon={<i className="fa-solid fa-triangle-exclamation text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>} />
+
+                      {/* Análisis de Pases Sidebar Horizontal */}
+                      <div className="mt-2">
+                        <h3 className="contrail-font text-[15px] font-black text-white uppercase tracking-wider mb-3 italic flex items-center gap-2">
+                          <i className="fa-solid fa-magnifying-glass-arrow-right text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i> Análisis de Pases
+                        </h3>
+                        <div className="flex flex-row items-stretch gap-2 h-24">
+                          <div className="flex-1 border-white p-2 rounded-2xl border-[1px] border-white text-center shadow-inner flex flex-col justify-center">
+                            <p className="font-lato text-[15px] font-bold text-white uppercase mb-0.5">Mín</p>
+                            <p className="text-xl font-black text-white leading-none">{pMin}</p>
+                            {minPassEvent && <p className="text-[6px] font-bold text-white/40 mt-0.5 leading-none">{minPassEvent.gameTime}</p>}
+                          </div>
+                          <div className="flex-[1.2] bg-primary p-2 rounded-[20px] shadow-lg shadow-primary/10 text-center flex flex-col justify-center border-2 border-white">
+                            <p className="font-lato text-[15px] font-bold text-white/60 uppercase mb-0.5">Prom</p>
+                            <p className="text-3xl font-black text-white leading-none">{pAvg}</p>
+                          </div>
+                          <div className="flex-1 border-white p-2 rounded-2xl border-[1px] border-white text-center shadow-inner flex flex-col justify-center">
+                            <p className="font-lato text-[15px] font-bold text-white uppercase mb-0.5">Máx</p>
+                            <p className="text-xl font-black text-white leading-none">{pMax}</p>
+                            {maxPassEvent && <p className="text-[6px] font-bold text-white/40 mt-0.5 leading-none">{maxPassEvent.gameTime}</p>}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
-                </div>
-
-
-                {/* Desgloses Detallados Sidebar */}
-                <StatDetailCard title="Pérdidas" data={getDetailedStat(['PÉRDIDA', 'PERDIDA', 'TURNOVER'], game.teamHome.id)} colorClass="text-orange-600" compact={true} icon={<i className="fa-solid fa-arrow-trend-down text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>} />
-                <StatDetailCard title="Recuperos" data={getDetailedStat(['RECUPERO'], game.teamHome.id)} colorClass="text-emerald-600" compact={true} icon={<i className="fa-solid fa-arrow-trend-up text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>} />
-                <StatDetailCard title="Faltas" data={getDetailedStat(['FALTA'], game.teamHome.id)} colorClass="text-red-600" compact={true} icon={<i className="fa-solid fa-triangle-exclamation text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>} />
-
-                {/* Análisis de Pases Sidebar Horizontal */}
-                <div className="mt-2">
-                  <h3 className="contrail-font text-[15px] font-black text-white uppercase tracking-wider mb-3 italic flex items-center gap-2">
-                    <i className="fa-solid fa-magnifying-glass-arrow-right text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i> Análisis de Pases
-                  </h3>
-                  <div className="flex flex-row items-stretch gap-2 h-24">
-                    <div className="flex-1 border-white p-2 rounded-2xl border-[1px] border-white text-center shadow-inner flex flex-col justify-center">
-                      <p className="font-lato text-[15px] font-bold text-white uppercase mb-0.5">Mín</p>
-                      <p className="text-xl font-black text-white leading-none">{pMin}</p>
-                      {minPassEvent && <p className="text-[6px] font-bold text-white/40 mt-0.5 leading-none">{minPassEvent.gameTime}</p>}
-                    </div>
-                    <div className="flex-[1.2] bg-primary p-2 rounded-[20px] shadow-lg shadow-primary/10 text-center flex flex-col justify-center border-2 border-white">
-                      <p className="font-lato text-[15px] font-bold text-white/60 uppercase mb-0.5">Prom</p>
-                      <p className="text-3xl font-black text-white leading-none">{pAvg}</p>
-                    </div>
-                    <div className="flex-1 border-white p-2 rounded-2xl border-[1px] border-white text-center shadow-inner flex flex-col justify-center">
-                      <p className="font-lato text-[15px] font-bold text-white uppercase mb-0.5">Máx</p>
-                      <p className="text-xl font-black text-white leading-none">{pMax}</p>
-                      {maxPassEvent && <p className="text-[6px] font-bold text-white/40 mt-0.5 leading-none">{maxPassEvent.gameTime}</p>}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </aside>
-          )
-        }
-        </>
-      )}
+                </aside>
+              )
+            }
+          </>
+        )}
       </main >
 
       <footer className="h-20 md:h-24 bg-[#1e293b]/45 backdrop-blur-md border border-white/10 flex flex-wrap items-center justify-between px-4 md:px-10 border-t border-white/10 shadow-lg relative z-[200] gap-2" style={{ flexShrink: 0 }}>

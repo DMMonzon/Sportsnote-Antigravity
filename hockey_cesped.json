@@ -1,0 +1,56 @@
+{
+  "id": "hockey_cesped",
+  "nombre_visible": "Hockey sobre Césped",
+  "modos": {
+    "periodista": {
+      "bloque_acciones": [
+        {
+          "categoria": "ATAQUE Y PROGRESIÓN",
+          "cards": [
+            {
+              "id": "disparo_al_arco",
+              "titulo": "DISPARO AL ARCO",
+              "layout_botones": "fila",
+              "botones": [
+                { "id": "remate_gol", "nombre": "GOL", "kpi_principal": "disparos_totales", "kpi_subaccion": "goles", "flujo_consecuencia": "abrir_modal_jugador_ataque" },
+                { "id": "remate_atajado", "nombre": "ATAJADO", "kpi_principal": "disparos_totales", "kpi_subaccion": "atajados", "flujo_consecuencia": "abrir_modal_jugador_ataque" },
+                { "id": "remate_desviado", "nombre": "DESVIADO", "kpi_principal": "disparos_totales", "kpi_subaccion": "desviados", "flujo_consecuencia": "abrir_modal_jugador_ataque" }
+              ]
+            },
+            {
+              "id": "ingreso_area",
+              "titulo": "INGRESO ÁREA",
+              "layout_botones": "fila",
+              "botones": [
+                { "id": "ingreso_general", "nombre": "INGRESAR AL ÁREA", "kpi_principal": "ingresos_area", "flujo_consecuencia": "registro_directo_sin_modal" }
+              ]
+            }
+          ]
+        },
+        {
+          "categoria": "INFRACCIONES",
+          "cards": [
+            {
+              "id": "faltas_cometidas",
+              "titulo": "FALTAS COMETIDAS",
+              "subtitulo": "CAMBIA POSESIÓN",
+              "layout_botones": "grilla",
+              "botones": [
+                { "id": "fc_general", "nombre": "REGISTRAR FALTA COMETIDA", "kpi": "faltas_cometidas", "flujo_consecuencia": "abrir_modal_infraccion_con_cambio_posesion" }
+              ]
+            },
+            {
+              "id": "faltas_recibidas",
+              "titulo": "FALTAS RECIBIDAS",
+              "subtitulo": "MANTIENE POSESIÓN",
+              "layout_botones": "grilla",
+              "botones": [
+                { "id": "fr_general", "nombre": "REGISTRAR FALTA RECIBIDA", "kpi": "faltas_recibidas", "flujo_consecuencia": "abrir_modal_infraccion_mantiene_posesion" }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
