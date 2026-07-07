@@ -813,6 +813,9 @@ const LiveGameView: React.FC<{
 
   const selectPossession = (p: Possession) => {
     if (isRunning) return;
+    if (p !== possession) {
+      setPassCount(0);
+    }
     setPossession(p);
     if (navigator.vibrate) navigator.vibrate(50);
   };
@@ -977,11 +980,13 @@ const LiveGameView: React.FC<{
     if (btn.type === 'FALTA COMETIDA (CÓRNER CORTO)') {
       registerEvent('CÓRNER CORTO', Possession.HOME, lx, ly, `Córner Corto a Favor (Cometido por rival) | ${sectorStr}`, game.teamAway.id);
       setPossession(Possession.HOME);
+      setPassCount(0);
       return;
     }
     if (btn.type === 'FALTA COMETIDA (PENAL)') {
       registerEvent('PENAL', Possession.HOME, lx, ly, `Penal a Favor (Cometido por rival) | ${sectorStr}`, game.teamAway.id);
       setPossession(Possession.HOME);
+      setPassCount(0);
       return;
     }
 
@@ -994,6 +999,7 @@ const LiveGameView: React.FC<{
         registerEvent('PÉRDIDA', Possession.AWAY, lx, ly, lossDetails, game.teamHome.id);
       }
       setPossession(Possession.AWAY);
+      setPassCount(0);
       return;
     }
 
@@ -1006,6 +1012,7 @@ const LiveGameView: React.FC<{
         registerEvent('RECUPERO', Possession.HOME, lx, ly, recoveryDetails, game.teamHome.id);
       }
       setPossession(Possession.HOME);
+      setPassCount(0);
       return;
     }
 
@@ -1126,7 +1133,12 @@ const LiveGameView: React.FC<{
       };
     });
 
-    if (nextPoss !== Possession.NONE) setPossession(nextPoss);
+    if (nextPoss !== Possession.NONE) {
+      if (nextPoss !== possession) {
+        setPassCount(0);
+      }
+      setPossession(nextPoss);
+    }
 
     // Track secondary actions for gol formatting
     if (type.includes('CÓRNER CORTO') || type.includes('PENAL')) {
@@ -1412,8 +1424,10 @@ const LiveGameView: React.FC<{
     try {
       setIsLoading(true); // Feedback visual de guardado
 
+      const cleanGame = JSON.parse(JSON.stringify(game));
+
       const payload = {
-        ...game,
+        ...cleanGame,
         authorId: auth.currentUser.uid,
         timestamp: serverTimestamp(),
         localTeam: game.teamHome.name,
@@ -2369,6 +2383,7 @@ const LiveGameView: React.FC<{
           className="flex-none h-14 md:h-16 flex items-center p-4 rounded-3xl border border-white/5 bg-white/5 hover:bg-white/10 transition-all shadow-sm cursor-pointer opacity-55 hover:opacity-85"
           onClick={() => {
             setPossession(isLocal ? Possession.HOME : Possession.AWAY);
+            setPassCount(0);
             if (navigator.vibrate) navigator.vibrate(50);
           }}
         >
@@ -2380,6 +2395,7 @@ const LiveGameView: React.FC<{
               onClick={(e) => {
                 e.stopPropagation();
                 setPossession(isLocal ? Possession.HOME : Possession.AWAY);
+                setPassCount(0);
                 if (navigator.vibrate) navigator.vibrate(50);
               }}
               className="py-2 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#00fe00] text-white font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-2"

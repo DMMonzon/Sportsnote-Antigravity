@@ -13,30 +13,151 @@ import {
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
+const hexToRgba = (hex: string, alpha: number): string => {
+  if (!hex) return `rgba(255, 255, 255, ${alpha})`;
+  
+  if (hex.startsWith('rgb')) {
+    const parts = hex.match(/\d+/g);
+    if (parts && parts.length >= 3) {
+      return `rgba(${parts[0]}, ${parts[1]}, ${parts[2]}, ${alpha})`;
+    }
+  }
+
+  let cleanHex = hex.replace('#', '');
+  if (cleanHex.length === 3) {
+    cleanHex = cleanHex.split('').map(char => char + char).join('');
+  }
+  
+  const num = parseInt(cleanHex, 16);
+  if (isNaN(num)) {
+    return `rgba(255, 255, 255, ${alpha})`;
+  }
+  
+  const r = (num >> 16) & 255;
+  const g = (num >> 8) & 255;
+  const b = num & 255;
+  
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
 const EntryAnalysisCard: React.FC<{
-  title: React.ReactNode | string;
+  title: string;
   homeTotal: number;
   awayTotal: number;
-  icon?: string;
+  homeColor: string;
+  awayColor: string;
+  icon?: React.ReactNode;
   children: React.ReactNode;
-}> = ({ title, homeTotal, awayTotal, icon, children }) => (
-  <GlassCard className="p-5 flex flex-col gap-4">
-    <div className="flex justify-between items-center border-b border-white/10 pb-3">
-      <div className="flex items-center gap-2">
-        {icon && <span className="text-xs">{icon}</span>}
-        <h4 className="contrail-font text-[15px] font-black text-white uppercase tracking-wider">{title}</h4>
+}> = ({ title, homeTotal, awayTotal, homeColor, awayColor, icon, children }) => {
+  const total = homeTotal + awayTotal;
+  const homePct = total > 0 ? (homeTotal / total) * 100 : 50;
+  const awayPct = total > 0 ? (awayTotal / total) * 100 : 50;
+
+  return (
+    <GlassCard className="p-5 flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        {/* Fila Superior */}
+        <div className="flex justify-between items-center pb-1">
+          <div className="flex items-center gap-2">
+            {icon && <span className="text-white flex items-center">{icon}</span>}
+            <h4 className="contrail-font text-[15px] font-black text-white uppercase tracking-wider">{title}</h4>
+          </div>
+          <div className="text-xl font-black text-white tracking-tight italic">
+            {homeTotal} <span className="text-white/40">/</span> {awayTotal}
+          </div>
+        </div>
+
+        {/* Versus Progress Bar */}
+        <div className="w-full flex flex-col gap-1">
+          <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden flex border border-white/5">
+            <div 
+              className="h-full transition-all duration-500 ease-out" 
+              style={{ width: `${homePct}%`, backgroundColor: homeColor }}
+            />
+            <div 
+              className="h-full transition-all duration-500 ease-out" 
+              style={{ width: `${awayPct}%`, backgroundColor: awayColor }}
+            />
+          </div>
+          {/* Fila Inferior */}
+          <div className="flex justify-between items-center text-[10px] font-medium text-white/40 px-0.5">
+            <span>{homeTotal}</span>
+            <span>{awayTotal}</span>
+          </div>
+        </div>
       </div>
-      <div className="flex items-center gap-2">
-        <span className="text-2xl font-black text-white">{homeTotal}</span>
-        <span className="text-[10px] font-bold text-white/40">/</span>
-        <span className="text-2xl font-black text-white">{awayTotal}</span>
+      
+      <div className="flex-1 flex flex-col gap-6 py-2 border-t border-white/10 pt-4">
+        {children}
       </div>
-    </div>
-    <div className="flex-1 flex flex-col gap-6 py-2">
-      {children}
-    </div>
-  </GlassCard>
-);
+    </GlassCard>
+  );
+};
+
+const VersusStatCard: React.FC<{
+  title: string;
+  homeValue: number;
+  awayValue: number;
+  homeColor: string;
+  awayColor: string;
+  icon?: React.ReactNode;
+  children?: React.ReactNode;
+  isSingleTeam?: boolean;
+}> = ({ title, homeValue, awayValue, homeColor, awayColor, icon, children, isSingleTeam = false }) => {
+  const total = homeValue + awayValue;
+  const homePct = total > 0 ? (homeValue / total) * 100 : 50;
+  const awayPct = total > 0 ? (awayValue / total) * 100 : 50;
+
+  return (
+    <GlassCard className="p-5 flex flex-col gap-4 shadow-lg hover:scale-[1.01] transition-transform duration-200">
+      <div className="flex flex-col gap-2">
+        {/* Fila Superior */}
+        <div className="flex justify-between items-center pb-1">
+          <div className="flex items-center gap-2">
+            {icon && <span className="text-white flex items-center">{icon}</span>}
+            <h4 className="contrail-font text-[15px] font-black text-white uppercase tracking-wider">{title}</h4>
+          </div>
+          <div className="text-xl font-black text-white tracking-tight italic">
+            {isSingleTeam ? (
+              homeValue
+            ) : (
+              <>
+                {homeValue} <span className="text-white/40">/</span> {awayValue}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Versus Progress Bar */}
+        {!isSingleTeam && (
+          <div className="w-full flex flex-col gap-1">
+            <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden flex border border-white/5">
+              <div 
+                className="h-full transition-all duration-500 ease-out" 
+                style={{ width: `${homePct}%`, backgroundColor: homeColor }}
+              />
+              <div 
+                className="h-full transition-all duration-500 ease-out" 
+                style={{ width: `${awayPct}%`, backgroundColor: awayColor }}
+              />
+            </div>
+            {/* Fila Inferior */}
+            <div className="flex justify-between items-center text-[10px] font-medium text-white/40 px-0.5">
+              <span>{homeValue}</span>
+              <span>{awayValue}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {children && (
+        <div className="border-t border-white/10 pt-4 flex flex-col gap-4">
+          {children}
+        </div>
+      )}
+    </GlassCard>
+  );
+};
 
 const SectorRectangle: React.FC<{
   label: string;
@@ -108,11 +229,17 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [game, setGame] = useState<Game | null>(null);
+  const homeColor = game ? (game.teamHome.primaryColor || game.teamHome.color || '#3b82f6') : '#3b82f6';
+  const awayColor = game ? (game.teamAway.primaryColor || game.teamAway.color || '#ef4444') : '#ef4444';
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const [actionFilter, setActionFilter] = useState<'ALL' | 'DISPARO' | 'FALTA' | 'PÉRDIDA' | 'RECUPERO'>('ALL');
   const [periodFilter, setPeriodFilter] = useState<'ALL' | 1 | 2 | 3 | 4>('ALL');
+
+  const [heatmapPeriod, setHeatmapPeriod] = useState<string>('ALL');
+  const [heatmapAction, setHeatmapAction] = useState<string>('ALL');
 
   useEffect(() => {
     if (id) {
@@ -129,6 +256,97 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
       return typeMatch && periodMatch;
     });
   }, [game, actionFilter, periodFilter]);
+
+  const filteredHeatmapEvents = useMemo(() => {
+    if (!game) return [];
+    return game.events.filter(e => {
+      if (e.x === undefined || e.y === undefined || e.x === null || e.y === null || isNaN(e.x) || isNaN(e.y)) {
+        return false;
+      }
+
+      if (heatmapPeriod !== 'ALL') {
+        if (!e.gameTime.startsWith(heatmapPeriod)) {
+          return false;
+        }
+      }
+
+      if (heatmapAction !== 'ALL') {
+        const typeUpper = e.type.toUpperCase();
+        if (heatmapAction === 'GOL') {
+          if (!typeUpper.includes('GOL')) return false;
+        } else if (heatmapAction === 'FALTA') {
+          if (!typeUpper.includes('FALTA')) return false;
+        } else if (heatmapAction === 'CORTO') {
+          if (!typeUpper.includes('CÓRNER CORTO') && !typeUpper.includes('CORTO')) return false;
+        } else if (heatmapAction === 'PENAL') {
+          if (!typeUpper.includes('PENAL')) return false;
+        } else if (heatmapAction === 'PERDIDA') {
+          if (!typeUpper.includes('PÉRDIDA') && !typeUpper.includes('PERDIDA') && !typeUpper.includes('TURNOVER')) return false;
+        } else if (heatmapAction === 'RECUPERO') {
+          if (!typeUpper.includes('RECUPERO')) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [game, heatmapPeriod, heatmapAction]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const updateCanvas = () => {
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.globalCompositeOperation = 'screen';
+
+      const radius = Math.max(15, canvas.width * 0.05);
+
+      filteredHeatmapEvents.forEach(e => {
+        const px = (e.y / 100) * canvas.width;
+        const py = (e.x / 100) * canvas.height;
+        const baseColor = e.teamId === game?.teamHome.id ? homeColor : awayColor;
+
+        ctx.filter = 'blur(14px)';
+
+        const grad = ctx.createRadialGradient(px, py, 1, px, py, radius);
+        grad.addColorStop(0, hexToRgba(baseColor, 0.45));
+        grad.addColorStop(0.3, hexToRgba(baseColor, 0.20));
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+        ctx.beginPath();
+        ctx.arc(px, py, radius, 0, 2 * Math.PI);
+        ctx.fillStyle = grad;
+        ctx.fill();
+      });
+
+      ctx.filter = 'none';
+      ctx.globalCompositeOperation = 'source-over';
+    };
+
+    updateCanvas();
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateCanvas();
+    });
+
+    const parent = canvas.parentElement;
+    if (parent) {
+      resizeObserver.observe(parent);
+    }
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [filteredHeatmapEvents, homeColor, awayColor, game]);
 
   const passTrendData = useMemo(() => {
     if (!game) return [];
@@ -322,6 +540,19 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
 
   const getPct = (val: number, total: number) => total > 0 ? Math.round((val / total) * 100) : 0;
 
+  const isJournalist = game.registroMode === 'botones';
+  const getHalfLabel = (halfType: 'own' | 'rival', isHomeTeam: boolean) => {
+    if (isJournalist) {
+      if (halfType === 'own') {
+        return isHomeTeam ? `Campo ${game.teamHome.name}` : `Campo ${game.teamAway.name}`;
+      } else {
+        return isHomeTeam ? `Campo ${game.teamAway.name}` : `Campo ${game.teamHome.name}`;
+      }
+    } else {
+      return halfType === 'own' ? 'Propio' : 'Rival';
+    }
+  };
+
   return (
     <div className="min-h-screen w-full flex flex-col overflow-y-auto no-scrollbar pb-16 relative z-10">
       <div className="pt-6 px-4 md:px-8 max-w-6xl mx-auto w-full mb-8">
@@ -367,89 +598,139 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
             </div>
           </GlassCard>
 
-          <GlassCard className="p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="contrail-font text-[15px] font-black uppercase text-white flex items-center gap-2 italic">
-                <i className="fa-solid fa-futbol text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i> Remates Totales
-              </h3>
-              <div className="text-3xl font-black text-white">
-                {homeShots.total} <span className="text-white/40">-</span> {awayShots.total}
-              </div>
-            </div>
-            
-            <div className="flex flex-col gap-4">
+          <VersusStatCard
+            title="Remates Totales"
+            icon={<i className="fa-solid fa-futbol text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
+            homeValue={homeShots.total}
+            awayValue={awayShots.total}
+            homeColor={homeColor}
+            awayColor={awayColor}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Local */}
-              <div className="bg-white/5 rounded-[20px] p-4 border border-white flex flex-col md:flex-row justify-between items-center gap-4">
-                <div className="flex items-center gap-3 w-full md:w-1/4">
-                  <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: game.teamHome.primaryColor || '#00fe00' }}></div>
-                  <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider">{game.teamHome.name}</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2 md:gap-4 flex-1 w-full">
+              <div className="flex flex-col gap-2">
+                <span className="font-lato text-xs font-black text-white uppercase tracking-wider opacity-60">{game.teamHome.name}</span>
+                <div className="grid grid-cols-3 gap-2">
                   <div className="text-center bg-white/5 p-2 rounded-xl shadow-sm border border-white/10">
-                    <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Gol</p>
-                    <p className="text-lg font-black text-white">{homeShots.goals} <span className="text-[9px] opacity-50">({getPct(homeShots.goals, homeShots.total)}%)</span></p>
+                    <p className="font-lato text-[11px] font-bold text-white opacity-60 uppercase mb-0.5">Gol</p>
+                    <p className="text-sm font-black text-white">{homeShots.goals} <span className="text-[9px] opacity-50">({getPct(homeShots.goals, homeShots.total)}%)</span></p>
                   </div>
                   <div className="text-center bg-white/5 p-2 rounded-xl shadow-sm border border-white/10">
-                    <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Atajado</p>
-                    <p className="text-lg font-black text-white">{homeShots.saved} <span className="text-[9px] opacity-50">({getPct(homeShots.saved, homeShots.total)}%)</span></p>
+                    <p className="font-lato text-[11px] font-bold text-white opacity-60 uppercase mb-0.5">Atajado</p>
+                    <p className="text-sm font-black text-white">{homeShots.saved} <span className="text-[9px] opacity-50">({getPct(homeShots.saved, homeShots.total)}%)</span></p>
                   </div>
                   <div className="text-center bg-white/5 p-2 rounded-xl shadow-sm border border-white/10">
-                    <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Desv.</p>
-                    <p className="text-lg font-black text-white">{homeShots.missed} <span className="text-[9px] opacity-50">({getPct(homeShots.missed, homeShots.total)}%)</span></p>
+                    <p className="font-lato text-[11px] font-bold text-white opacity-60 uppercase mb-0.5">Desv.</p>
+                    <p className="text-sm font-black text-white">{homeShots.missed} <span className="text-[9px] opacity-50">({getPct(homeShots.missed, homeShots.total)}%)</span></p>
                   </div>
                 </div>
               </div>
 
               {/* Visitante */}
-              <div className="bg-white/5 rounded-[20px] p-4 border border-white flex flex-col md:flex-row justify-between items-center gap-4">
-                <div className="flex items-center gap-3 w-full md:w-1/4">
-                  <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
-                  <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider">{game.teamAway.name}</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2 md:gap-4 flex-1 w-full">
+              <div className="flex flex-col gap-2">
+                <span className="font-lato text-xs font-black text-white uppercase tracking-wider opacity-60">{game.teamAway.name}</span>
+                <div className="grid grid-cols-3 gap-2">
                   <div className="text-center bg-white/5 p-2 rounded-xl shadow-sm border border-white/10">
-                    <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Gol</p>
-                    <p className="text-lg font-black text-white">{awayShots.goals} <span className="text-[9px] opacity-50">({getPct(awayShots.goals, awayShots.total)}%)</span></p>
+                    <p className="font-lato text-[11px] font-bold text-white opacity-60 uppercase mb-0.5">Gol</p>
+                    <p className="text-sm font-black text-white">{awayShots.goals} <span className="text-[9px] opacity-50">({getPct(awayShots.goals, awayShots.total)}%)</span></p>
                   </div>
                   <div className="text-center bg-white/5 p-2 rounded-xl shadow-sm border border-white/10">
-                    <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Atajado</p>
-                    <p className="text-lg font-black text-white">{awayShots.saved} <span className="text-[9px] opacity-50">({getPct(awayShots.saved, awayShots.total)}%)</span></p>
+                    <p className="font-lato text-[11px] font-bold text-white opacity-60 uppercase mb-0.5">Atajado</p>
+                    <p className="text-sm font-black text-white">{awayShots.saved} <span className="text-[9px] opacity-50">({getPct(awayShots.saved, awayShots.total)}%)</span></p>
                   </div>
                   <div className="text-center bg-white/5 p-2 rounded-xl shadow-sm border border-white/10">
-                    <p className="font-lato text-[15px] font-bold text-white opacity-60 uppercase mb-0.5">Desv.</p>
-                    <p className="text-lg font-black text-white">{awayShots.missed} <span className="text-[9px] opacity-50">({getPct(awayShots.missed, awayShots.total)}%)</span></p>
+                    <p className="font-lato text-[11px] font-bold text-white opacity-60 uppercase mb-0.5">Desv.</p>
+                    <p className="text-sm font-black text-white">{awayShots.missed} <span className="text-[9px] opacity-50">({getPct(awayShots.missed, awayShots.total)}%)</span></p>
                   </div>
                 </div>
               </div>
             </div>
-          </GlassCard>
+          </VersusStatCard>
 
           <GlassCard className="p-6">
             <div className="flex flex-col gap-6">
               <div className="w-full">
-                <h3 className="contrail-font text-[15px] font-black uppercase text-white mb-4 italic">Balance de Acciones (Local)</h3>
+                <h3 className="contrail-font text-[15px] font-black uppercase text-white mb-4 italic">Balance de Acciones</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {[
-                    { label: 'Pérdidas', icon: <i className="fa-solid fa-arrow-trend-down text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>, types: ['PÉRDIDA', 'PERDIDA', 'TURNOVER'], color: 'text-orange-500' },
-                    { label: 'Recuperos', icon: <i className="fa-solid fa-arrow-trend-up text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>, types: ['RECUPERO'], color: 'text-[#00fe00]' },
-                    { label: 'Faltas', icon: <i className="fa-solid fa-triangle-exclamation text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>, types: ['FALTA'], color: 'text-red-500' }
+                    { label: 'Pérdidas', icon: <i className="fa-solid fa-arrow-trend-down text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>, types: ['PÉRDIDA', 'PERDIDA', 'TURNOVER'] },
+                    { label: 'Recuperos', icon: <i className="fa-solid fa-arrow-trend-up text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>, types: ['RECUPERO'] },
+                    { label: 'Faltas', icon: <i className="fa-solid fa-triangle-exclamation text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>, types: ['FALTA'] }
                   ].map(stat => {
-                    const data = getDetailedStat(stat.types, game.teamHome.id);
+                    const localData = getDetailedStat(stat.types, game.teamHome.id);
+                    const awayData = getDetailedStat(stat.types, game.teamAway.id);
+                    const isSingleTeam = !isJournalist && (stat.label === 'Pérdidas' || stat.label === 'Recuperos');
                     return (
-                      <div key={stat.label} className="bg-white/5 p-4 rounded-[24px] border border-white flex flex-col gap-2 shadow-sm">
-                        <div className="flex justify-between items-center border-b border-white/10 pb-2">
-                          <div className="flex items-center gap-2">
-                            {stat.icon && <span className="text-xs flex items-center">{stat.icon}</span>}
-                            <p className="contrail-font text-[15px] font-black text-white uppercase tracking-wider">{stat.label}</p>
+                      <VersusStatCard
+                        key={stat.label}
+                        title={stat.label}
+                        icon={stat.icon}
+                        homeValue={localData.total}
+                        awayValue={awayData.total}
+                        homeColor={homeColor}
+                        awayColor={awayColor}
+                        isSingleTeam={isSingleTeam}
+                      >
+                        <div className={isSingleTeam ? "w-full text-left" : "grid grid-cols-2 gap-4 text-left"}>
+                          {/* Local Details */}
+                          <div className="flex flex-col gap-2 w-full">
+                            <span className="font-lato text-[11px] font-black text-white uppercase tracking-wider opacity-60">
+                              {isJournalist ? game.teamHome.name : 'Local (Propio)'}
+                            </span>
+                            <div className={isSingleTeam ? "grid grid-cols-2 gap-3 text-[10px]" : "grid grid-cols-2 gap-1 text-[10px]"}>
+                              <div className="flex items-center gap-1.5 p-2 rounded-lg bg-white/5 border border-white/5">
+                                <span className="text-blue-400">↓</span>
+                                <div className="flex flex-col">
+                                  <span className="opacity-60 text-white text-[8px] truncate">
+                                    {getHalfLabel('own', true)}
+                                  </span>
+                                  <span className="font-black text-white">{localData.own}</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1.5 p-2 rounded-lg bg-white/5 border border-white/5">
+                                <span className="text-orange-400">↑</span>
+                                <div className="flex flex-col">
+                                  <span className="opacity-60 text-white text-[8px] truncate">
+                                    {getHalfLabel('rival', true)}
+                                  </span>
+                                  <span className="font-black text-white">{localData.rival}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <PeriodRow periods={localData.periods} />
                           </div>
-                          <span className={`text-2xl font-black ${stat.color}`}>{data.total}</span>
+
+                          {/* Visitor Details */}
+                          {!isSingleTeam && (
+                            <div className="flex flex-col gap-2">
+                              <span className="font-lato text-[11px] font-black text-white uppercase tracking-wider opacity-60">
+                                {isJournalist ? game.teamAway.name : 'Visita (Rival)'}
+                              </span>
+                              <div className="grid grid-cols-2 gap-1 text-[10px]">
+                                <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-white/5 border border-white/5">
+                                  <span className="text-blue-400">↓</span>
+                                  <div className="flex flex-col">
+                                    <span className="opacity-60 text-white text-[8px] truncate">
+                                      {getHalfLabel('own', false)}
+                                    </span>
+                                    <span className="font-black text-white">{awayData.own}</span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-white/5 border border-white/5">
+                                  <span className="text-orange-400">↑</span>
+                                  <div className="flex flex-col">
+                                    <span className="opacity-60 text-white text-[8px] truncate">
+                                      {getHalfLabel('rival', false)}
+                                    </span>
+                                    <span className="font-black text-white">{awayData.rival}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <PeriodRow periods={awayData.periods} />
+                            </div>
+                          )}
                         </div>
-                        <div className="grid grid-cols-2 gap-2 mt-1">
-                          <div className="flex items-center gap-2 p-2 rounded-xl bg-white/5 border border-white/5"><span className="text-blue-400 text-[10px]">↓</span><div className="flex flex-col"><span className="font-lato text-[15px] font-bold opacity-60 text-white">Propio</span><span className="text-[18px] font-black text-white">{data.own}</span></div></div>
-                          <div className="flex items-center gap-2 p-2 rounded-xl bg-white/5 border border-white/5"><span className="text-orange-400 text-[10px]">↑</span><div className="flex flex-col"><span className="font-lato text-[15px] font-bold opacity-60 text-white">Rival</span><span className="text-[18px] font-black text-white">{data.rival}</span></div></div>
-                        </div>
-                        <PeriodRow periods={data.periods} />
-                      </div>
+                      </VersusStatCard>
                     );
                   })}
                 </div>
@@ -457,7 +738,6 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
             </div>
           </GlassCard>
 
-          {/* Tactical Performance section removed */}
           <GlassCard className="p-6">
             <h3 className="contrail-font text-[15px] font-black uppercase text-white mb-6 flex items-center gap-2 italic">Ingresos y Accesos Ofensivos <div className="h-px flex-1 bg-white/10"></div></h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -466,17 +746,19 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
                 icon={<i className="fa-solid fa-arrow-right-to-bracket text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
                 homeTotal={Object.values(statsArea.home).reduce((a: number, b: number) => a + b, 0)}
                 awayTotal={Object.values(statsArea.away).reduce((a: number, b: number) => a + b, 0)}
+                homeColor={homeColor}
+                awayColor={awayColor}
               >
                 <SectorRectangle
-                  label="Ingresos al área rival"
-                  teamColor={game.teamAway.primaryColor || '#ef4444'}
+                  label={isJournalist ? `Ingresos de ${game.teamHome.name} al área de ${game.teamAway.name}` : "Ingresos al área rival"}
+                  teamColor={awayColor}
                   stats={statsArea.home}
                   sectors={['Extremo Izquierdo', 'Centro Izquierda', 'Centro', 'Centro Derecha', 'Extremo Derecho']}
                   borderPosition="top"
                 />
                 <SectorRectangle
-                  label="Ingresos del rival a mi área"
-                  teamColor={game.teamHome.primaryColor || '#00fe00'}
+                  label={isJournalist ? `Ingresos de ${game.teamAway.name} al área de ${game.teamHome.name}` : "Ingresos del rival a mi área"}
+                  teamColor={homeColor}
                   stats={statsArea.away}
                   sectors={['Extremo Izquierdo', 'Centro Izquierda', 'Centro', 'Centro Derecha', 'Extremo Derecho']}
                   borderPosition="bottom"
@@ -488,18 +770,20 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
                 icon={<i className="fa-solid fa-bezier-curve text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>}
                 homeTotal={Object.values(stats23.home).reduce((a: number, b: number) => a + b, 0)}
                 awayTotal={Object.values(stats23.away).reduce((a: number, b: number) => a + b, 0)}
+                homeColor={homeColor}
+                awayColor={awayColor}
               >
                 <SectorRectangle
-                  label="Ingresos a 23 yardas rival"
-                  teamColor={game.teamAway.primaryColor || '#ef4444'}
+                  label={isJournalist ? `Ingresos de ${game.teamHome.name} a 23 yardas de ${game.teamAway.name}` : "Ingresos a 23 yardas rival"}
+                  teamColor={awayColor}
                   stats={stats23.home}
                   sectors={['Izquierda', 'Centro', 'Derecha']}
                   borderPosition="top"
                   type="zone23"
                 />
                 <SectorRectangle
-                  label="Ingresos del rival a mis 23 yardas"
-                  teamColor={game.teamHome.primaryColor || '#00fe00'}
+                  label={isJournalist ? `Ingresos del rival a mis 23 yardas` : "Ingresos del rival a mis 23 yardas"}
+                  teamColor={homeColor}
                   stats={stats23.away}
                   sectors={['Izquierda', 'Centro', 'Derecha']}
                   borderPosition="bottom"
@@ -509,7 +793,122 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
             </div>
           </GlassCard>
 
+          {/* Mapa de Calor del Partido (Disponible sólo en modo Entrenador cuando se usó el registro Visual) */}
+          {game.registroMode !== 'botones' && (
+            <GlassCard className="p-6">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                <h3 className="contrail-font text-[15px] font-black uppercase text-white flex items-center gap-2 italic">
+                  <i className="fa-solid fa-fire text-[#ff5a00] text-lg"></i> Mapa de Calor del Partido
+                </h3>
+                
+                {/* Selectores de Filtro */}
+                <div className="flex flex-wrap gap-3 w-full md:w-auto">
+                  <div className="flex flex-col gap-1 flex-1 md:flex-initial">
+                    <span className="text-[9px] font-black text-white/50 uppercase tracking-wider">Período</span>
+                    <select
+                      value={heatmapPeriod}
+                      onChange={(e) => setHeatmapPeriod(e.target.value)}
+                      className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white outline-none cursor-pointer hover:bg-white/10 focus:border-white/30"
+                    >
+                      <option value="ALL" className="bg-[#0f172a] text-white">Todos</option>
+                      <option value="1Q" className="bg-[#0f172a] text-white">1º Cuarto</option>
+                      <option value="2Q" className="bg-[#0f172a] text-white">2º Cuarto</option>
+                      <option value="3Q" className="bg-[#0f172a] text-white">3º Cuarto</option>
+                      <option value="4Q" className="bg-[#0f172a] text-white">4º Cuarto</option>
+                    </select>
+                  </div>
+                  
+                  <div className="flex flex-col gap-1 flex-1 md:flex-initial">
+                    <span className="text-[9px] font-black text-white/50 uppercase tracking-wider">Acción</span>
+                    <select
+                      value={heatmapAction}
+                      onChange={(e) => setHeatmapAction(e.target.value)}
+                      className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white outline-none cursor-pointer hover:bg-white/10 focus:border-white/30"
+                    >
+                      <option value="ALL" className="bg-[#0f172a] text-white">Todas</option>
+                      <option value="GOL" className="bg-[#0f172a] text-white">Goles</option>
+                      <option value="FALTA" className="bg-[#0f172a] text-white">Faltas Cometidas</option>
+                      <option value="CORTO" className="bg-[#0f172a] text-white">Córner Corto</option>
+                      <option value="PENAL" className="bg-[#0f172a] text-white">Penales</option>
+                      <option value="PERDIDA" className="bg-[#0f172a] text-white">Pérdidas</option>
+                      <option value="RECUPERO" className="bg-[#0f172a] text-white">Recuperos</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
 
+              {/* Cancha Horizontal */}
+              <div className="relative w-full aspect-[3/2] md:aspect-[8/5] bg-emerald-800 rounded-[24px] overflow-hidden border-2 border-white/20 shadow-inner">
+                {/* Textura de césped */}
+                <div className="absolute inset-0 opacity-5 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/pinstripe.png')]"></div>
+                
+                {/* Línea Central */}
+                <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white/40" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 border border-white/30 rounded-full" />
+                <div className="absolute top-1/2 left-1/2 w-1.5 h-1.5 rounded-full bg-white/50 -translate-x-1/2 -translate-y-1/2" />
+
+                {/* Líneas de 23 Metros (Punteadas) */}
+                <div className="absolute left-[25%] top-0 bottom-0 w-px border-l-2 border-dashed border-white/30" />
+                <div className="absolute right-[25%] top-0 bottom-0 w-px border-r-2 border-dashed border-white/30" />
+
+                {/* Áreas de Tiro (D) */}
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[32%] h-[53.2%] border border-white/30 rounded-full -translate-x-1/2" />
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[32%] h-[53.2%] border border-white/30 rounded-full translate-x-1/2" />
+
+                {/* Puntos de Penal */}
+                <div className="absolute left-[14%] top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-white/40" />
+                <div className="absolute right-[14%] top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-white/40" />
+
+                {/* Arcos */}
+                <div 
+                  className="absolute left-0 top-1/2 -translate-y-1/2 w-[1.5%] h-[20%] border-y-2 border-r-2 rounded-r transition-all duration-300" 
+                  style={{ 
+                    backgroundColor: hexToRgba(awayColor, 0.35), 
+                    borderColor: awayColor,
+                    boxShadow: `0 0 10px ${hexToRgba(awayColor, 0.5)}`
+                  }} 
+                  title={`Arco defendido por ${game.teamAway.name}`}
+                />
+                <div 
+                  className="absolute right-0 top-1/2 -translate-y-1/2 w-[1.5%] h-[20%] border-y-2 border-l-2 rounded-l transition-all duration-300" 
+                  style={{ 
+                    backgroundColor: hexToRgba(homeColor, 0.35), 
+                    borderColor: homeColor,
+                    boxShadow: `0 0 10px ${hexToRgba(homeColor, 0.5)}`
+                  }} 
+                  title={`Arco defendido por ${game.teamHome.name}`}
+                />
+
+                {/* Capa del Canvas del Mapa de Calor (Estelas de Densidad) */}
+                <canvas 
+                  ref={canvasRef} 
+                  className="absolute inset-0 w-full h-full pointer-events-none" 
+                  style={{ mixBlendMode: 'screen' }} 
+                />
+
+                {/* Puntos de Acción */}
+                {filteredHeatmapEvents.map((e) => (
+                  <div
+                    key={e.id}
+                    className="absolute w-3.5 h-3.5 rounded-full border border-white/60 shadow-md transform -translate-x-1/2 -translate-y-1/2 transition-all duration-300 hover:scale-150 cursor-pointer"
+                    style={{
+                      left: `${e.y}%`,
+                      top: `${e.x}%`,
+                      backgroundColor: e.teamId === game.teamHome.id ? homeColor : awayColor,
+                      boxShadow: `0 0 10px ${e.teamId === game.teamHome.id ? homeColor : awayColor}`,
+                    }}
+                    title={`${e.type} - ${e.teamId === game.teamHome.id ? game.teamHome.name : game.teamAway.name} (${e.gameTime})`}
+                  />
+                ))}
+
+                {filteredHeatmapEvents.length === 0 && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                    <span className="text-white/40 text-xs font-bold uppercase tracking-wider">Sin eventos para mostrar</span>
+                  </div>
+                )}
+              </div>
+            </GlassCard>
+          )}
 
           <GlassCard className="p-6">
             <h3 className="contrail-font text-[15px] font-black uppercase text-white mb-6 flex items-center gap-2 italic">

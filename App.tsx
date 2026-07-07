@@ -40,6 +40,7 @@ const AppContent: React.FC = () => {
       currentUser: user
     };
     setState(newState);
+    PersistenceManager.saveStateLocal(newState);
     
     // Hydrate data from cloud upon successful login
     PersistenceManager.hydrateFromCloud(user.uid);

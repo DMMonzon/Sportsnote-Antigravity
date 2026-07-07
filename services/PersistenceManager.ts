@@ -179,25 +179,26 @@ export const PersistenceManager = {
             if (item.action === 'DELETE') {
               await deleteDoc(gameRef);
             } else {
+              const cleanData = JSON.parse(JSON.stringify(item.data));
               const payload = {
-                ...item.data,
-                authorId: item.data.authorId || item.data.userId || item.data.ownerId,
+                ...cleanData,
+                authorId: cleanData.authorId || cleanData.userId || cleanData.ownerId,
                 timestamp: serverTimestamp(),
-                localTeam: item.data.teamHome?.name || '',
-                visitorTeam: item.data.teamAway?.name || '',
-                stats: item.data.role === 'press'
+                localTeam: cleanData.teamHome?.name || '',
+                visitorTeam: cleanData.teamAway?.name || '',
+                stats: cleanData.role === 'press'
                   ? {
-                      ...item.data.stats,
-                      scoreHome: item.data.scoreHome || 0,
-                      scoreAway: item.data.scoreAway || 0,
-                      eventsCount: item.data.events?.length || 0
+                      ...cleanData.stats,
+                      scoreHome: cleanData.scoreHome || 0,
+                      scoreAway: cleanData.scoreAway || 0,
+                      eventsCount: cleanData.events?.length || 0
                     }
                   : {
-                      scoreHome: item.data.scoreHome || 0,
-                      scoreAway: item.data.scoreAway || 0,
-                      eventsCount: item.data.events?.length || 0
+                      scoreHome: cleanData.scoreHome || 0,
+                      scoreAway: cleanData.scoreAway || 0,
+                      eventsCount: cleanData.events?.length || 0
                     },
-                isFavorite: item.data.isFavorite || false
+                isFavorite: cleanData.isFavorite || false
               };
               await setDoc(gameRef, payload, { merge: true });
             }
@@ -224,25 +225,26 @@ export const PersistenceManager = {
     try {
       // Direct push to Firestore bypassing queue to ensure immediate final save
       const gameRef = doc(db, 'matches', game.id);
+      const cleanGame = JSON.parse(JSON.stringify(game));
       const payload = {
-        ...game,
-        authorId: game.authorId || game.userId || game.ownerId,
+        ...cleanGame,
+        authorId: cleanGame.authorId || cleanGame.userId || cleanGame.ownerId,
         timestamp: serverTimestamp(),
-        localTeam: game.teamHome?.name || '',
-        visitorTeam: game.teamAway?.name || '',
-        stats: game.role === 'press'
+        localTeam: cleanGame.teamHome?.name || '',
+        visitorTeam: cleanGame.teamAway?.name || '',
+        stats: cleanGame.role === 'press'
           ? {
-              ...game.stats,
-              scoreHome: game.scoreHome || 0,
-              scoreAway: game.scoreAway || 0,
-              eventsCount: game.events?.length || 0
+              ...cleanGame.stats,
+              scoreHome: cleanGame.scoreHome || 0,
+              scoreAway: cleanGame.scoreAway || 0,
+              eventsCount: cleanGame.events?.length || 0
             }
           : {
-              scoreHome: game.scoreHome || 0,
-              scoreAway: game.scoreAway || 0,
-              eventsCount: game.events?.length || 0
+              scoreHome: cleanGame.scoreHome || 0,
+              scoreAway: cleanGame.scoreAway || 0,
+              eventsCount: cleanGame.events?.length || 0
             },
-        isFavorite: game.isFavorite || false
+        isFavorite: cleanGame.isFavorite || false
       };
       await setDoc(gameRef, payload, { merge: true });
       console.log(`Successfully forced sync for final game ${game.id}`);
@@ -345,7 +347,10 @@ export const PersistenceManager = {
         }
 
         if (stateChanged) {
-          PersistenceManager.saveStateLocal(state);
+          const currentState = PersistenceManager.loadStateLocal();
+          currentState.matches = state.matches;
+          currentState.tacticalSchemes = state.tacticalSchemes;
+          PersistenceManager.saveStateLocal(currentState);
           window.dispatchEvent(new Event('local-state-hydrated'));
         }
       }

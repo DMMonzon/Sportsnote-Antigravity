@@ -33,12 +33,13 @@ const ColorDropdown: React.FC<{
   onSelect: (hex: string) => void
 }> = ({ label, selected, onSelect }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const selectedColor = COLOR_OPTIONS.find(c => c.hex === selected) || COLOR_OPTIONS[0];
+  const selectedColor = COLOR_OPTIONS.find(c => c.hex.toLowerCase() === selected.toLowerCase()) || COLOR_OPTIONS[0];
 
   return (
     <div className="flex flex-col w-full relative" onBlur={() => setTimeout(() => setIsOpen(false), 200)}>
       <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">{label}</label>
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="w-full bg-white/5 border border-white/10 p-3 rounded-xl flex items-center justify-between text-xs font-bold text-white shadow-sm hover:border-[#00fe00] transition-colors"
       >
@@ -53,12 +54,13 @@ const ColorDropdown: React.FC<{
         <div className="absolute top-[110%] left-0 w-full bg-[#131041] border border-white/10 rounded-2xl shadow-2xl z-[500] max-h-48 overflow-y-auto no-scrollbar animate-in fade-in zoom-in duration-150">
           {COLOR_OPTIONS.map((c) => (
             <button
+              type="button"
               key={c.hex}
-              onClick={() => { onSelect(c.hex); setIsOpen(false); }}
+              onMouseDown={() => { onSelect(c.hex); setIsOpen(false); }}
               className="w-full flex items-center gap-3 p-3 hover:bg-white/5 transition-colors border-b border-white/10 last:border-0 text-left"
             >
               <div className="w-5 h-5 rounded-full border border-black/10 shrink-0" style={{ backgroundColor: c.hex }}></div>
-              <span className={`text-xs ${selected === c.hex ? 'font-black text-[#00fe00]' : 'font-medium text-white/85'}`}>{c.name}</span>
+              <span className={`text-xs ${selected.toLowerCase() === c.hex.toLowerCase() ? 'font-black text-[#00fe00]' : 'font-medium text-white/85'}`}>{c.name}</span>
             </button>
           ))}
         </div>
@@ -319,7 +321,7 @@ const NewGameView: React.FC<NewGameViewProps> = ({ role, onCreate }) => {
           </GlassCard>
 
           {/* METADATA FORM */}
-          <GlassCard className="p-6 lg:p-8">
+          <GlassCard className="p-6 lg:p-8 relative z-30">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-8 h-8 rounded-full bg-[#38bdf8]/20 flex items-center justify-center text-[#38bdf8] text-sm"><i className="fa-solid fa-circle-info"></i></div>
               <h3 className="font-black text-sm text-white uppercase tracking-widest">Información del Encuentro</h3>
@@ -398,7 +400,7 @@ const NewGameView: React.FC<NewGameViewProps> = ({ role, onCreate }) => {
           {/* EQUIPOS CONFIGURACIÓN (LOCAL VS VISITANTE) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* LOCAL */}
-            <GlassCard className="p-6 flex flex-col gap-6">
+            <GlassCard className="p-6 flex flex-col gap-6 relative z-20">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 text-sm"><i className="fa-solid fa-house"></i></div>
                 <h3 className="font-black text-sm text-white uppercase tracking-widest">Equipo Local</h3>
@@ -424,7 +426,7 @@ const NewGameView: React.FC<NewGameViewProps> = ({ role, onCreate }) => {
             </GlassCard>
 
             {/* VISITANTE */}
-            <GlassCard className="p-6 flex flex-col gap-6">
+            <GlassCard className="p-6 flex flex-col gap-6 relative z-10">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center text-red-400 text-sm"><i className="fa-solid fa-bus"></i></div>
                 <h3 className="font-black text-sm text-white uppercase tracking-widest">Equipo Visitante</h3>
@@ -517,7 +519,7 @@ const NewGameView: React.FC<NewGameViewProps> = ({ role, onCreate }) => {
         </GlassCard>
 
         {/* CONFIGURACIÓN EQUIPO LOCAL */}
-        <GlassCard className="p-6 lg:p-8">
+        <GlassCard className="p-6 lg:p-8 relative z-30">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 text-sm"><i className="fa-solid fa-house"></i></div>
             <h3 className="font-black text-sm text-white uppercase tracking-widest">Configuración Local</h3>
@@ -544,7 +546,7 @@ const NewGameView: React.FC<NewGameViewProps> = ({ role, onCreate }) => {
         </GlassCard>
 
         {/* CONFIGURACIÓN EQUIPO VISITANTE */}
-        <GlassCard className="p-6 lg:p-8">
+        <GlassCard className="p-6 lg:p-8 relative z-20">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center text-red-400 text-sm"><i className="fa-solid fa-bus"></i></div>
             <h3 className="font-black text-sm text-white uppercase tracking-widest">Configuración Visitante</h3>
@@ -571,7 +573,7 @@ const NewGameView: React.FC<NewGameViewProps> = ({ role, onCreate }) => {
         </GlassCard>
 
         {/* MODALIDAD DE REGISTRO */}
-        <GlassCard className="p-6 lg:p-8">
+        <GlassCard className="p-6 lg:p-8 relative z-10">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-8 h-8 rounded-full bg-[#38bdf8]/20 flex items-center justify-center text-[#38bdf8] text-sm"><i className="fa-solid fa-sliders"></i></div>
             <h3 className="font-black text-sm text-white uppercase tracking-widest font-contrail">Modalidad de Registro</h3>
