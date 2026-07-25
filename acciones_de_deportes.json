@@ -1,0 +1,514 @@
+[
+  {
+    "id": "hockey_cesped",
+    "nombre_visible": "Hockey sobre Césped",
+    "reglamento": {
+      "jugadores_titulares": 11,
+      "modo_puntuacion": "goles_corridos",
+      "por_tiempo": true,
+      "duracion_periodo_minutos": 15,
+      "cantidad_periodos": 4,
+      "permite_empate": true,
+      "trackea_posesion": true
+    },
+    "modos": {
+      "periodista": {
+        "bloque_acciones": [
+          {
+            "categoria": "ATAQUE Y PROGRESIÓN",
+            "cards": [
+              {
+                "id": "disparo_al_arco",
+                "titulo": "DISPARO AL ARCO",
+                "layout_botones": "fila",
+                "botones": [
+                  {
+                    "id": "remate_gol",
+                    "nombre": "GOL",
+                    "kpi_principal": "disparos_totales",
+                    "kpi_subaccion": "goles",
+                    "flujo_consecuencia": "abrir_modal_jugador_ataque"
+                  },
+                  {
+                    "id": "remate_atajado",
+                    "nombre": "ATAJADO",
+                    "kpi_principal": "disparos_totales",
+                    "kpi_subaccion": "atajados",
+                    "flujo_consecuencia": "abrir_modal_jugador_ataque"
+                  },
+                  {
+                    "id": "remate_desviado",
+                    "nombre": "DESVIADO",
+                    "kpi_principal": "disparos_totales",
+                    "kpi_subaccion": "desviados",
+                    "flujo_consecuencia": "abrir_modal_jugador_ataque"
+                  }
+                ]
+              },
+              {
+                "id": "ingresos",
+                "titulo": "INGRESOS",
+                "layout_botones": "fila",
+                "botones": [
+                  {
+                    "id": "ingreso_23_yardas",
+                    "nombre": "INGRESO 23 YARDAS",
+                    "kpi_principal": "ingresos_23",
+                    "flujo_consecuencia": "registro_directo_sin_modal"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "categoria": "INFRACCIONES",
+            "cards": [
+              {
+                "id": "faltas_cometidas",
+                "titulo": "FALTAS COMETIDAS",
+                "subtitulo": "CAMBIA POSESIÓN",
+                "layout_botones": "grilla",
+                "botones": [
+                  {
+                    "id": "fc_penal",
+                    "nombre": "PENAL (CONSECUENCIA RIVAL)",
+                    "kpi_principal": "faltas_cometidas",
+                    "kpi_subaccion": "penales_cometidos",
+                    "flujo_consecuencia": "abrir_modal_infraccion_con_cambio_posesion"
+                  },
+                  {
+                    "id": "fc_corner_corto",
+                    "nombre": "CÓRNER CORTO",
+                    "kpi_principal": "faltas_cometidas",
+                    "kpi_subaccion": "corners_cometidos",
+                    "flujo_consecuencia": "abrir_modal_infraccion_con_cambio_posesion"
+                  },
+                  {
+                    "id": "fc_tarjeta_verde",
+                    "nombre": "TARJETA VERDE",
+                    "kpi_principal": "faltas_cometidas",
+                    "kpi_subaccion": "tarjetas_verdes",
+                    "flujo_consecuencia": "abrir_modal_tarjeta_minutos"
+                  },
+                  {
+                    "id": "fc_tarjeta_amarilla",
+                    "nombre": "TARJETA AMARILLA",
+                    "kpi_principal": "faltas_cometidas",
+                    "kpi_subaccion": "tarjetas_amarillas",
+                    "flujo_consecuencia": "abrir_modal_tarjeta_minutos"
+                  },
+                  {
+                    "id": "fc_tarjeta_roja",
+                    "nombre": "TARJETA ROJA",
+                    "kpi_principal": "faltas_cometidas",
+                    "kpi_subaccion": "tarjetas_rojas",
+                    "flujo_consecuencia": "abrir_modal_tarjeta_minutos"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "categoria": "CONTROL DE JUEGO Y SISTEMA",
+            "cards": [
+              {
+                "id": "sistema_arbitraje",
+                "titulo": "SISTEMA DE JUEGO",
+                "layout_botones": "fila",
+                "botones": [
+                  {
+                    "id": "video_ref",
+                    "nombre": "VIDEO REF",
+                    "kpi_principal": "revisiones_video",
+                    "flujo_consecuencia": "abrir_modal_video_ref"
+                  },
+                  {
+                    "id": "sustitucion",
+                    "nombre": "SUSTITUCIÓN",
+                    "kpi_principal": "cambios",
+                    "flujo_consecuencia": "abrir_modal_sustitucion"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "futbol",
+    "nombre_visible": "Fútbol",
+    "reglamento": {
+      "jugadores_titulares": 11,
+      "modo_puntuacion": "goles_corridos",
+      "por_tiempo": true,
+      "duracion_periodo_minutos": 45,
+      "cantidad_periodos": 2,
+      "permite_empate": true,
+      "trackea_posesion": true
+    },
+    "modos": {
+      "periodista": {
+        "bloque_acciones": [
+          {
+            "categoria": "ATAQUE Y PROGRESIÓN",
+            "cards": [
+              {
+                "id": "remate_arco",
+                "titulo": "REMATE AL ARCO",
+                "layout_botones": "fila",
+                "botones": [
+                  {
+                    "id": "remate_gol",
+                    "nombre": "GOL",
+                    "kpi_principal": "remates_totales",
+                    "kpi_subaccion": "goles",
+                    "flujo_consecuencia": "abrir_modal_jugador_ataque"
+                  },
+                  {
+                    "id": "remate_atajado",
+                    "nombre": "ATAJADO",
+                    "kpi_principal": "remates_totales",
+                    "kpi_subaccion": "atajados",
+                    "flujo_consecuencia": "abrir_modal_jugador_ataque"
+                  },
+                  {
+                    "id": "remate_desviado",
+                    "nombre": "DESVIADO",
+                    "kpi_principal": "remates_totales",
+                    "kpi_subaccion": "desviados",
+                    "flujo_consecuencia": "abrir_modal_jugador_ataque"
+                  },
+                  {
+                    "id": "remate_palo",
+                    "nombre": "PALO",
+                    "kpi_principal": "remates_totales",
+                    "kpi_subaccion": "palos",
+                    "flujo_consecuencia": "abrir_modal_jugador_ataque"
+                  }
+                ]
+              },
+              {
+                "id": "balon_parado",
+                "titulo": "BALÓN PARADO",
+                "layout_botones": "fila",
+                "botones": [
+                  {
+                    "id": "corner",
+                    "nombre": "CÓRNER",
+                    "kpi_principal": "corners",
+                    "flujo_consecuencia": "registro_directo_sin_modal"
+                  },
+                  {
+                    "id": "off_side",
+                    "nombre": "FUERA DE JUEGO",
+                    "kpi_principal": "offsides",
+                    "flujo_consecuencia": "registro_directo_sin_modal"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "categoria": "INFRACCIONES Y SANCIONES",
+            "cards": [
+              {
+                "id": "faltas_sanciones",
+                "titulo": "FALTAS Y TARJETAS",
+                "layout_botones": "grilla",
+                "botones": [
+                  {
+                    "id": "fc_penal",
+                    "nombre": "PENAL",
+                    "kpi_principal": "faltas_cometidas",
+                    "kpi_subaccion": "penales_cometidos",
+                    "flujo_consecuencia": "abrir_modal_infraccion_con_cambio_posesion"
+                  },
+                  {
+                    "id": "tarjeta_amarilla",
+                    "nombre": "TARJETA AMARILLA",
+                    "kpi_principal": "faltas_cometidas",
+                    "kpi_subaccion": "tarjetas_amarillas",
+                    "flujo_consecuencia": "abrir_modal_tarjetas_futbol"
+                  },
+                  {
+                    "id": "tarjeta_roja",
+                    "nombre": "TARJETA ROJA",
+                    "kpi_principal": "faltas_cometidas",
+                    "kpi_subaccion": "tarjetas_rojas",
+                    "flujo_consecuencia": "abrir_modal_tarjetas_futbol"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "categoria": "CONTROL DE JUEGO Y SISTEMA",
+            "cards": [
+              {
+                "id": "sistema_arbitraje_futbol",
+                "titulo": "SISTEMA DE JUEGO",
+                "layout_botones": "fila",
+                "botones": [
+                  {
+                    "id": "var",
+                    "nombre": "VAR",
+                    "kpi_principal": "revisiones_var",
+                    "flujo_consecuencia": "abrir_modal_var"
+                  },
+                  {
+                    "id": "sustitucion",
+                    "nombre": "SUSTITUCIÓN",
+                    "kpi_principal": "cambios",
+                    "flujo_consecuencia": "abrir_modal_sustitucion"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "voley",
+    "nombre_visible": "Vóley",
+    "reglamento": {
+      "jugadores_titulares": 6,
+      "modo_puntuacion": "sets",
+      "puntos_para_ganar_set": 25,
+      "diferencia_minima_puntos": 2,
+      "limite_sets_configurable": true,
+      "por_tiempo": false,
+      "trackea_posesion": false
+    },
+    "modos": {
+      "periodista": {
+        "bloque_acciones": [
+          {
+            "categoria": "PUNTOS",
+            "cards": [
+              {
+                "id": "puntos_anotados",
+                "titulo": "PUNTOS",
+                "layout_botones": "grilla",
+                "botones": [
+                  {
+                    "id": "punto_saque",
+                    "nombre": "SAQUE",
+                    "kpi_principal": "puntos_totales",
+                    "kpi_subaccion": "puntos_saque",
+                    "flujo_consecuencia": "abrir_modal_jugador_voley"
+                  },
+                  {
+                    "id": "punto_remate",
+                    "nombre": "REMATE",
+                    "kpi_principal": "puntos_totales",
+                    "kpi_subaccion": "puntos_remate",
+                    "flujo_consecuencia": "abrir_modal_jugador_voley"
+                  },
+                  {
+                    "id": "punto_bloqueo",
+                    "nombre": "BLOQUEO",
+                    "kpi_principal": "puntos_totales",
+                    "kpi_subaccion": "puntos_bloqueo",
+                    "flujo_consecuencia": "abrir_modal_jugador_voley"
+                  },
+                  {
+                    "id": "punto_error",
+                    "nombre": "ERROR RIVAL",
+                    "kpi_principal": "puntos_totales",
+                    "kpi_subaccion": "puntos_error",
+                    "flujo_consecuencia": "abrir_modal_jugador_voley"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "categoria": "SANCIONES Y SISTEMA",
+            "cards": [
+              {
+                "id": "control_voley",
+                "titulo": "CONTROL DE PARTIDO",
+                "layout_botones": "fila",
+                "botones": [
+                  {
+                    "id": "sancion_voley",
+                    "nombre": "SANCIONES",
+                    "kpi_principal": "sanciones",
+                    "flujo_consecuencia": "abrir_modal_sancion_voley"
+                  },
+                  {
+                    "id": "video_ref_voley",
+                    "nombre": "VIDEO REF",
+                    "kpi_principal": "revisiones_video",
+                    "flujo_consecuencia": "abrir_modal_video_ref"
+                  },
+                  {
+                    "id": "sustitucion_voley",
+                    "nombre": "SUSTITUCIÓN",
+                    "kpi_principal": "cambios",
+                    "flujo_consecuencia": "abrir_modal_sustitucion"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "basket",
+    "nombre_visible": "Básquet",
+    "reglamento": {
+      "jugadores_titulares": 5,
+      "modo_puntuacion": "puntos_corridos",
+      "por_tiempo": false,
+      "trackea_posesion": false
+    },
+    "modos": {
+      "periodista": {
+        "bloque_acciones": [
+          {
+            "categoria": "PUNTOS Y INTENTOS",
+            "cards": [
+              {
+                "id": "puntos_basket",
+                "titulo": "PUNTOS ANOTADOS",
+                "layout_botones": "fila",
+                "botones": [
+                  {
+                    "id": "punto_1",
+                    "nombre": "TIR 1",
+                    "kpi_principal": "puntos_totales",
+                    "kpi_subaccion": "puntos_1",
+                    "flujo_consecuencia": "abrir_modal_jugador_basket"
+                  },
+                  {
+                    "id": "punto_2",
+                    "nombre": "TIR 2",
+                    "kpi_principal": "puntos_totales",
+                    "kpi_subaccion": "puntos_2",
+                    "flujo_consecuencia": "abrir_modal_jugador_basket"
+                  },
+                  {
+                    "id": "punto_3",
+                    "nombre": "TIR 3",
+                    "kpi_principal": "puntos_totales",
+                    "kpi_subaccion": "puntos_3",
+                    "flujo_consecuencia": "abrir_modal_jugador_basket"
+                  }
+                ]
+              },
+              {
+                "id": "lanzamientos_fallidos",
+                "titulo": "LANZAMIENTOS FALLIDOS",
+                "layout_botones": "fila",
+                "botones": [
+                  {
+                    "id": "fallo_1",
+                    "nombre": "FALLO 1",
+                    "kpi_principal": "intentos_totales",
+                    "kpi_subaccion": "fallos_1",
+                    "flujo_consecuencia": "abrir_modal_jugador_basket"
+                  },
+                  {
+                    "id": "fallo_2",
+                    "nombre": "FALLO 2",
+                    "kpi_principal": "intentos_totales",
+                    "kpi_subaccion": "fallos_2",
+                    "flujo_consecuencia": "abrir_modal_jugador_basket"
+                  },
+                  {
+                    "id": "fallo_3",
+                    "nombre": "FALLO 3",
+                    "kpi_principal": "intentos_totales",
+                    "kpi_subaccion": "fallos_3",
+                    "flujo_consecuencia": "abrir_modal_jugador_basket"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "categoria": "ESTADÍSTICAS DE JUEGO",
+            "cards": [
+              {
+                "id": "acciones_campo",
+                "titulo": "ACCIONES DE CAMPO",
+                "layout_botones": "grilla",
+                "botones": [
+                  {
+                    "id": "asistencia",
+                    "nombre": "ASISTENCIA",
+                    "kpi_principal": "asistencias",
+                    "flujo_consecuencia": "abrir_modal_jugador_basket"
+                  },
+                  {
+                    "id": "rebote_ofensivo",
+                    "nombre": "REBOTE OF",
+                    "kpi_principal": "rebotes",
+                    "kpi_subaccion": "rebotes_ofensivos",
+                    "flujo_consecuencia": "abrir_modal_jugador_basket"
+                  },
+                  {
+                    "id": "rebote_defensivo",
+                    "nombre": "REBOTE DEF",
+                    "kpi_principal": "rebotes",
+                    "kpi_subaccion": "rebotes_defensivos",
+                    "flujo_consecuencia": "abrir_modal_jugador_basket"
+                  },
+                  {
+                    "id": "robo",
+                    "nombre": "ROBO (DERIVA PÉRDIDA RIVAL)",
+                    "kpi_principal": "robos",
+                    "flujo_consecuencia": "abrir_modal_jugador_basket_robo"
+                  },
+                  {
+                    "id": "perdida",
+                    "nombre": "PÉRDIDA",
+                    "kpi_principal": "perdidas",
+                    "flujo_consecuencia": "abrir_modal_jugador_basket"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "categoria": "REGLAMENTO Y CONTROL",
+            "cards": [
+              {
+                "id": "faltas_sistema_basket",
+                "titulo": "FALTAS Y CAMBIOS",
+                "layout_botones": "fila",
+                "botones": [
+                  {
+                    "id": "falta_personal",
+                    "nombre": "FALTA COMETIDA",
+                    "kpi_principal": "faltas",
+                    "flujo_consecuencia": "abrir_modal_falta_basket"
+                  },
+                  {
+                    "id": "video_ref_basket",
+                    "nombre": "VIDEO REF",
+                    "kpi_principal": "revisiones_video",
+                    "flujo_consecuencia": "abrir_modal_video_ref"
+                  },
+                  {
+                    "id": "sustitucion_basket",
+                    "nombre": "SUSTITUCIÓN",
+                    "kpi_principal": "cambios",
+                    "flujo_consecuencia": "abrir_modal_sustitucion"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+]

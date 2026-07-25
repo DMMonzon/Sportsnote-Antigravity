@@ -1,14 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserRole, SportType, Game, Player } from '../types';
 import { Button } from '../components/Button';
 import { GlassCard } from '../components/GlassCard';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { telemetryService, TelemetryEvent } from '../services/telemetryService';
-import { db, collection, doc } from '../services/firebase';
+import { db, collection, doc, auth } from '../services/firebase';
+import { PersistenceManager } from '../services/PersistenceManager';
+import dbAccionesJson from '../acciones_de_deportes.json';
 
 interface NewGameViewProps {
-  role: UserRole;
+  user: {
+    id: string;
+    uid: string;
+    email: string;
+    role: UserRole;
+    name: string;
+    avatar?: string;
+    plan?: 'free' | 'premium' | 'admin';
+    cycleStartDate?: number;
+    matchesCreatedInCycle?: number;
+  };
   onCreate: (game: Game) => void;
 }
 
@@ -162,10 +174,87 @@ const PlayerListEditor: React.FC<{
   );
 };
 
-const NewGameView: React.FC<NewGameViewProps> = ({ role, onCreate }) => {
+const NewGameView: React.FC<NewGameViewProps> = ({ user, onCreate }) => {
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 text-white font-lato">
+        <div className="text-center">
+          <p className="text-sm opacity-60 uppercase tracking-widest mb-4">Cargando perfil de usuario...</p>
+          <div className="w-8 h-8 border-2 border-[#00fe00] border-t-transparent rounded-full animate-spin mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
+
+  const role = user.role;
   const navigate = useNavigate();
   const location = useLocation();
+  
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [checkingQuota, setCheckingQuota] = useState(false);
+
+  const checkQuotaAndProceed = async (proceedCallback: () => void) => {
+    const plan = user.plan || 'free';
+    if (plan === 'premium' || plan === 'admin') {
+      proceedCallback();
+      return;
+    }
+
+    setCheckingQuota(true);
+    try {
+      const profile = await PersistenceManager.getUserProfile(user.uid);
+      const checked = await PersistenceManager.checkAndResetUserCycle(user.uid, profile);
+      
+      setCheckingQuota(false);
+      if (checked.matchesCreatedInCycle >= 4) {
+        setShowPaywall(true);
+      } else {
+        proceedCallback();
+      }
+    } catch (e) {
+      setCheckingQuota(false);
+      if ((user.matchesCreatedInCycle || 0) >= 4) {
+        setShowPaywall(true);
+      } else {
+        proceedCallback();
+      }
+    }
+  };
+
   const template = location.state?.template as Game | undefined;
+  const [selectedSportId, setSelectedSportId] = useState<string>(location.state?.sportId || template?.sportId || 'hockey_cesped');
+
+  const sports = [
+    { id: 'hockey_cesped', name: 'Hockey', bg: 'https://images.unsplash.com/photo-1587280501635-68a0e82cd5ff?q=80&w=600&auto=format&fit=crop', icon: 'fa-solid fa-hockey-puck', subtitle: 'FIH Oficial • Registro Neutral' },
+    { id: 'futbol', name: 'Fútbol', bg: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=600&auto=format&fit=crop', icon: 'fa-solid fa-futbol', subtitle: 'FIFA Oficial • Registro Neutral' },
+    { id: 'voley', name: 'Vóley', bg: 'https://images.unsplash.com/photo-1592656094267-764a450201c5?q=80&w=600&auto=format&fit=crop', icon: 'fa-solid fa-volleyball', subtitle: 'FIVB Oficial • Registro Neutral' },
+    { id: 'basket', name: 'Básquet', bg: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=600&auto=format&fit=crop', icon: 'fa-solid fa-basketball', subtitle: 'FIBA Oficial • Registro Neutral' }
+  ];
+
+  const currentSport = sports.find(s => s.id === selectedSportId) || sports[0];
+  const sportConfig = dbAccionesJson.find(s => s.id === selectedSportId) || dbAccionesJson[0];
+  const reglamento = sportConfig.reglamento;
+
+  const [duracionPeriodo, setDuracionPeriodo] = useState<number>(reglamento.duracion_periodo_minutos || 15);
+  const [cantidadPeriodos, setCantidadPeriodos] = useState<number>(reglamento.cantidad_periodos || 4);
+  const [maxSets, setMaxSets] = useState<number>(template?.metadata?.maxSets || 3);
+
+  // Sincronizar de forma reactiva los parámetros según el reglamento del deporte elegido
+  useEffect(() => {
+    const sport = dbAccionesJson.find(s => s.id === selectedSportId);
+    if (sport) {
+      if (sport.reglamento.por_tiempo) {
+        setDuracionPeriodo(sport.reglamento.duracion_periodo_minutos || 15);
+        setCantidadPeriodos(sport.reglamento.cantidad_periodos || 4);
+      } else {
+        setDuracionPeriodo(15);
+        setCantidadPeriodos(4);
+      }
+      if (sport.reglamento.modo_puntuacion === 'sets') {
+        setMaxSets(template?.metadata?.maxSets || 3);
+      }
+    }
+  }, [selectedSportId]);
 
   const [teamHome, setTeamHome] = useState(template?.teamHome.name || 'LOCAL');
   const [teamHomePrimary, setTeamHomePrimary] = useState(template?.teamHome.primaryColor || '#0000FF');
@@ -201,258 +290,412 @@ const NewGameView: React.FC<NewGameViewProps> = ({ role, onCreate }) => {
   const [localPlayers, setLocalPlayers] = useState<Player[]>(defaultLocalPlayers);
   const [awayPlayers, setAwayPlayers] = useState<Player[]>(defaultAwayPlayers);
 
-  const handleStart = () => {
-    const newGameId = doc(collection(db, 'matches')).id;
-    const newGame: Game = {
-      id: newGameId,
-      sportType: SportType.HOCKEY,
-      registroMode,
-      teamHome: {
-        id: 'th',
-        name: teamHome,
-        primaryColor: teamHomePrimary,
-        secondaryColor: teamHomeSecondary,
-        players: []
-      },
-      teamAway: {
-        id: 'ta',
-        name: teamAway,
-        primaryColor: teamAwayPrimary,
-        secondaryColor: teamAwaySecondary,
-        players: []
-      },
-      scoreHome: 0,
-      scoreAway: 0,
-      events: [],
-      isLive: true,
-      duration: 0,
-      role,
-      createdAt: Date.now(),
-      passChains: []
-    };
+  const handleStartGame = () => {
+    checkQuotaAndProceed(() => {
+      const newGameId = doc(collection(db, 'matches')).id;
+      
+      let sportType = SportType.GOAL_BASED;
+      if (selectedSportId === 'hockey_cesped') sportType = SportType.HOCKEY;
+      else if (selectedSportId === 'voley' || selectedSportId === 'basket') sportType = SportType.POINT_BASED;
 
-    for (let i = 1; i <= 11; i++) {
-      newGame.teamHome.players.push({ id: `h${i}`, name: `Jugador ${i}`, number: i });
-      newGame.teamAway.players.push({ id: `a${i}`, name: `Rival ${i}`, number: i });
-    }
-    onCreate(newGame);
-    telemetryService.logEvent(TelemetryEvent.START_GAME, {
-      gameId: newGame.id,
-      teams: `${newGame.teamHome.name} vs ${newGame.teamAway.name}`
+      const defaultLocalPlayersList = role === UserRole.PRESS ? localPlayers : Array.from({ length: reglamento?.jugadores_titulares || 11 }, (_, i) => ({
+        id: `lh_${i + 1}`,
+        name: `Jugador ${i + 1}`,
+        number: i + 1
+      }));
+
+      const defaultAwayPlayersList = role === UserRole.PRESS ? awayPlayers : Array.from({ length: reglamento?.jugadores_titulares || 11 }, (_, i) => ({
+        id: `la_${i + 1}`,
+        name: `Rival ${i + 1}`,
+        number: i + 1
+      }));
+
+      const newGame: Game = {
+        id: newGameId,
+        sportType,
+        sportId: selectedSportId,
+        authorId: auth.currentUser?.uid || PersistenceManager.loadStateLocal().currentUser?.uid || '',
+        registroMode: role === UserRole.PRESS ? 'botones' : registroMode,
+        teamHome: {
+          id: 'th_' + Date.now(),
+          name: teamHome.toUpperCase(),
+          primaryColor: teamHomePrimary,
+          secondaryColor: teamHomeSecondary,
+          players: defaultLocalPlayersList
+        },
+        teamAway: {
+          id: 'ta_' + Date.now(),
+          name: teamAway.toUpperCase(),
+          primaryColor: teamAwayPrimary,
+          secondaryColor: teamAwaySecondary,
+          players: defaultAwayPlayersList
+        },
+        scoreHome: 0,
+        scoreAway: 0,
+        events: [],
+        isLive: true,
+        duration: 0,
+        role,
+        createdAt: Date.now(),
+        passChains: [],
+        metadata: {
+          torneo: torneo || 'Partido Único',
+          jornada: jornada || 'Fecha 1',
+          rama: rama || 'Femenino',
+          categoria: categoria || 'General',
+          estadio: estadio || 'Estadio Local',
+          hora: hora || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          arbitros: arbitros || 'Juez Principal',
+          localPlayers: defaultLocalPlayersList,
+          visitantePlayers: defaultAwayPlayersList,
+          localStarters: [],
+          visitanteStarters: [],
+          maxSets: reglamento?.modo_puntuacion === 'sets' ? maxSets : 3,
+          duracionPeriodo: reglamento?.por_tiempo ? duracionPeriodo : undefined,
+          cantidadPeriodos: reglamento?.por_tiempo ? cantidadPeriodos : undefined,
+          setPointsHome: 0,
+          setPointsAway: 0,
+          setsWonHome: 0,
+          setsWonAway: 0,
+          setsHistory: []
+        },
+        stats: {
+          local: { gol: 0, faltas_cometidas: 0, perdidas: 0, recuperos: 0 },
+          visitante: { gol: 0, faltas_cometidas: 0, perdidas: 0, recuperos: 0 }
+        }
+      };
+
+      onCreate(newGame);
+      telemetryService.logEvent(TelemetryEvent.START_GAME, {
+        gameId: newGame.id,
+        teams: `${newGame.teamHome.name} vs ${newGame.teamAway.name}`,
+        role
+      });
     });
   };
 
-  const handleStartPress = () => {
-    const newGameId = doc(collection(db, 'matches')).id;
-    const newGame: Game = {
-      id: newGameId,
-      sportType: SportType.HOCKEY,
-      registroMode: 'botones', // Modo Periodista es exclusivamente por botones
-      teamHome: {
-        id: 'th_' + Date.now(),
-        name: teamHome.toUpperCase(),
-        primaryColor: teamHomePrimary,
-        secondaryColor: teamHomeSecondary,
-        players: localPlayers
-      },
-      teamAway: {
-        id: 'ta_' + Date.now(),
-        name: teamAway.toUpperCase(),
-        primaryColor: teamAwayPrimary,
-        secondaryColor: teamAwaySecondary,
-        players: awayPlayers
-      },
-      scoreHome: 0,
-      scoreAway: 0,
-      events: [],
-      isLive: true,
-      duration: 0,
-      role,
-      createdAt: Date.now(),
-      passChains: [],
-      metadata: {
-        torneo,
-        jornada,
-        rama,
-        categoria,
-        estadio,
-        hora,
-        arbitros,
-        localPlayers,
-        visitantePlayers: awayPlayers,
-        localStarters: [], // Se definen dentro de LiveGameView
-        visitanteStarters: []
-      },
-      stats: {
-        local: { gol: 0, faltas_cometidas: 0, perdidas: 0, recuperos: 0 },
-        visitante: { gol: 0, faltas_cometidas: 0, perdidas: 0, recuperos: 0 }
-      }
-    };
+  return (
+    <div className="min-h-screen flex flex-col p-6 overflow-y-auto relative z-10 w-full font-lato">
+      <header className="mb-4 flex items-center justify-between max-w-5xl mx-auto w-full">
+        <Breadcrumb paths={[{ label: 'Dashboard', url: '/dashboard' }, { label: 'Preparar Partido' }]} />
+        <div className="hidden sm:block mb-6">
+          <span className="text-[10px] font-black text-white/50 uppercase bg-white/5 px-3 py-1 rounded-full border border-white/10">
+            Modo: {role === UserRole.PRESS ? 'Periodista (Prensa)' : role}
+          </span>
+        </div>
+      </header>
 
-    onCreate(newGame);
-    telemetryService.logEvent(TelemetryEvent.START_GAME, {
-      gameId: newGame.id,
-      teams: `${newGame.teamHome.name} vs ${newGame.teamAway.name}`,
-      role: 'press'
-    });
-  };
-
-  // RENDER SELECCIONADO SEGÚN EL ROL
-  if (role === UserRole.PRESS) {
-    return (
-      <div className="min-h-screen flex flex-col p-6 overflow-y-auto relative z-10 w-full font-lato">
-        <header className="mb-4 flex items-center justify-between max-w-5xl mx-auto w-full">
-          <Breadcrumb paths={[{ label: 'Dashboard', url: '/dashboard' }, { label: 'Preparar Partido (Prensa)' }]} />
-          <div className="hidden sm:block mb-6">
-            <span className="text-[10px] font-black text-white/50 uppercase bg-white/5 px-3 py-1 rounded-full border border-white/10">Modo: Periodista (Prensa)</span>
-          </div>
-        </header>
-
-        <div className="flex-1 flex flex-col gap-6 max-w-5xl mx-auto w-full pb-20">
-          {/* INFO REGLAMENTO */}
-          <GlassCard className="p-6 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-[#00fe00]/20 rounded-2xl flex items-center justify-center text-[#00fe00] text-2xl shadow-lg border border-[#00fe00]/20"><i className="fa-solid fa-play ml-1"></i></div>
-              <div>
-                <h3 className="font-black text-xs text-white uppercase tracking-widest leading-none font-contrail">Hockey sobre Césped - Modo Prensa</h3>
-                <p className="text-[10px] text-white/50 font-bold mt-1 uppercase">FIH Oficial • Registro Neutral</p>
-              </div>
-            </div>
-          </GlassCard>
-
-          {/* METADATA FORM */}
-          <GlassCard className="p-6 lg:p-8 relative z-30">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-8 h-8 rounded-full bg-[#38bdf8]/20 flex items-center justify-center text-[#38bdf8] text-sm"><i className="fa-solid fa-circle-info"></i></div>
-              <h3 className="font-black text-sm text-white uppercase tracking-widest">Información del Encuentro</h3>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div>
-                <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Torneo</label>
-                <input
-                  className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-bold text-white focus:border-[#00fe00] outline-none shadow-inner"
-                  value={torneo}
-                  onChange={e => setTorneo(e.target.value)}
-                  placeholder="Ej: Metropolitano A"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Jornada</label>
-                <input
-                  className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-bold text-white focus:border-[#00fe00] outline-none shadow-inner"
-                  value={jornada}
-                  onChange={e => setJornada(e.target.value)}
-                  placeholder="Ej: Fecha 4"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Rama</label>
-                <select
-                  className="w-full bg-[#131041] border border-white/10 p-3 rounded-xl text-sm font-bold text-white focus:border-[#00fe00] outline-none shadow-inner"
-                  value={rama}
-                  onChange={e => setRama(e.target.value)}
+      <div className="flex-1 flex flex-col gap-6 max-w-5xl mx-auto w-full pb-20">
+        <div className="w-full mb-2 animate-stagger" style={{ animationDelay: '50ms' }}>
+          <p className="text-[#b4b4b4] text-[10px] font-black tracking-[3px] uppercase mb-3">Selecciona Deporte</p>
+          <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory no-scrollbar scroll-smooth">
+            {sports.map((s) => {
+              const isSelected = selectedSportId === s.id;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setSelectedSportId(s.id)}
+                  className={`snap-center shrink-0 w-64 h-36 rounded-[28px] relative overflow-hidden border transition-all duration-300 ${
+                    isSelected 
+                      ? 'border-[#00fe00] shadow-[0_0_20px_rgba(0,254,0,0.3)] scale-105 z-10' 
+                      : 'border-white/10 opacity-60 hover:opacity-90 hover:scale-[1.02]'
+                  }`}
                 >
-                  <option value="Femenino">Femenino</option>
-                  <option value="Masculino">Masculino</option>
-                  <option value="Mixto">Mixto</option>
-                </select>
+                  <img 
+                    src={s.bg} 
+                    alt={s.name} 
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500" 
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/10"></div>
+                  
+                  <div className="absolute inset-0 p-5 flex flex-col justify-between items-start text-left">
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm border ${
+                      isSelected ? 'bg-[#00fe00]/20 border-[#00fe00]/50 text-[#00fe00]' : 'bg-white/5 border-white/10 text-white/70'
+                    }`}>
+                      <i className={s.icon}></i>
+                    </div>
+                    <div>
+                      <h4 className="font-contrail text-2xl text-white italic tracking-wider leading-none uppercase">
+                        {s.name}
+                      </h4>
+                      <p className="text-[9px] text-white/50 font-bold uppercase tracking-widest mt-1">
+                        {isSelected ? 'Seleccionado' : 'Elegir'}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {reglamento && (
+          <GlassCard className="p-6 relative z-30 animate-in fade-in duration-300">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-sm">
+                <i className="fa-solid fa-sliders"></i>
               </div>
+              <h3 className="font-black text-sm text-white uppercase tracking-widest">Configuración del Reglamento</h3>
+            </div>
+
+            {reglamento.por_tiempo === true && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-xl animate-in fade-in duration-300">
+                <div>
+                  <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">
+                    Duración del Período (Minutos)
+                  </label>
+                  <input
+                    type="number"
+                    className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-bold text-white focus:border-[#00fe00] outline-none shadow-inner"
+                    value={duracionPeriodo}
+                    onChange={(e) => setDuracionPeriodo(Math.max(1, parseInt(e.target.value) || 0))}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">
+                    Cantidad de Tiempos / Períodos
+                  </label>
+                  <input
+                    type="number"
+                    className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-bold text-white focus:border-[#00fe00] outline-none shadow-inner"
+                    value={cantidadPeriodos}
+                    onChange={(e) => setCantidadPeriodos(Math.max(1, parseInt(e.target.value) || 0))}
+                  />
+                </div>
+              </div>
+            )}
+
+            {reglamento.modo_puntuacion === 'sets' && (
+              <div className="animate-in fade-in duration-300">
+                <p className="text-[10px] text-white/50 font-bold mb-4 uppercase">
+                  Selecciona la cantidad de sets a disputar
+                </p>
+                <div className="flex gap-4 max-w-md">
+                  <button
+                    type="button"
+                    onClick={() => setMaxSets(3)}
+                    className={`flex-1 p-4 rounded-2xl border transition-all text-center flex flex-col items-center justify-center gap-1.5 ${
+                      maxSets === 3
+                        ? 'bg-[#00fe00]/20 border-[#00fe00] text-white font-black shadow-lg shadow-[#00fe00]/10'
+                        : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white'
+                    }`}
+                  >
+                    <span className="text-xs font-black font-contrail">AL MEJOR DE 3 SETS</span>
+                    <span className="text-[9px] opacity-60 normal-case font-medium">Gana el primero en obtener 2 sets</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMaxSets(5)}
+                    className={`flex-1 p-4 rounded-2xl border transition-all text-center flex flex-col items-center justify-center gap-1.5 ${
+                      maxSets === 5
+                        ? 'bg-[#00fe00]/20 border-[#00fe00] text-white font-black shadow-lg shadow-[#00fe00]/10'
+                        : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white'
+                    }`}
+                  >
+                    <span className="text-xs font-black font-contrail">AL MEJOR DE 5 SETS</span>
+                    <span className="text-[9px] opacity-60 normal-case font-medium">Gana el primero en obtener 3 sets</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {reglamento.por_tiempo === false && reglamento.modo_puntuacion !== 'sets' && (
+              <p className="text-xs text-white/50 italic animate-in fade-in duration-300">
+                Este deporte no utiliza cronómetro configurable. Inicio directo habilitado.
+              </p>
+            )}
+          </GlassCard>
+        )}
+
+        <GlassCard className="p-6 lg:p-8 relative z-30">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-8 h-8 rounded-full bg-[#38bdf8]/20 flex items-center justify-center text-[#38bdf8] text-sm"><i className="fa-solid fa-circle-info"></i></div>
+            <h3 className="font-black text-sm text-white uppercase tracking-widest">Información del Encuentro</h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div>
+              <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Torneo</label>
+              <input
+                className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-bold text-white focus:border-[#00fe00] outline-none shadow-inner"
+                value={torneo}
+                onChange={e => setTorneo(e.target.value)}
+                placeholder="Ej: Metropolitano A"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Jornada</label>
+              <input
+                className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-bold text-white focus:border-[#00fe00] outline-none shadow-inner"
+                value={jornada}
+                onChange={e => setJornada(e.target.value)}
+                placeholder="Ej: Fecha 4"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Rama</label>
+              <select
+                className="w-full bg-[#131041] border border-white/10 p-3 rounded-xl text-sm font-bold text-white focus:border-[#00fe00] outline-none shadow-inner"
+                value={rama}
+                onChange={e => setRama(e.target.value)}
+              >
+                <option value="Femenino">Femenino</option>
+                <option value="Masculino">Masculino</option>
+                <option value="Mixto">Mixto</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Categoría</label>
+              <input
+                className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-bold text-white focus:border-[#00fe00] outline-none shadow-inner"
+                value={categoria}
+                onChange={e => setCategoria(e.target.value)}
+                placeholder="Ej: Primera Division"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Estadio</label>
+              <input
+                className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-bold text-white focus:border-[#00fe00] outline-none shadow-inner"
+                value={estadio}
+                onChange={e => setEstadio(e.target.value)}
+                placeholder="Ej: Club Harrods"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Hora</label>
+              <input
+                type="time"
+                className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-bold text-white focus:border-[#00fe00] outline-none shadow-inner"
+                value={hora}
+                onChange={e => setHora(e.target.value)}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Árbitros / Jueces</label>
+              <input
+                className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-bold text-white focus:border-[#00fe00] outline-none shadow-inner"
+                value={arbitros}
+                onChange={e => setArbitros(e.target.value)}
+                placeholder="Ej: L. Gómez, M. Rodríguez"
+              />
+            </div>
+          </div>
+        </GlassCard>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <GlassCard className="p-6 flex flex-col gap-6 relative z-20">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 text-sm"><i className="fa-solid fa-house"></i></div>
+              <h3 className="font-black text-sm text-white uppercase tracking-widest">Equipo Local</h3>
+            </div>
+            <div className="flex flex-col gap-4">
               <div>
-                <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Categoría</label>
+                <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Nombre del Equipo</label>
                 <input
-                  className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-bold text-white focus:border-[#00fe00] outline-none shadow-inner"
-                  value={categoria}
-                  onChange={e => setCategoria(e.target.value)}
-                  placeholder="Ej: Primera Division"
+                  className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-black text-white focus:border-[#00fe00] outline-none shadow-inner uppercase"
+                  value={teamHome}
+                  onChange={e => setTeamHome(e.target.value)}
+                  placeholder="CLUB LOCAL"
                 />
               </div>
-              <div>
-                <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Estadio</label>
-                <input
-                  className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-bold text-white focus:border-[#00fe00] outline-none shadow-inner"
-                  value={estadio}
-                  onChange={e => setEstadio(e.target.value)}
-                  placeholder="Ej: Club Harrods"
-                />
+              <div className="flex gap-4">
+                <ColorDropdown label="Primario" selected={teamHomePrimary} onSelect={setTeamHomePrimary} />
+                <ColorDropdown label="Secundario" selected={teamHomeSecondary} onSelect={setTeamHomeSecondary} />
               </div>
-              <div>
-                <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Hora</label>
-                <input
-                  type="time"
-                  className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-bold text-white focus:border-[#00fe00] outline-none shadow-inner"
-                  value={hora}
-                  onChange={e => setHora(e.target.value)}
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Árbitros / Jueces</label>
-                <input
-                  className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-bold text-white focus:border-[#00fe00] outline-none shadow-inner"
-                  value={arbitros}
-                  onChange={e => setArbitros(e.target.value)}
-                  placeholder="Ej: L. Gómez, M. Rodríguez"
-                />
-              </div>
+              <TeamPreview name={teamHome} primary={teamHomePrimary} secondary={teamHomeSecondary} />
+              
+              {role === UserRole.PRESS && (
+                <PlayerListEditor title="Plantel Local" players={localPlayers} onChange={setLocalPlayers} teamColor={teamHomePrimary} />
+              )}
             </div>
           </GlassCard>
 
-          {/* EQUIPOS CONFIGURACIÓN (LOCAL VS VISITANTE) */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* LOCAL */}
-            <GlassCard className="p-6 flex flex-col gap-6 relative z-20">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 text-sm"><i className="fa-solid fa-house"></i></div>
-                <h3 className="font-black text-sm text-white uppercase tracking-widest">Equipo Local</h3>
+          <GlassCard className="p-6 flex flex-col gap-6 relative z-10">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center text-red-400 text-sm"><i className="fa-solid fa-bus"></i></div>
+              <h3 className="font-black text-sm text-white uppercase tracking-widest">Equipo Visitante</h3>
+            </div>
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Nombre del Equipo</label>
+                <input
+                  className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-black text-white focus:border-[#00fe00] outline-none shadow-inner uppercase"
+                  value={teamAway}
+                  onChange={e => setTeamAway(e.target.value)}
+                  placeholder="CLUB VISITANTE"
+                />
               </div>
-              <div className="flex flex-col gap-4">
-                <div>
-                  <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Nombre del Equipo</label>
-                  <input
-                    className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-black text-white focus:border-[#00fe00] outline-none shadow-inner uppercase"
-                    value={teamHome}
-                    onChange={e => setTeamHome(e.target.value)}
-                    placeholder="CLUB LOCAL"
-                  />
-                </div>
-                <div className="flex gap-4">
-                  <ColorDropdown label="Primario" selected={teamHomePrimary} onSelect={setTeamHomePrimary} />
-                  <ColorDropdown label="Secundario" selected={teamHomeSecondary} onSelect={setTeamHomeSecondary} />
-                </div>
-                <TeamPreview name={teamHome} primary={teamHomePrimary} secondary={teamHomeSecondary} />
-                
-                <PlayerListEditor title="Plantel Local" players={localPlayers} onChange={setLocalPlayers} teamColor={teamHomePrimary} />
+              <div className="flex gap-4">
+                <ColorDropdown label="Primario" selected={teamAwayPrimary} onSelect={setTeamAwayPrimary} />
+                <ColorDropdown label="Secundario" selected={teamAwaySecondary} onSelect={setTeamAwaySecondary} />
               </div>
-            </GlassCard>
-
-            {/* VISITANTE */}
-            <GlassCard className="p-6 flex flex-col gap-6 relative z-10">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center text-red-400 text-sm"><i className="fa-solid fa-bus"></i></div>
-                <h3 className="font-black text-sm text-white uppercase tracking-widest">Equipo Visitante</h3>
-              </div>
-              <div className="flex flex-col gap-4">
-                <div>
-                  <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Nombre del Equipo</label>
-                  <input
-                    className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-black text-white focus:border-[#00fe00] outline-none shadow-inner uppercase"
-                    value={teamAway}
-                    onChange={e => setTeamAway(e.target.value)}
-                    placeholder="CLUB VISITANTE"
-                  />
-                </div>
-                <div className="flex gap-4">
-                  <ColorDropdown label="Primario" selected={teamAwayPrimary} onSelect={setTeamAwayPrimary} />
-                  <ColorDropdown label="Secundario" selected={teamAwaySecondary} onSelect={setTeamAwaySecondary} />
-                </div>
-                <TeamPreview name={teamAway} primary={teamAwayPrimary} secondary={teamAwaySecondary} />
-                
+              <TeamPreview name={teamAway} primary={teamAwayPrimary} secondary={teamAwaySecondary} />
+              
+              {role === UserRole.PRESS && (
                 <PlayerListEditor title="Plantel Visitante" players={awayPlayers} onChange={setAwayPlayers} teamColor={teamAwayPrimary} />
-              </div>
-            </GlassCard>
-          </div>
+              )}
+            </div>
+          </GlassCard>
+        </div>
 
-          {/* PREMIUM EXCEL LOADING */}
+        {role !== UserRole.PRESS && (
+          <GlassCard className="p-6 lg:p-8 relative z-10">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-8 h-8 rounded-full bg-[#38bdf8]/20 flex items-center justify-center text-[#38bdf8] text-sm"><i className="fa-solid fa-sliders"></i></div>
+              <h3 className="font-black text-sm text-white uppercase tracking-widest font-contrail">Modalidad de Registro</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <button
+                type="button"
+                onClick={() => setRegistroMode('visual')}
+                className={`p-6 rounded-2xl border text-left transition-all duration-300 flex flex-col gap-3 ${
+                  registroMode === 'visual'
+                    ? 'bg-[#38bdf8]/10 border-[#38bdf8] shadow-[0_0_15px_rgba(56,189,248,0.15)]'
+                    : 'bg-white/5 border-white/10 hover:border-[#38bdf8]/40'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
+                    registroMode === 'visual' ? 'border-[#38bdf8]' : 'border-white/30'
+                  }`}>
+                    {registroMode === 'visual' && <div className="w-2 h-2 rounded-full bg-[#38bdf8]" />}
+                  </div>
+                  <span className="font-black text-xs text-white uppercase tracking-wider">Modo Visual</span>
+                </div>
+                <p className="text-[10px] text-white/60 font-bold leading-normal uppercase">
+                  Registro táctico interactivo mediante el mapa de juego dinámico.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setRegistroMode('botones')}
+                className={`p-6 rounded-2xl border text-left transition-all duration-300 flex flex-col gap-3 ${
+                  registroMode === 'botones'
+                    ? 'bg-[#38bdf8]/10 border-[#38bdf8] shadow-[0_0_15px_rgba(56,189,248,0.15)]'
+                    : 'bg-white/5 border-white/10 hover:border-[#38bdf8]/40'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
+                    registroMode === 'botones' ? 'border-[#38bdf8]' : 'border-white/30'
+                  }`}>
+                    {registroMode === 'botones' && <div className="w-2 h-2 rounded-full bg-[#38bdf8]" />}
+                  </div>
+                  <span className="font-black text-xs text-white uppercase tracking-wider">Modo Botones</span>
+                </div>
+                <p className="text-[10px] text-white/60 font-bold leading-normal uppercase">
+                  Registro rápido y tradicional mediante botones segmentados por cuadrantes espaciales.
+                </p>
+              </button>
+            </div>
+          </GlassCard>
+        )}
+
+        {role === UserRole.PRESS && (
           <div className="w-full flex justify-center mt-2">
             <button
               disabled
@@ -466,174 +709,56 @@ const NewGameView: React.FC<NewGameViewProps> = ({ role, onCreate }) => {
               </span>
             </button>
           </div>
+        )}
 
-          {/* BOTÓN INICIAR */}
-          <div className="mt-4 flex justify-center">
-            <button
-              className="bg-[#b4b4b4] text-black px-8 py-5 font-bold text-[11px] uppercase tracking-[2px] hover:bg-[#c0c0c0] transition-all active:scale-95 flex items-center justify-center gap-3 w-full lg:max-w-md shadow-[0_0_20px_rgba(180,180,180,0.2)] font-contrail"
-              onClick={handleStartPress}
-            >
-              COMENZAR JUEGO <i className="fa-solid fa-arrow-right"></i>
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // RENDER ORIGINAL PARA ENTRENADORES
-  return (
-    <div className="min-h-screen flex flex-col p-6 overflow-y-auto relative z-10 w-full font-lato">
-      <header className="mb-4 flex items-center justify-between max-w-5xl mx-auto w-full">
-        <Breadcrumb paths={[{ label: 'Dashboard', url: '/dashboard' }, { label: 'Preparar Partido' }]} />
-        <div className="hidden sm:block mb-6">
-          <span className="text-[10px] font-black text-white/50 uppercase bg-white/5 px-3 py-1 rounded-full border border-white/10">Modo: {role}</span>
-        </div>
-      </header>
-
-      <div className="flex-1 flex flex-col gap-6 max-w-5xl mx-auto w-full pb-20">
-
-        {/* INFO REGLAMENTO */}
-        <GlassCard className="p-6 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-[#00fe00]/20 rounded-2xl flex items-center justify-center text-[#00fe00] text-2xl shadow-lg border border-[#00fe00]/20"><i className="fa-solid fa-play ml-1"></i></div>
-            <div>
-              <h3 className="font-black text-xs text-white uppercase tracking-widest leading-none font-contrail">Hockey sobre Césped</h3>
-              <p className="text-[10px] text-white/50 font-bold mt-1 uppercase">FIH Oficial • 4 x 15 min</p>
-            </div>
-          </div>
-          <div className="hidden md:flex gap-3">
-            <div className="bg-white/5 px-4 py-2 rounded-2xl border border-white/10 text-center min-w-[80px]">
-              <p className="text-[8px] font-black text-white/50 uppercase mb-0.5">Tiempos</p>
-              <p className="text-sm font-black text-[#00fe00] leading-none">4</p>
-            </div>
-            <div className="bg-white/5 px-4 py-2 rounded-2xl border border-white/10 text-center min-w-[80px]">
-              <p className="text-[8px] font-black text-white/50 uppercase mb-0.5">Minutos</p>
-              <p className="text-sm font-black text-[#00fe00] leading-none">15'</p>
-            </div>
-            <div className="bg-white/5 px-4 py-2 rounded-2xl border border-white/10 text-center min-w-[100px]">
-              <p className="text-[8px] font-black text-white/50 uppercase mb-0.5">Igualdad</p>
-              <p className="text-[10px] font-black text-[#00fe00] leading-none uppercase">Sin desempate</p>
-            </div>
-          </div>
-        </GlassCard>
-
-        {/* CONFIGURACIÓN EQUIPO LOCAL */}
-        <GlassCard className="p-6 lg:p-8 relative z-30">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 text-sm"><i className="fa-solid fa-house"></i></div>
-            <h3 className="font-black text-sm text-white uppercase tracking-widest">Configuración Local</h3>
-          </div>
-
-          <div className="flex flex-col lg:flex-row lg:items-end gap-6">
-            <div className="flex-1 lg:max-w-[240px]">
-              <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Nombre Equipo</label>
-              <input
-                className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-black text-white focus:border-[#00fe00] outline-none shadow-inner uppercase"
-                value={teamHome}
-                onChange={e => setTeamHome(e.target.value)}
-                placeholder="CLUB LOCAL"
-              />
-            </div>
-            <div className="flex flex-1 gap-4">
-              <ColorDropdown label="Primario" selected={teamHomePrimary} onSelect={setTeamHomePrimary} />
-              <ColorDropdown label="Secundario" selected={teamHomeSecondary} onSelect={setTeamHomeSecondary} />
-            </div>
-            <div className="w-full lg:w-64">
-              <TeamPreview name={teamHome} primary={teamHomePrimary} secondary={teamHomeSecondary} />
-            </div>
-          </div>
-        </GlassCard>
-
-        {/* CONFIGURACIÓN EQUIPO VISITANTE */}
-        <GlassCard className="p-6 lg:p-8 relative z-20">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center text-red-400 text-sm"><i className="fa-solid fa-bus"></i></div>
-            <h3 className="font-black text-sm text-white uppercase tracking-widest">Configuración Visitante</h3>
-          </div>
-
-          <div className="flex flex-col lg:flex-row lg:items-end gap-6">
-            <div className="flex-1 lg:max-w-[240px]">
-              <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Nombre Rival</label>
-              <input
-                className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-black text-white focus:border-[#00fe00] outline-none shadow-inner uppercase"
-                value={teamAway}
-                onChange={e => setTeamAway(e.target.value)}
-                placeholder="CLUB VISITANTE"
-              />
-            </div>
-            <div className="flex flex-1 gap-4">
-              <ColorDropdown label="Primario" selected={teamAwayPrimary} onSelect={setTeamAwayPrimary} />
-              <ColorDropdown label="Secundario" selected={teamAwaySecondary} onSelect={setTeamAwaySecondary} />
-            </div>
-            <div className="w-full lg:w-64">
-              <TeamPreview name={teamAway} primary={teamAwayPrimary} secondary={teamAwaySecondary} />
-            </div>
-          </div>
-        </GlassCard>
-
-        {/* MODALIDAD DE REGISTRO */}
-        <GlassCard className="p-6 lg:p-8 relative z-10">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-8 h-8 rounded-full bg-[#38bdf8]/20 flex items-center justify-center text-[#38bdf8] text-sm"><i className="fa-solid fa-sliders"></i></div>
-            <h3 className="font-black text-sm text-white uppercase tracking-widest font-contrail">Modalidad de Registro</h3>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <button
-              onClick={() => setRegistroMode('visual')}
-              className={`p-6 rounded-2xl border text-left transition-all duration-300 flex flex-col gap-3 ${
-                registroMode === 'visual'
-                  ? 'bg-[#38bdf8]/10 border-[#38bdf8] shadow-[0_0_15px_rgba(56,189,248,0.15)]'
-                  : 'bg-white/5 border-white/10 hover:border-[#38bdf8]/40'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
-                  registroMode === 'visual' ? 'border-[#38bdf8]' : 'border-white/30'
-                }`}>
-                  {registroMode === 'visual' && <div className="w-2 h-2 rounded-full bg-[#38bdf8]" />}
-                </div>
-                <span className="font-black text-xs text-white uppercase tracking-wider">Modo Visual</span>
-              </div>
-              <p className="text-[10px] text-white/60 font-bold leading-normal uppercase">
-                Registro táctico interactivo mediante el mapa de juego dinámico.
-              </p>
-            </button>
-
-            <button
-              onClick={() => setRegistroMode('botones')}
-              className={`p-6 rounded-2xl border text-left transition-all duration-300 flex flex-col gap-3 ${
-                registroMode === 'botones'
-                  ? 'bg-[#38bdf8]/10 border-[#38bdf8] shadow-[0_0_15px_rgba(56,189,248,0.15)]'
-                  : 'bg-white/5 border-white/10 hover:border-[#38bdf8]/40'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
-                  registroMode === 'botones' ? 'border-[#38bdf8]' : 'border-white/30'
-                }`}>
-                  {registroMode === 'botones' && <div className="w-2 h-2 rounded-full bg-[#38bdf8]" />}
-                </div>
-                <span className="font-black text-xs text-white uppercase tracking-wider">Modo Botones</span>
-              </div>
-              <p className="text-[10px] text-white/60 font-bold leading-normal uppercase">
-                Registro rápido y tradicional mediante botones segmentados por cuadrantes espaciales.
-              </p>
-            </button>
-          </div>
-        </GlassCard>
-
-        {/* BOTÓN INICIAR */}
         <div className="mt-4 flex justify-center">
           <button
-            className="bg-[#b4b4b4] text-black px-8 py-5 font-bold text-[11px] uppercase tracking-[2px] hover:bg-[#c0c0c0] transition-all active:scale-95 flex items-center justify-center gap-3 w-full lg:max-w-md shadow-[0_0_20px_rgba(180,180,180,0.2)] font-contrail"
-            onClick={handleStart}
+            type="button"
+            className="bg-[#b4b4b4] text-black px-8 py-5 font-bold text-[11px] uppercase tracking-[2px] hover:bg-[#c0c0c0] transition-all active:scale-95 flex items-center justify-center gap-3 w-full lg:max-w-md shadow-[0_0_20px_rgba(180,180,180,0.2)] font-contrail disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleStartGame}
+            disabled={checkingQuota}
           >
-            COMENZAR JUEGO <i className="fa-solid fa-arrow-right"></i>
+            {checkingQuota ? 'VERIFICANDO CUOTA...' : <>COMENZAR JUEGO <i className="fa-solid fa-arrow-right"></i></>}
           </button>
         </div>
       </div>
+
+      {showPaywall && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-[#131041]/95 border border-white/10 w-full max-w-md rounded-[40px] p-8 shadow-2xl flex flex-col items-center text-center animate-in zoom-in duration-300 relative overflow-hidden">
+            <div className="absolute -top-24 -left-24 w-48 h-48 bg-yellow-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <div className="w-20 h-20 bg-yellow-500/10 border border-yellow-500/30 rounded-3xl flex items-center justify-center text-yellow-500 text-4xl mb-6 shadow-[0_0_30px_rgba(234,179,8,0.15)] animate-pulse">
+              <i className="fa-solid fa-crown"></i>
+            </div>
+            <h3 className="font-contrail text-2xl text-white tracking-wide mb-4 uppercase italic text-center leading-tight">
+              ¡Alcanzaste tu límite de partidos por ciclo!
+            </h3>
+            <p className="text-[13px] text-white/75 font-lato mb-8 leading-relaxed max-w-sm">
+              Has registrado los 4 partidos correspondientes a tu ciclo de 30 días. Pásate al Plan Pro para cobertura ilimitada de partidos en todos los deportes, exportación de reportes y estadísticas avanzadas.
+            </p>
+            <div className="flex flex-col w-full gap-3">
+              <button 
+                type="button"
+                onClick={() => {
+                  alert("¡Gracias por tu interés! Esta funcionalidad de pago se implementará próximamente.");
+                }} 
+                className="w-full bg-gradient-to-r from-yellow-500 to-amber-600 text-black font-black py-4 rounded-2xl active:scale-95 text-[11px] uppercase tracking-widest shadow-[0_4px_20px_rgba(234,179,8,0.3)] hover:brightness-110 transition-all"
+              >
+                Obtener Plan Premium
+              </button>
+              <button 
+                type="button"
+                onClick={() => setShowPaywall(false)} 
+                className="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-4 rounded-2xl text-[10px] uppercase tracking-widest transition-colors border border-white/10"
+              >
+                Entendido / Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

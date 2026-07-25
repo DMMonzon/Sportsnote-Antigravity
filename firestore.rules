@@ -21,6 +21,11 @@ service cloud.firestore {
       allow write: if false; // Solo tú puedes editarlos desde la consola de Firebase
     }
 
+    // Regla para el perfil y cuota del usuario
+    match /users/{userId} {
+      allow read, write: if isAuthorizedUser() && request.auth.uid == userId;
+    }
+
     // Regla para los partidos (Matches / Games)
     match /matches/{matchId} {
       // Permitimos la creación si el usuario figura en authorized_users

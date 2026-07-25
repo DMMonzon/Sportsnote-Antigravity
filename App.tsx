@@ -2,7 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AppState, UserRole, Game, TacticalScheme } from './types';
-import { PersistenceManager } from './services/PersistenceManager';
+import { PersistenceManager, getTimestampMillis } from './services/PersistenceManager';
+import { db } from './services/firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 // Views
 import LoginView from './views/LoginView';
@@ -20,6 +22,47 @@ const AppContent: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const refreshUserProfile = async (uid: string) => {
+    if (!uid) return;
+    try {
+      const profile = await PersistenceManager.getUserProfile(uid);
+      const checked = await PersistenceManager.checkAndResetUserCycle(uid, profile);
+      
+      setState(prev => {
+        if (!prev.currentUser || prev.currentUser.uid !== uid) return prev;
+        
+        const updatedUser = {
+          ...prev.currentUser,
+          plan: checked.plan,
+          cycleStartDate: getTimestampMillis(checked.cycleStartDate),
+          matchesCreatedInCycle: checked.matchesCreatedInCycle
+        };
+
+        if (
+          prev.currentUser.plan === updatedUser.plan &&
+          prev.currentUser.cycleStartDate === updatedUser.cycleStartDate &&
+          prev.currentUser.matchesCreatedInCycle === updatedUser.matchesCreatedInCycle
+        ) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          currentUser: updatedUser
+        };
+      });
+    } catch (e) {
+      console.error("Error refreshing user profile:", e);
+    }
+  };
+
+  // Refrescar el perfil del usuario al cambiar o iniciar
+  useEffect(() => {
+    if (state.currentUser?.uid) {
+      refreshUserProfile(state.currentUser.uid);
+    }
+  }, [state.currentUser?.uid]);
+
   // Guardar estado automáticamente en cada cambio
   useEffect(() => {
     PersistenceManager.saveStateLocal(state);
@@ -34,10 +77,22 @@ const AppContent: React.FC = () => {
     }
   }, []);
 
-  const handleLogin = (user: { id: string, uid: string, email: string, role: UserRole, name: string, avatar?: string }) => {
+  const handleLogin = async (user: { id: string, uid: string, email: string, role: UserRole, name: string, avatar?: string }) => {
+    // 1. Recuperar el perfil del usuario desde Firestore
+    const profile = await PersistenceManager.getUserProfile(user.uid);
+    // 2. Comprobar y resetear ciclo móvil si aplica
+    const checked = await PersistenceManager.checkAndResetUserCycle(user.uid, profile);
+
+    const fullUser = {
+      ...user,
+      plan: checked.plan,
+      cycleStartDate: getTimestampMillis(checked.cycleStartDate),
+      matchesCreatedInCycle: checked.matchesCreatedInCycle
+    };
+
     const newState = {
       ...state,
-      currentUser: user
+      currentUser: fullUser
     };
     setState(newState);
     PersistenceManager.saveStateLocal(newState);
@@ -56,19 +111,52 @@ const AppContent: React.FC = () => {
     navigate('/');
   };
 
-  const createGame = (game: Game) => {
+  const createGame = async (game: Game) => {
+    const currentUser = state.currentUser;
+    if (!currentUser) return;
+
+    // Verificar si el usuario free superó el límite de partidos
+    const plan = currentUser.plan || 'free';
+    if (plan === 'free') {
+      const profile = await PersistenceManager.getUserProfile(currentUser.uid);
+      const checked = await PersistenceManager.checkAndResetUserCycle(currentUser.uid, profile);
+      if (checked.matchesCreatedInCycle >= 4) {
+        console.warn("Límite de partidos superado. Creación bloqueada.");
+        return;
+      }
+    }
+
     const newGame = {
       ...game,
-      userId: state.currentUser?.uid, // Used for legacy sync
-      ownerId: state.currentUser?.uid, // Used for tactics and ownership
-      authorId: state.currentUser?.uid // Used for proper Firestore filtering
+      userId: currentUser.uid, // Used for legacy sync
+      ownerId: currentUser.uid, // Used for tactics and ownership
+      authorId: currentUser.uid // Used for proper Firestore filtering
     };
     
     // Ensure it is saved locally AND queued for sync immediately
     PersistenceManager.createGame(newGame);
 
+    let updatedUser = { ...currentUser };
+
+    if (plan === 'free') {
+      const nextCount = (currentUser.matchesCreatedInCycle || 0) + 1;
+      updatedUser.matchesCreatedInCycle = nextCount;
+
+      if (navigator.onLine) {
+        try {
+          const userRef = doc(db, 'users', currentUser.uid);
+          await setDoc(userRef, {
+            matchesCreatedInCycle: nextCount
+          }, { merge: true });
+        } catch (e) {
+          console.error("Error incrementing matchesCreatedInCycle in Firestore:", e);
+        }
+      }
+    }
+
     const newState = {
       ...state,
+      currentUser: updatedUser,
       matches: [...state.matches, newGame],
       activeGameId: newGame.id
     };
@@ -160,7 +248,7 @@ const AppContent: React.FC = () => {
           state.currentUser ? (
             state.activeGameId
               ? <Navigate to={`/live/${state.activeGameId}`} replace />
-              : <NewGameView role={state.currentUser.role} onCreate={createGame} />
+              : <NewGameView user={state.currentUser} onCreate={createGame} />
           ) : <Navigate to="/" />
         } />
 

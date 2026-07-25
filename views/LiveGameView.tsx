@@ -14,6 +14,7 @@ import { PersistenceManager } from '../services/PersistenceManager';
 import { aiService } from '../services/aiService';
 import { StorageService } from '../services/StorageService';
 import { PitchMap } from '../components/PitchMap';
+import localSportsConfig from '../acciones_de_deportes.json';
 import { db, auth, doc, setDoc, getDoc, collection, getDocs, query, where, serverTimestamp } from '../services/firebase';
 const NSeparator = () => (
   <div className="hidden md:flex w-8 h-8 md:w-10 md:h-10 items-center justify-center shrink-0">
@@ -477,26 +478,63 @@ const LiveGameView: React.FC<{
   const [dbAcciones, setDbAcciones] = useState<any[]>([]);
 
   useEffect(() => {
+    if (!game) return;
+
     const fetchAcciones = async () => {
       try {
-        // Apuntamos directamente a la nueva colección y al documento estructurado del deporte
-        const docRef = doc(db, 'config_deportes', 'hockey_cesped');
+        const sportId = game.sportId || 'hockey_cesped';
+        console.log(`Cargando acciones para el deporte: ${sportId}`);
+
+        const docRef = doc(db, 'config_deportes', 'acciones_de_deportes');
         const docSnap = await getDoc(docRef);
+
+        let sportConfig = null;
 
         if (docSnap.exists()) {
           const data = docSnap.data();
-          // Guardamos el objeto completo (con sus modos, categorías y botones hijos)
-          setDbAcciones(data);
+          if (Array.isArray(data)) {
+            sportConfig = data.find((s: any) => s.id === sportId);
+          } else if (data.sports && Array.isArray(data.sports)) {
+            sportConfig = data.sports.find((s: any) => s.id === sportId);
+          } else if (data.deportes && Array.isArray(data.deportes)) {
+            sportConfig = data.deportes.find((s: any) => s.id === sportId);
+          } else if (data[sportId]) {
+            sportConfig = data[sportId];
+          } else {
+            for (const key of Object.keys(data)) {
+              if (Array.isArray(data[key])) {
+                sportConfig = data[key].find((s: any) => s.id === sportId);
+                if (sportConfig) break;
+              }
+            }
+          }
+        }
+
+        if (!sportConfig) {
+          console.warn(`No se encontró config en Firestore para ${sportId}. Buscando en JSON local...`);
+          if (Array.isArray(localSportsConfig)) {
+            sportConfig = localSportsConfig.find((s: any) => s.id === sportId);
+          }
+        }
+
+        if (sportConfig) {
+          setDbAcciones(sportConfig);
         } else {
-          console.warn("No se encontró el documento de configuración en /config_deportes/hockey_cesped");
+          console.error(`Error: No se encontró la configuración del deporte "${sportId}" ni en Firestore ni local.`);
         }
       } catch (err) {
         console.error('Error al recuperar las acciones dinámicas de Firestore:', err);
+        const sportId = game.sportId || 'hockey_cesped';
+        console.log(`Aplicando fallback local para: ${sportId}`);
+        const sportConfig = (localSportsConfig as any[]).find((s: any) => s.id === sportId);
+        if (sportConfig) {
+          setDbAcciones(sportConfig);
+        }
       }
     };
 
     fetchAcciones();
-  }, []);
+  }, [game?.sportId]);
 
   const [isRunning, setIsRunning] = useState(false);
   const [seconds, setSeconds] = useState(0);
@@ -547,11 +585,14 @@ const LiveGameView: React.FC<{
 
   // Estados para el Modo Periodista (press)
   const [showStartersModal, setShowStartersModal] = useState<'local' | 'visitante' | null>(null);
-  const [activeActionForAssign, setActiveActionForAssign] = useState<{ team: 'local' | 'visitante'; cardId: 'disparo_arco' | 'tarjetas'; subActionId: string; metadata?: any } | null>(null);
+  const [activeActionForAssign, setActiveActionForAssign] = useState<{ team: 'local' | 'visitante'; boton: any; originalBoton?: any; metadata?: any } | null>(null);
   const [activeFoul, setActiveFoul] = useState<{ team: 'local' | 'visitante'; type: 'committed' | 'received'; subAction: string } | null>(null);
   const [selectedFoulPlayer, setSelectedFoulPlayer] = useState<string | null>(null);
   const [selectedFoulCard, setSelectedFoulCard] = useState<'verde' | 'amarilla' | 'roja' | null>(null);
   const [selectedFoulFija, setSelectedFoulFija] = useState<'corner_corto' | 'penal' | null>(null);
+  const [subPlayerOut, setSubPlayerOut] = useState<string | null>(null);
+  const [subPlayerIn, setSubPlayerIn] = useState<string | null>(null);
+  const [activeGenericModal, setActiveGenericModal] = useState<{ team: 'local' | 'visitante'; type: 'video_ref' | 'var' | 'sustitucion'; boton: any } | null>(null);
 
 
   // Estados de orientación de la cancha
@@ -1118,9 +1159,68 @@ const LiveGameView: React.FC<{
       let updatedScoreHome = prev.scoreHome;
       let updatedScoreAway = prev.scoreAway;
 
-      if (type.includes('GOL')) {
-        if (scoringTeam === Possession.HOME) updatedScoreHome++;
-        else if (scoringTeam === Possession.AWAY) updatedScoreAway++;
+      let scoreIncrement = 0;
+      if (type.toUpperCase().includes('GOL')) {
+        scoreIncrement = 1;
+      } else if (type === 'PUNTOS_1' || pressAction === 'puntos_1' || pressAction === 'punto_1') {
+        scoreIncrement = 1;
+      } else if (type === 'PUNTOS_2' || pressAction === 'puntos_2' || pressAction === 'punto_2') {
+        scoreIncrement = 2;
+      } else if (type === 'PUNTOS_3' || pressAction === 'puntos_3' || pressAction === 'punto_3') {
+        scoreIncrement = 3;
+      } else if (type === 'PUNTOS_TOTALES' || (pressAction && pressAction.includes('punto')) || type.toUpperCase().includes('PUNTO')) {
+        scoreIncrement = 1;
+      }
+
+      const reglamento = (dbAcciones as any)?.reglamento || {};
+      const isSetsMode = reglamento.modo_puntuacion === 'sets';
+
+      let metadata = prev.metadata || {};
+      let setPointsHome = metadata.setPointsHome || 0;
+      let setPointsAway = metadata.setPointsAway || 0;
+      let setsWonHome = prev.scoreHome;
+      let setsWonAway = prev.scoreAway;
+      let setsHistory = metadata.setsHistory || [];
+
+      if (scoreIncrement > 0) {
+        if (isSetsMode) {
+          if (scoringTeam === Possession.HOME) {
+            setPointsHome += scoreIncrement;
+          } else if (scoringTeam === Possession.AWAY) {
+            setPointsAway += scoreIncrement;
+          }
+
+          const targetPoints = reglamento.puntos_para_ganar_set || 25;
+          const minDiff = reglamento.diferencia_minima_puntos || 2;
+
+          if (setPointsHome >= targetPoints && (setPointsHome - setPointsAway) >= minDiff) {
+            setsWonHome += 1;
+            setsHistory = [...setsHistory, {
+              setNumber: setsWonHome + setsWonAway,
+              scoreHome: setPointsHome,
+              scoreAway: setPointsAway,
+              winner: 'home'
+            }];
+            setPointsHome = 0;
+            setPointsAway = 0;
+          } else if (setPointsAway >= targetPoints && (setPointsAway - setPointsHome) >= minDiff) {
+            setsWonAway += 1;
+            setsHistory = [...setsHistory, {
+              setNumber: setsWonHome + setsWonAway,
+              scoreHome: setPointsHome,
+              scoreAway: setPointsAway,
+              winner: 'away'
+            }];
+            setPointsHome = 0;
+            setPointsAway = 0;
+          }
+
+          updatedScoreHome = setsWonHome;
+          updatedScoreAway = setsWonAway;
+        } else {
+          if (scoringTeam === Possession.HOME) updatedScoreHome += scoreIncrement;
+          else if (scoringTeam === Possession.AWAY) updatedScoreAway += scoreIncrement;
+        }
       }
 
       return {
@@ -1129,7 +1229,15 @@ const LiveGameView: React.FC<{
         scoreAway: updatedScoreAway,
         events: [...prev.events, event],
         passChains: updatedPassChains,
-        activeTacticId: activeTacticId || undefined
+        activeTacticId: activeTacticId || undefined,
+        metadata: {
+          ...metadata,
+          setPointsHome,
+          setPointsAway,
+          setsWonHome,
+          setsWonAway,
+          setsHistory
+        }
       };
     });
 
@@ -1284,10 +1392,8 @@ const LiveGameView: React.FC<{
     };
     const typeStr = goalType ? typeMap[goalType] : 'Tipo: No especificado';
 
-    // Siempre registramos como DISPARO (GOL) para no duplicar el contador estadístico
     const eventType = 'DISPARO (GOL)';
     const finalDetails = `GOL${foulPlayer ? ` (#${foulPlayer})` : ''} | ${authorStr} | ${typeStr}`;
-
     updateLastEvent(eventType, finalDetails, scoreUpdate, nextPoss);
     setLastSecondaryAction(null); // Used, now clear it
     setGoalType(null);
@@ -1297,20 +1403,87 @@ const LiveGameView: React.FC<{
     const eventToDelete = game.events.find(e => e.id === eventId);
     if (!eventToDelete) return;
 
-    let updatedScoreHome = game.scoreHome;
-    let updatedScoreAway = game.scoreAway;
+    const remainingEvents = game.events.filter(e => e.id !== eventId);
 
-    if (eventToDelete.type.includes('GOL')) {
-      const isHomeScoring = (eventToDelete.teamId === game.teamHome.id);
-      if (isHomeScoring) updatedScoreHome--;
-      else updatedScoreAway--;
-    }
+    const reglamento = (dbAcciones as any)?.reglamento || {};
+    const isSetsMode = reglamento.modo_puntuacion === 'sets';
+
+    let newScoreHome = 0;
+    let newScoreAway = 0;
+    let newSetPointsHome = 0;
+    let newSetPointsAway = 0;
+    let newSetsHistory: any[] = [];
+
+    remainingEvents.forEach(e => {
+      let scoreIncrement = 0;
+      const type = e.type;
+      const pressAction = e.action;
+
+      if (type.toUpperCase().includes('GOL')) {
+        scoreIncrement = 1;
+      } else if (type === 'PUNTOS_1' || pressAction === 'puntos_1' || pressAction === 'punto_1') {
+        scoreIncrement = 1;
+      } else if (type === 'PUNTOS_2' || pressAction === 'puntos_2' || pressAction === 'punto_2') {
+        scoreIncrement = 2;
+      } else if (type === 'PUNTOS_3' || pressAction === 'puntos_3' || pressAction === 'punto_3') {
+        scoreIncrement = 3;
+      } else if (type === 'PUNTOS_TOTALES' || (pressAction && pressAction.includes('punto')) || type.toUpperCase().includes('PUNTO')) {
+        scoreIncrement = 1;
+      }
+
+      if (scoreIncrement > 0) {
+        const isHomeScoring = (e.scoringTeam === Possession.HOME || (!e.scoringTeam && e.teamId === game.teamHome.id));
+        if (isSetsMode) {
+          if (isHomeScoring) {
+            newSetPointsHome += scoreIncrement;
+          } else {
+            newSetPointsAway += scoreIncrement;
+          }
+
+          const targetPoints = reglamento.puntos_para_ganar_set || 25;
+          const minDiff = reglamento.diferencia_minima_puntos || 2;
+
+          if (newSetPointsHome >= targetPoints && (newSetPointsHome - newSetPointsAway) >= minDiff) {
+            newScoreHome += 1;
+            newSetsHistory.push({
+              setNumber: newScoreHome + newScoreAway,
+              scoreHome: newSetPointsHome,
+              scoreAway: newSetPointsAway,
+              winner: 'home'
+            });
+            newSetPointsHome = 0;
+            newSetPointsAway = 0;
+          } else if (newSetPointsAway >= targetPoints && (newSetPointsAway - newSetPointsHome) >= minDiff) {
+            newScoreAway += 1;
+            newSetsHistory.push({
+              setNumber: newScoreHome + newScoreAway,
+              scoreHome: newSetPointsHome,
+              scoreAway: newSetPointsAway,
+              winner: 'away'
+            });
+            newSetPointsHome = 0;
+            newSetPointsAway = 0;
+          }
+        } else {
+          if (isHomeScoring) newScoreHome += scoreIncrement;
+          else newScoreAway += scoreIncrement;
+        }
+      }
+    });
 
     const updatedGame = {
       ...game,
-      scoreHome: Math.max(0, updatedScoreHome),
-      scoreAway: Math.max(0, updatedScoreAway),
-      events: game.events.filter(e => e.id !== eventId)
+      scoreHome: Math.max(0, newScoreHome),
+      scoreAway: Math.max(0, newScoreAway),
+      events: remainingEvents,
+      metadata: {
+        ...game.metadata,
+        setPointsHome: newSetPointsHome,
+        setPointsAway: newSetPointsAway,
+        setsWonHome: newScoreHome,
+        setsWonAway: newScoreAway,
+        setsHistory: newSetsHistory
+      }
     };
     setGame(updatedGame);
 
@@ -1549,6 +1722,113 @@ const LiveGameView: React.FC<{
     setActiveActionForAssign(null);
   };
 
+  const handleDynamicActionConfirmed = (
+    team: 'local' | 'visitante',
+    boton: any,
+    playerObj: Player | null,
+    atajadoKeepPossession?: boolean
+  ) => {
+    if (!game) return;
+    const isLocal = team === 'local';
+    const teamId = isLocal ? game.teamHome.id : game.teamAway.id;
+    const opponentPossession = isLocal ? Possession.AWAY : Possession.HOME;
+    const teamPossession = isLocal ? Possession.HOME : Possession.AWAY;
+
+    let nextPoss = teamPossession;
+    let details = `${boton.nombre}`;
+    if (playerObj) {
+      details += ` | Autor: ${playerObj.name} (#${playerObj.number})`;
+    }
+
+    let type = boton.kpi_principal || 'ACCION';
+    let scoringTeam: Possession | undefined = undefined;
+
+    // Consecuencia del Gol / Puntos
+    const isGol = boton.id.includes('gol') || boton.kpi_subaccion === 'goles';
+    if (isGol) {
+      scoringTeam = isLocal ? Possession.HOME : Possession.AWAY;
+      nextPoss = opponentPossession;
+      details = `GOL | ${team === 'local' ? 'Local' : 'Visitante'}${playerObj ? ` - ${playerObj.name} (#${playerObj.number})` : ''}`;
+    }
+
+    // Puntos en Básquet / Vóley / Otros
+    if (boton.id === 'punto_1' || boton.kpi_subaccion === 'puntos_1') {
+      scoringTeam = isLocal ? Possession.HOME : Possession.AWAY;
+      nextPoss = opponentPossession;
+    } else if (boton.id === 'punto_2' || boton.kpi_subaccion === 'puntos_2') {
+      scoringTeam = isLocal ? Possession.HOME : Possession.AWAY;
+      nextPoss = opponentPossession;
+    } else if (boton.id === 'punto_3' || boton.kpi_subaccion === 'puntos_3') {
+      scoringTeam = isLocal ? Possession.HOME : Possession.AWAY;
+      nextPoss = opponentPossession;
+    } else if (boton.id === 'punto_saque' || boton.id === 'punto_remate' || boton.id === 'punto_bloqueo' || boton.id === 'punto_error' || boton.kpi_principal === 'PUNTOS_TOTALES') {
+      scoringTeam = isLocal ? Possession.HOME : Possession.AWAY;
+      nextPoss = isLocal ? Possession.HOME : Possession.AWAY;
+    }
+
+    // Lanzamientos fallidos o desviados
+    if (boton.id.includes('desviado') || boton.kpi_subaccion === 'desviados' || boton.id.includes('fallo')) {
+      nextPoss = opponentPossession;
+    }
+
+    // Rebote / Atajado
+    if (boton.id.includes('atajado') || boton.kpi_subaccion === 'atajados') {
+      if (atajadoKeepPossession !== undefined) {
+        if (atajadoKeepPossession) {
+          nextPoss = teamPossession;
+          details += ` | Posesión Mantenida`;
+        } else {
+          nextPoss = opponentPossession;
+          details += ` | Posesión Perdida`;
+        }
+      } else {
+        setActiveActionForAssign({
+          team,
+          boton: { id: 'atajado_poss', nombre: 'Rebote de Atajada' },
+          originalBoton: boton,
+          metadata: playerObj
+        });
+        return;
+      }
+    }
+
+    // Robos en Básquet
+    if (boton.id === 'robo') {
+      nextPoss = teamPossession;
+      setPossession(teamPossession);
+      setPassCount(0);
+    }
+
+    // Pérdidas en Básquet
+    if (boton.id === 'perdida') {
+      nextPoss = opponentPossession;
+      setPossession(opponentPossession);
+      setPassCount(0);
+    }
+
+    registerEvent(
+      type,
+      nextPoss,
+      50,
+      25,
+      details,
+      teamId,
+      scoringTeam,
+      undefined,
+      playerObj ? playerObj.name : null,
+      boton.kpi_subaccion || type,
+      team
+    );
+
+    // Ajuste de posesión automático
+    setPossession(nextPoss);
+    if (nextPoss !== possession) {
+      setPassCount(0);
+    }
+
+    setActiveActionForAssign(null);
+  };
+
   const handleEntry = (team: 'local' | 'visitante', entryType: 'area' | '23y', subAction: string) => {
     if (!game) return;
     const isLocal = team === 'local';
@@ -1613,8 +1893,20 @@ const LiveGameView: React.FC<{
     );
 
     if (selectedFoulCard) {
-      const cardType = selectedFoulCard === 'verde' ? 'TARJETA VERDE' : selectedFoulCard === 'amarilla' ? 'TARJETA AMARILLA' : 'TARJETA ROJA';
-      let cardDetails = `Tarjeta ${selectedFoulCard.toUpperCase()}`;
+      let cardType = '';
+      if (selectedFoulCard === 'verde') cardType = 'TARJETA VERDE';
+      else if (selectedFoulCard === 'amarilla') cardType = 'TARJETA AMARILLA';
+      else if (selectedFoulCard === 'roja') cardType = 'TARJETA ROJA';
+      else if (selectedFoulCard === 'personal') cardType = 'FALTA PERSONAL';
+      else if (selectedFoulCard === 'tecnica') cardType = 'FALTA TECNICA';
+      else if (selectedFoulCard === 'antideportiva') cardType = 'FALTA ANTIDEPORTIVA';
+      else if (selectedFoulCard === 'amonestacion') cardType = 'AMONESTACION';
+      else if (selectedFoulCard === 'castigo') cardType = 'CASTIGO';
+      else if (selectedFoulCard === 'expulsion') cardType = 'EXPULSION';
+      else if (selectedFoulCard === 'descalificacion') cardType = 'DESCALIFICACION';
+      else cardType = `SANCION_${selectedFoulCard.toUpperCase()}`;
+
+      let cardDetails = `${cardType}`;
       if (playerName) {
         cardDetails += ` | Sancionado: ${playerName}`;
       }
@@ -1634,8 +1926,14 @@ const LiveGameView: React.FC<{
     }
 
     if (selectedFoulFija) {
-      const fijaType = selectedFoulFija === 'corner_corto' ? 'CÓRNER CORTO' : 'PENAL';
-      const fijaDetails = `${selectedFoulFija === 'corner_corto' ? 'Córner Corto' : 'Penal'} otorgado`;
+      let fijaType = '';
+      if (selectedFoulFija === 'corner_corto') fijaType = 'CÓRNER CORTO';
+      else if (selectedFoulFija === 'penal') fijaType = 'PENAL';
+      else if (selectedFoulFija === 'tiro_libre') fijaType = 'TIRO LIBRE';
+      else if (selectedFoulFija === 'corner') fijaType = 'CÓRNER';
+      else fijaType = selectedFoulFija.toUpperCase();
+
+      const fijaDetails = `${fijaType} otorgado`;
       registerEvent(
         fijaType,
         nextPoss,
@@ -1714,37 +2012,60 @@ const LiveGameView: React.FC<{
     );
   };
 
+  const getPressSidebarStats = () => {
+    if (!game) return [];
+    const sportId = game.sportId || 'hockey_cesped';
+
+    if (sportId === 'futbol') {
+      return [
+        { title: 'Remates', home: getStat(['remates_totales', 'DISPARO'], game.teamHome.id), away: getStat(['remates_totales', 'DISPARO'], game.teamAway.id), icon: 'fa-solid fa-crosshairs' },
+        { title: 'Córners', home: getStat(['corners'], game.teamHome.id), away: getStat(['corners'], game.teamAway.id), icon: 'fa-solid fa-flag' },
+        { title: 'Fuera de Juego', home: getStat(['offsides'], game.teamHome.id), away: getStat(['offsides'], game.teamAway.id), icon: 'fa-solid fa-ban' },
+        { title: 'Faltas Cometidas', home: getStat(['faltas_cometidas', 'FALTA'], game.teamHome.id), away: getStat(['faltas_cometidas', 'FALTA'], game.teamAway.id), icon: 'fa-solid fa-hand-fist' },
+        { title: 'Tarjetas Amarillas', home: getStat(['tarjetas_amarillas', 'AMARILLA'], game.teamHome.id), away: getStat(['tarjetas_amarillas', 'AMARILLA'], game.teamAway.id), icon: 'fa-solid fa-square text-yellow-400' },
+        { title: 'Tarjetas Rojas', home: getStat(['tarjetas_rojas', 'ROJA'], game.teamHome.id), away: getStat(['tarjetas_rojas', 'ROJA'], game.teamAway.id), icon: 'fa-solid fa-square text-red-500' }
+      ];
+    }
+
+    if (sportId === 'basket') {
+      return [
+        { title: 'Puntos Totales', home: getStat(['puntos_totales'], game.teamHome.id), away: getStat(['puntos_totales'], game.teamAway.id), icon: 'fa-solid fa-basketball' },
+        { title: 'Lanzamientos Fallidos', home: getStat(['intentos_totales'], game.teamHome.id), away: getStat(['intentos_totales'], game.teamAway.id), icon: 'fa-solid fa-basketball text-white/30' },
+        { title: 'Asistencias', home: getStat(['asistencias'], game.teamHome.id), away: getStat(['asistencias'], game.teamAway.id), icon: 'fa-solid fa-handshake' },
+        { title: 'Rebotes', home: getStat(['rebotes'], game.teamHome.id), away: getStat(['rebotes'], game.teamAway.id), icon: 'fa-solid fa-up-down' },
+        { title: 'Robos', home: getStat(['robos'], game.teamHome.id), away: getStat(['robos'], game.teamAway.id), icon: 'fa-solid fa-bolt' },
+        { title: 'Pérdidas', home: getStat(['perdidas'], game.teamHome.id), away: getStat(['perdidas'], game.teamAway.id), icon: 'fa-solid fa-arrow-trend-down' }
+      ];
+    }
+
+    if (sportId === 'voley') {
+      return [
+        { title: 'Puntos Totales', home: getStat(['puntos_totales'], game.teamHome.id), away: getStat(['puntos_totales'], game.teamAway.id), icon: 'fa-solid fa-volleyball' },
+        { title: 'Puntos Saque', home: getStat(['puntos_saque'], game.teamHome.id), away: getStat(['puntos_saque'], game.teamAway.id), icon: 'fa-solid fa-paper-plane' },
+        { title: 'Puntos Remate', home: getStat(['puntos_remate'], game.teamHome.id), away: getStat(['puntos_remate'], game.teamAway.id), icon: 'fa-solid fa-bolt' },
+        { title: 'Puntos Bloqueo', home: getStat(['puntos_bloqueo'], game.teamHome.id), away: getStat(['puntos_bloqueo'], game.teamAway.id), icon: 'fa-solid fa-shield' },
+        { title: 'Sanciones', home: getStat(['sanciones'], game.teamHome.id), away: getStat(['sanciones'], game.teamAway.id), icon: 'fa-solid fa-exclamation-triangle' }
+      ];
+    }
+
+    return [
+      { title: 'Disparos', home: getStat(['DISPARO'], game.teamHome.id), away: getStat(['DISPARO'], game.teamAway.id), icon: 'fa-solid fa-crosshairs' },
+      { title: 'Córner Corto', home: getStat(['CÓRNER CORTO', 'CORTO'], game.teamHome.id), away: getStat(['CÓRNER CORTO', 'CORTO'], game.teamAway.id), icon: 'fa-solid fa-flag' },
+      { title: 'Penales', home: getStat(['PENAL'], game.teamHome.id), away: getStat(['PENAL'], game.teamAway.id), icon: 'fa-solid fa-bullseye' },
+      { title: 'Ingreso Área', home: getStat(['Ingreso en área', 'Ingreso Rival en área'], game.teamHome.id), away: getStat(['Ingreso en área', 'Ingreso Rival en área'], game.teamAway.id), icon: 'fa-solid fa-arrow-right-to-bracket' },
+      { title: 'Ingreso 23Y', home: getStat(['Ingreso en 23', 'Ingreso rival en 23'], game.teamHome.id), away: getStat(['Ingreso en 23', 'Ingreso rival en 23'], game.teamAway.id), icon: 'fa-solid fa-bezier-curve' }
+    ];
+  };
+
   const renderPressStatsContent = (isModal = false) => {
     if (!game) return null;
     const homeColor = game.teamHome.primaryColor || '#6d5dfc';
     const awayColor = game.teamAway.primaryColor || '#ef4444';
 
-    const homeShots = getStat(['DISPARO'], game.teamHome.id);
-    const awayShots = getStat(['DISPARO'], game.teamAway.id);
-
-    const homeCC = getStat(['CÓRNER CORTO', 'CORTO'], game.teamHome.id);
-    const awayCC = getStat(['CÓRNER CORTO', 'CORTO'], game.teamAway.id);
-
-    const homePenal = getStat(['PENAL'], game.teamHome.id);
-    const awayPenal = getStat(['PENAL'], game.teamAway.id);
-
-    const homeArea = getStat(['Ingreso en área', 'Ingreso Rival en área'], game.teamHome.id);
-    const awayArea = getStat(['Ingreso en área', 'Ingreso Rival en área'], game.teamAway.id);
-
-    const home23 = getStat(['Ingreso en 23', 'Ingreso rival en 23'], game.teamHome.id);
-    const away23 = getStat(['Ingreso en 23', 'Ingreso rival en 23'], game.teamAway.id);
-
-    const homeFouls = getStat(['FALTA'], game.teamHome.id);
-    const awayFouls = getStat(['FALTA'], game.teamAway.id);
-
-    const homeVerde = getStat(['TARJETA VERDE', 'VERDE'], game.teamHome.id);
-    const awayVerde = getStat(['TARJETA VERDE', 'VERDE'], game.teamAway.id);
-
-    const homeAmarilla = getStat(['TARJETA AMARILLA', 'AMARILLA'], game.teamHome.id);
-    const awayAmarilla = getStat(['TARJETA AMARILLA', 'AMARILLA'], game.teamAway.id);
-
-    const homeRoja = getStat(['TARJETA ROJA', 'ROJA'], game.teamHome.id);
-    const awayRoja = getStat(['TARJETA ROJA', 'ROJA'], game.teamAway.id);
+    const statsList = getPressSidebarStats();
+    const half = Math.ceil(statsList.length / 2);
+    const leftStats = statsList.slice(0, half);
+    const rightStats = statsList.slice(half);
 
     const totalPoss = localPossessionTime + awayPossessionTime;
     const lPct = totalPoss > 0 ? Math.round((localPossessionTime / totalPoss) * 100) : 50;
@@ -1753,51 +2074,22 @@ const LiveGameView: React.FC<{
     return (
       <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${isModal ? 'pb-6' : ''}`}>
         <div className="flex flex-col gap-3">
-          <h4 className="contrail-font text-[10px] font-black text-white/50 uppercase tracking-widest border-b border-white/5 pb-1">Ataque y Progresión</h4>
-          <PressStatCard
-            title="Disparos"
-            homeValue={homeShots}
-            awayValue={awayShots}
-            homeColor={homeColor}
-            awayColor={awayColor}
-            icon={<i className="fa-solid fa-crosshairs text-white text-[10px]"></i>}
-          />
-          <PressStatCard
-            title="Córner Corto"
-            homeValue={homeCC}
-            awayValue={awayCC}
-            homeColor={homeColor}
-            awayColor={awayColor}
-            icon={<i className="fa-solid fa-flag text-white text-[10px]"></i>}
-          />
-          <PressStatCard
-            title="Penales"
-            homeValue={homePenal}
-            awayValue={awayPenal}
-            homeColor={homeColor}
-            awayColor={awayColor}
-            icon={<i className="fa-solid fa-bullseye text-white text-[10px]"></i>}
-          />
-          <PressStatCard
-            title="Ingreso Área"
-            homeValue={homeArea}
-            awayValue={awayArea}
-            homeColor={homeColor}
-            awayColor={awayColor}
-            icon={<i className="fa-solid fa-arrow-right-to-bracket text-white text-[10px]"></i>}
-          />
-          <PressStatCard
-            title="Ingreso 23Y"
-            homeValue={home23}
-            awayValue={away23}
-            homeColor={homeColor}
-            awayColor={awayColor}
-            icon={<i className="fa-solid fa-bezier-curve text-white text-[10px]"></i>}
-          />
+          <h4 className="contrail-font text-[10px] font-black text-white/50 uppercase tracking-widest border-b border-white/5 pb-1">Reporte Principal</h4>
+          {leftStats.map((st, idx) => (
+            <PressStatCard
+              key={idx}
+              title={st.title}
+              homeValue={st.home}
+              awayValue={st.away}
+              homeColor={homeColor}
+              awayColor={awayColor}
+              icon={<i className={`${st.icon} text-white text-[10px]`}></i>}
+            />
+          ))}
         </div>
 
         <div className="flex flex-col gap-3">
-          <h4 className="contrail-font text-[10px] font-black text-white/50 uppercase tracking-widest border-b border-white/5 pb-1">Control e Infracciones</h4>
+          <h4 className="contrail-font text-[10px] font-black text-white/50 uppercase tracking-widest border-b border-white/5 pb-1">Control de Juego</h4>
 
           <div className="bg-[#1e293b]/35 border border-white/10 p-3.5 rounded-2xl flex flex-col gap-1.5 shadow-sm">
             <div className="flex justify-between items-center">
@@ -1815,38 +2107,17 @@ const LiveGameView: React.FC<{
             </div>
           </div>
 
-          <PressStatCard
-            title="Faltas"
-            homeValue={homeFouls}
-            awayValue={awayFouls}
-            homeColor={homeColor}
-            awayColor={awayColor}
-            icon={<i className="fa-solid fa-triangle-exclamation text-white text-[10px]"></i>}
-          />
-          <PressStatCard
-            title="Tarjeta Verde"
-            homeValue={homeVerde}
-            awayValue={awayVerde}
-            homeColor={homeColor}
-            awayColor={awayColor}
-            icon={<span className="w-2 h-3 bg-green-500 rounded-[2px] block"></span>}
-          />
-          <PressStatCard
-            title="Tarjeta Amarilla"
-            homeValue={homeAmarilla}
-            awayValue={awayAmarilla}
-            homeColor={homeColor}
-            awayColor={awayColor}
-            icon={<span className="w-2 h-3 bg-yellow-500 rounded-[2px] block"></span>}
-          />
-          <PressStatCard
-            title="Tarjeta Roja"
-            homeValue={homeRoja}
-            awayValue={awayRoja}
-            homeColor={homeColor}
-            awayColor={awayColor}
-            icon={<span className="w-2 h-3 bg-red-500 rounded-[2px] block"></span>}
-          />
+          {rightStats.map((st, idx) => (
+            <PressStatCard
+              key={idx}
+              title={st.title}
+              homeValue={st.home}
+              awayValue={st.away}
+              homeColor={homeColor}
+              awayColor={awayColor}
+              icon={<i className={`${st.icon} text-white text-[10px]`}></i>}
+            />
+          ))}
         </div>
       </div>
     );
@@ -1861,75 +2132,190 @@ const LiveGameView: React.FC<{
     );
   };
 
-  const renderPressSidebarLeft = () => {
+  const renderPressStartersColumn = (team: 'local' | 'visitante') => {
     if (!game) return null;
-    const homeColor = game.teamHome.primaryColor || '#6d5dfc';
-    const awayColor = game.teamAway.primaryColor || '#ef4444';
-    const homeShots = getStat(['DISPARO'], game.teamHome.id);
-    const awayShots = getStat(['DISPARO'], game.teamAway.id);
-    const homeCC = getStat(['CÓRNER CORTO', 'CORTO'], game.teamHome.id);
-    const awayCC = getStat(['CÓRNER CORTO', 'CORTO'], game.teamAway.id);
-    const homePenal = getStat(['PENAL'], game.teamHome.id);
-    const awayPenal = getStat(['PENAL'], game.teamAway.id);
-    const homeArea = getStat(['Ingreso en área', 'Ingreso Rival en área'], game.teamHome.id);
-    const awayArea = getStat(['Ingreso en área', 'Ingreso Rival en área'], game.teamAway.id);
-    const home23 = getStat(['Ingreso en 23', 'Ingreso rival en 23'], game.teamHome.id);
-    const away23 = getStat(['Ingreso en 23', 'Ingreso rival en 23'], game.teamAway.id);
+    const isLocal = team === 'local';
+    const teamObj = isLocal ? game.teamHome : game.teamAway;
+    const teamColor = teamObj.primaryColor || (isLocal ? '#6d5dfc' : '#ef4444');
+    
+    // Starters list
+    const starterIds = isLocal ? (game.metadata?.localStarters || []) : (game.metadata?.visitanteStarters || []);
+    const starterPlayers = teamObj.players.filter(p => starterIds.includes(p.id));
+
+    // Check if we are currently awaiting a player assignment for this team
+    const isAwaitingAssignment = activeActionForAssign && activeActionForAssign.team === team;
+
+    // Helper for displaying generic player name if no real name was loaded
+    const getPlayerDisplayName = (player: Player) => {
+      if (!player.name || player.name.trim() === '' || player.name.toUpperCase().startsWith('JUGADOR') || player.name.toUpperCase().startsWith('RIVAL')) {
+        return isLocal ? `Local ${player.number}` : `Visitante ${player.number}`;
+      }
+      return player.name;
+    };
+
+    // Helper to scan event history for disciplinary cards
+    const getPlayerCards = (playerName: string) => {
+      if (!playerName) return [];
+      const playerEvents = game.events.filter(e => e.player === playerName);
+      const cards: ('verde' | 'amarilla' | 'roja')[] = [];
+      playerEvents.forEach(e => {
+        const detailUpper = (e.details || '').toUpperCase();
+        const action = (e.action || '').toLowerCase();
+        if (action.includes('tarjeta_verde') || detailUpper.includes('VERDE')) {
+          cards.push('verde');
+        }
+        if (action.includes('tarjeta_amarilla') || detailUpper.includes('AMARILLA')) {
+          cards.push('amarilla');
+        }
+        if (action.includes('tarjeta_roja') || detailUpper.includes('ROJA')) {
+          cards.push('roja');
+        }
+      });
+      return cards;
+    };
+
     return (
-      <div className="flex flex-col gap-4 pb-10">
-        <h3 className="contrail-font text-[16px] font-black text-white uppercase tracking-wider border-b border-white/10 pb-2 italic">Ataque y Progresión</h3>
-        <div className="flex flex-col gap-3">
-          <PressStatCard title="Disparos" homeValue={homeShots} awayValue={awayShots} homeColor={homeColor} awayColor={awayColor} icon={<i className="fa-solid fa-crosshairs text-white text-[10px]"></i>} />
-          <PressStatCard title="Córner Corto" homeValue={homeCC} awayValue={awayCC} homeColor={homeColor} awayColor={awayColor} icon={<i className="fa-solid fa-flag text-white text-[10px]"></i>} />
-          <PressStatCard title="Penales" homeValue={homePenal} awayValue={awayPenal} homeColor={homeColor} awayColor={awayColor} icon={<i className="fa-solid fa-bullseye text-white text-[10px]"></i>} />
-          <PressStatCard title="Ingreso Área" homeValue={homeArea} awayValue={awayArea} homeColor={homeColor} awayColor={awayColor} icon={<i className="fa-solid fa-arrow-right-to-bracket text-white text-[10px]"></i>} />
-          <PressStatCard title="Ingreso 23Y" homeValue={home23} awayValue={away23} homeColor={homeColor} awayColor={awayColor} icon={<i className="fa-solid fa-bezier-curve text-white text-[10px]"></i>} />
+      <div className="flex flex-col h-full justify-between gap-4 pb-2">
+        {/* Header de Equipo */}
+        <div className="shrink-0 border-b border-white/10 pb-2">
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full shadow-sm shrink-0" style={{ backgroundColor: teamColor }}></span>
+            <h3 className="contrail-font text-[15px] font-black text-white uppercase tracking-wider truncate">
+              {teamObj.name}
+            </h3>
+          </div>
+          <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mt-0.5">
+            Plantel Titular ({starterPlayers.length})
+          </p>
+        </div>
+
+        {/* Listado de Jugadores Titulares */}
+        <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 py-1">
+          {starterPlayers.length === 0 ? (
+            <p className="text-[10px] text-white/30 italic uppercase text-center mt-4">Sin titulares definidos</p>
+          ) : (
+            starterPlayers.map(p => {
+              // Highlight player if awaiting assignment
+              const highlightBg = isAwaitingAssignment 
+                ? 'bg-[#00fe00]/10 border-[#00fe00]/40 hover:bg-[#00fe00]/25 hover:border-[#00fe00]/80 shadow-[0_0_8px_rgba(0,254,0,0.1)] animate-pulse' 
+                : 'bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10';
+
+              const displayName = getPlayerDisplayName(p);
+              const cards = getPlayerCards(p.name);
+
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    if (isAwaitingAssignment) {
+                      // Confirm the pending action with this player!
+                      handleDynamicActionConfirmed(team, activeActionForAssign.boton, p);
+                    } else {
+                      // No action is pending, open quick actions for this player
+                      setSubPlayerOut(p.id);
+                      setActiveGenericModal({
+                        team,
+                        type: 'sustitucion',
+                        boton: { nombre: 'Sustitución' }
+                      });
+                    }
+                  }}
+                  className={`w-full p-2.5 rounded-xl border flex items-center justify-between transition-all text-left group ${highlightBg}`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <span 
+                      className="w-5.5 h-5.5 rounded-lg flex items-center justify-center text-[10px] font-black text-white shrink-0 font-lato"
+                      style={{ backgroundColor: `${teamColor}25`, border: `1px solid ${teamColor}50` }}
+                    >
+                      {p.number}
+                    </span>
+                    <span className="font-bold text-[11px] text-white/80 group-hover:text-white uppercase font-lato truncate flex items-center gap-1.5 min-w-0">
+                      <span className="truncate">{displayName}</span>
+                      <span className="flex gap-0.5 shrink-0">
+                        {cards.map((c, idx) => {
+                          const bgCol = c === 'verde' ? 'bg-[#00fe00]' : c === 'amarilla' ? 'bg-amber-400' : 'bg-red-500';
+                          return (
+                            <span
+                              key={idx}
+                              className={`w-1.5 h-2.5 rounded-[1px] ${bgCol} shadow-sm border border-white/10 shrink-0 inline-block`}
+                              title={`Tarjeta ${c.toUpperCase()}`}
+                            />
+                          );
+                        })}
+                      </span>
+                    </span>
+                  </div>
+                  {isAwaitingAssignment && (
+                    <span className="text-[8px] font-black text-[#00fe00] uppercase tracking-wider shrink-0">
+                      Asignar
+                    </span>
+                  )}
+                </button>
+              );
+            })
+          )}
+        </div>
+
+        {/* Botones de Sanciones y Sistema al final */}
+        <div className="shrink-0 border-t border-white/10 pt-3 flex flex-col gap-2">
+          <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">
+            Sistema y Sanciones
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {/* Sustitución */}
+            <button
+              onClick={() => {
+                setActiveGenericModal({
+                  team,
+                  type: 'sustitucion',
+                  boton: { nombre: 'Sustitución' }
+                });
+              }}
+              className="py-2.5 px-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 text-white font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-1.5"
+            >
+              <i className="fa-solid fa-people-arrows text-primary text-[10px]"></i>
+              <span>Cambio</span>
+            </button>
+
+            {/* Video Ref / VAR */}
+            <button
+              onClick={() => {
+                setActiveGenericModal({
+                  team,
+                  type: 'var',
+                  boton: { nombre: 'VAR' }
+                });
+              }}
+              className="py-2.5 px-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 text-white font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-1.5"
+            >
+              <i className="fa-solid fa-circle-play text-[#38bdf8] text-[10px]"></i>
+              <span>Video Ref</span>
+            </button>
+          </div>
+
+          {/* Sanciones / Tarjetas */}
+          <button
+            onClick={() => {
+              setShowFoulOutcomeModal({ team, x: 50, y: 25 });
+            }}
+            className="w-full py-2.5 px-3 rounded-xl bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/40 text-red-400 hover:text-red-300 font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-1.5"
+          >
+            <i className="fa-solid fa-triangle-exclamation text-[10px]"></i>
+            <span>Sanciones / Tarjetas</span>
+          </button>
         </div>
       </div>
     );
   };
 
+  const renderPressSidebarLeft = () => {
+    if (!game) return null;
+    return renderPressStartersColumn('local');
+  };
+
   const renderPressSidebarRight = () => {
     if (!game) return null;
-    const homeColor = game.teamHome.primaryColor || '#6d5dfc';
-    const awayColor = game.teamAway.primaryColor || '#ef4444';
-    const homeFouls = getStat(['FALTA'], game.teamHome.id);
-    const awayFouls = getStat(['FALTA'], game.teamAway.id);
-    const homeVerde = getStat(['TARJETA VERDE', 'VERDE'], game.teamHome.id);
-    const awayVerde = getStat(['TARJETA VERDE', 'VERDE'], game.teamAway.id);
-    const homeAmarilla = getStat(['TARJETA AMARILLA', 'AMARILLA'], game.teamHome.id);
-    const awayAmarilla = getStat(['TARJETA AMARILLA', 'AMARILLA'], game.teamAway.id);
-    const homeRoja = getStat(['TARJETA ROJA', 'ROJA'], game.teamHome.id);
-    const awayRoja = getStat(['TARJETA ROJA', 'ROJA'], game.teamAway.id);
-    const totalPoss = localPossessionTime + awayPossessionTime;
-    const lPct = totalPoss > 0 ? Math.round((localPossessionTime / totalPoss) * 100) : 50;
-    const aPct = 100 - lPct;
-    return (
-      <div className="flex flex-col gap-4 pb-10">
-        <h3 className="contrail-font text-[16px] font-black text-white uppercase tracking-wider border-b border-white/10 pb-2 italic">Control e Infracciones</h3>
-        <div className="flex flex-col gap-3">
-          <div className="bg-[#1e293b]/35 border border-white/10 p-3.5 rounded-2xl flex flex-col gap-1.5 shadow-sm">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <i className="fa-solid fa-stopwatch text-white text-[10px]"></i>
-                <span className="font-lato text-xs font-black text-white uppercase tracking-wider">Posesión</span>
-              </div>
-              <span className="font-contrail text-sm font-black text-white">{lPct}% / {aPct}%</span>
-            </div>
-            <div className="w-full flex flex-col gap-1 mt-1">
-              <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden flex border border-white/10">
-                <div className="h-full transition-all duration-500" style={{ width: `${lPct}%`, backgroundColor: homeColor }}></div>
-                <div className="h-full transition-all duration-500" style={{ width: `${aPct}%`, backgroundColor: awayColor }}></div>
-              </div>
-            </div>
-          </div>
-          <PressStatCard title="Faltas" homeValue={homeFouls} awayValue={awayFouls} homeColor={homeColor} awayColor={awayColor} icon={<i className="fa-solid fa-triangle-exclamation text-white text-[10px]"></i>} />
-          <PressStatCard title="Tarjeta Verde" homeValue={homeVerde} awayValue={awayVerde} homeColor={homeColor} awayColor={awayColor} icon={<span className="w-2 h-3 bg-green-500 rounded-[2px] block"></span>} />
-          <PressStatCard title="Tarjeta Amarilla" homeValue={homeAmarilla} awayValue={awayAmarilla} homeColor={homeColor} awayColor={awayColor} icon={<span className="w-2 h-3 bg-yellow-500 rounded-[2px] block"></span>} />
-          <PressStatCard title="Tarjeta Roja" homeValue={homeRoja} awayValue={awayRoja} homeColor={homeColor} awayColor={awayColor} icon={<span className="w-2 h-3 bg-red-500 rounded-[2px] block"></span>} />
-        </div>
-      </div>
-    );
+    return renderPressStartersColumn('visitante');
   };
 
   const renderStartersModal = () => {
@@ -2041,6 +2427,55 @@ const LiveGameView: React.FC<{
     const committingTeamName = committingTeam === 'local' ? game.teamHome.name : game.teamAway.name;
     const players = committingTeam === 'local' ? game.teamHome.players : game.teamAway.players;
 
+    const sportId = game.sportId || 'hockey_cesped';
+
+    let sanctions: { id: string; name: string; color: string; element: React.ReactNode }[] = [];
+    if (sportId === 'futbol') {
+      sanctions = [
+        { id: 'amarilla', name: 'Amarilla', color: 'bg-yellow-500', element: <span className="w-2.5 h-4 bg-yellow-500 rounded-[2px] block"></span> },
+        { id: 'roja', name: 'Roja', color: 'bg-red-500', element: <span className="w-2.5 h-4 bg-red-500 rounded-[2px] block"></span> }
+      ];
+    } else if (sportId === 'basket') {
+      sanctions = [
+        { id: 'personal', name: 'Falta Personal', color: 'bg-orange-500', element: <i className="fa-solid fa-user-xmark text-orange-400"></i> },
+        { id: 'tecnica', name: 'Falta Técnica', color: 'bg-blue-500', element: <i className="fa-solid fa-t text-blue-400"></i> },
+        { id: 'antideportiva', name: 'Falta Antideportiva', color: 'bg-red-500', element: <i className="fa-solid fa-circle-exclamation text-red-500"></i> }
+      ];
+    } else if (sportId === 'voley') {
+      sanctions = [
+        { id: 'amonestacion', name: 'Amonestación', color: 'bg-yellow-500', element: <span className="w-2.5 h-4 bg-yellow-500 rounded-[2px] block"></span> },
+        { id: 'castigo', name: 'Castigo', color: 'bg-red-500', element: <span className="w-2.5 h-4 bg-red-500 rounded-[2px] block"></span> },
+        { id: 'expulsion', name: 'Expulsión', color: 'bg-red-500', element: <div className="flex gap-0.5"><span className="w-2.5 h-4 bg-yellow-500 rounded-[2px] block"></span><span className="w-2.5 h-4 bg-red-500 rounded-[2px] block"></span></div> },
+        { id: 'descalificacion', name: 'Descalificación', color: 'bg-red-600', element: <div className="flex gap-0.5"><span className="w-2.5 h-4 bg-red-500 rounded-[2px] block"></span><span className="w-2.5 h-4 bg-red-500 rounded-[2px] block"></span></div> }
+      ];
+    } else {
+      sanctions = [
+        { id: 'verde', name: 'Verde', color: 'bg-green-500', element: <span className="w-2.5 h-4 bg-green-500 rounded-[2px] block"></span> },
+        { id: 'amarilla', name: 'Amarilla', color: 'bg-yellow-500', element: <span className="w-2.5 h-4 bg-yellow-500 rounded-[2px] block"></span> },
+        { id: 'roja', name: 'Roja', color: 'bg-red-500', element: <span className="w-2.5 h-4 bg-red-500 rounded-[2px] block"></span> }
+      ];
+    }
+
+    let advantages: { id: string; name: string; icon: string; color: string }[] = [];
+    if (sportId === 'futbol') {
+      advantages = [
+        { id: 'tiro_libre', name: 'Tiro Libre', icon: 'fa-solid fa-arrow-pointer', color: 'border-yellow-500 text-yellow-400 bg-yellow-500/20' },
+        { id: 'corner', name: 'Córner', icon: 'fa-solid fa-flag', color: 'border-indigo-500 text-indigo-400 bg-indigo-500/20' },
+        { id: 'penal', name: 'Penal', icon: 'fa-solid fa-bullseye', color: 'border-purple-500 text-purple-400 bg-purple-500/20' }
+      ];
+    } else if (sportId === 'basket') {
+      advantages = [
+        { id: 'tiro_libre', name: 'Tiro Libre', icon: 'fa-solid fa-basketball', color: 'border-amber-500 text-amber-400 bg-amber-500/20' }
+      ];
+    } else if (sportId === 'voley') {
+      advantages = [];
+    } else {
+      advantages = [
+        { id: 'corner_corto', name: 'Córner Corto', icon: 'fa-solid fa-flag', color: 'border-indigo-500 text-indigo-400 bg-indigo-500/20' },
+        { id: 'penal', name: 'Penal', icon: 'fa-solid fa-bullseye', color: 'border-purple-500 text-purple-400 bg-purple-500/20' }
+      ];
+    }
+
     return (
       <Portal>
         <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-[9999] overflow-y-auto">
@@ -2066,39 +2501,25 @@ const LiveGameView: React.FC<{
             <div className="flex-1 overflow-y-auto no-scrollbar space-y-5 py-2">
               <div className="flex flex-col gap-2">
                 <label className="text-[10px] font-black text-white/50 uppercase tracking-widest">
-                  Sanción Disciplinaria (Tarjeta)
+                  Sanción Disciplinaria
                 </label>
-                <div className="grid grid-cols-3 gap-3">
-                  <button
-                    onClick={() => { const nc = selectedFoulCard === 'verde' ? null : 'verde'; setSelectedFoulCard(nc); if (!nc) setSelectedFoulPlayer(null); }}
-                    className={`py-3 rounded-xl border flex items-center justify-center gap-2.5 transition-all text-xs font-bold ${selectedFoulCard === 'verde'
-                      ? 'bg-green-500/20 border-green-500 text-green-400 font-black shadow-md'
-                      : 'bg-white/5 border-white/5 text-white/70 hover:border-white/10 hover:text-white'
-                      }`}
-                  >
-                    <span className="w-2.5 h-4 bg-green-500 rounded-[2px] block"></span>
-                    <span>Verde</span>
-                  </button>
-                  <button
-                    onClick={() => { const nc = selectedFoulCard === 'amarilla' ? null : 'amarilla'; setSelectedFoulCard(nc); if (!nc) setSelectedFoulPlayer(null); }}
-                    className={`py-3 rounded-xl border flex items-center justify-center gap-2.5 transition-all text-xs font-bold ${selectedFoulCard === 'amarilla'
-                      ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400 font-black shadow-md'
-                      : 'bg-white/5 border-white/5 text-white/70 hover:border-white/10 hover:text-white'
-                      }`}
-                  >
-                    <span className="w-2.5 h-4 bg-yellow-500 rounded-[2px] block"></span>
-                    <span>Amarilla</span>
-                  </button>
-                  <button
-                    onClick={() => { const nc = selectedFoulCard === 'roja' ? null : 'roja'; setSelectedFoulCard(nc); if (!nc) setSelectedFoulPlayer(null); }}
-                    className={`py-3 rounded-xl border flex items-center justify-center gap-2.5 transition-all text-xs font-bold ${selectedFoulCard === 'roja'
-                      ? 'bg-red-500/20 border-red-500 text-red-400 font-black shadow-md'
-                      : 'bg-white/5 border-white/5 text-white/70 hover:border-white/10 hover:text-white'
-                      }`}
-                  >
-                    <span className="w-2.5 h-4 bg-red-500 rounded-[2px] block"></span>
-                    <span>Roja</span>
-                  </button>
+                <div className={`grid grid-cols-${sanctions.length > 3 ? '2' : sanctions.length} gap-3`}>
+                  {sanctions.map((san) => {
+                    const isSelected = selectedFoulCard === san.id;
+                    return (
+                      <button
+                        key={san.id}
+                        onClick={() => { const nc = isSelected ? null : san.id; setSelectedFoulCard(nc); if (!nc) setSelectedFoulPlayer(null); }}
+                        className={`py-3 rounded-xl border flex items-center justify-center gap-2.5 transition-all text-xs font-bold ${isSelected
+                          ? 'bg-primary/20 border-primary text-white font-black shadow-md'
+                          : 'bg-white/5 border-white/5 text-white/70 hover:border-white/10 hover:text-white'
+                          }`}
+                      >
+                        {san.element}
+                        <span>{san.name}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -2138,33 +2559,31 @@ const LiveGameView: React.FC<{
               </div>
               )}
 
+              {advantages.length > 0 && (
               <div className="flex flex-col gap-2">
                 <label className="text-[10px] font-black text-white/50 uppercase tracking-widest">
                   Jugada Fija a Favor (Ventaja)
                 </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => setSelectedFoulFija(selectedFoulFija === 'corner_corto' ? null : 'corner_corto')}
-                    className={`py-3 rounded-xl border flex items-center justify-center gap-2.5 transition-all text-xs font-bold ${selectedFoulFija === 'corner_corto'
-                      ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400 font-black shadow-md'
-                      : 'bg-white/5 border-white/5 text-white/70 hover:border-white/10 hover:text-white'
-                      }`}
-                  >
-                    <i className="fa-solid fa-flag text-xs"></i>
-                    <span>Córner Corto</span>
-                  </button>
-                  <button
-                    onClick={() => setSelectedFoulFija(selectedFoulFija === 'penal' ? null : 'penal')}
-                    className={`py-3 rounded-xl border flex items-center justify-center gap-2.5 transition-all text-xs font-bold ${selectedFoulFija === 'penal'
-                      ? 'bg-purple-500/20 border-purple-500 text-purple-400 font-black shadow-md'
-                      : 'bg-white/5 border-white/5 text-white/70 hover:border-white/10 hover:text-white'
-                      }`}
-                  >
-                    <i className="fa-solid fa-bullseye text-xs"></i>
-                    <span>Penal</span>
-                  </button>
+                <div className={`grid grid-cols-${advantages.length > 1 ? '2' : '1'} gap-3`}>
+                  {advantages.map((adv) => {
+                    const isSelected = selectedFoulFija === adv.id;
+                    return (
+                      <button
+                        key={adv.id}
+                        onClick={() => setSelectedFoulFija(isSelected ? null : adv.id)}
+                        className={`py-3 rounded-xl border flex items-center justify-center gap-2.5 transition-all text-xs font-bold ${isSelected
+                          ? `${adv.color} font-black shadow-md`
+                          : 'bg-white/5 border-white/5 text-white/70 hover:border-white/10 hover:text-white'
+                          }`}
+                      >
+                        <i className={`${adv.icon} text-xs`}></i>
+                        <span>{adv.name}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
+              )}
             </div>
 
             <div className="mt-6 pt-4 border-t border-white/10 flex gap-3 shrink-0">
@@ -2190,12 +2609,12 @@ const LiveGameView: React.FC<{
 
   const renderAssignPlayerPopover = () => {
     if (!activeActionForAssign || !game) return null;
-    const { team, cardId, subActionId } = activeActionForAssign;
+    const { team, boton } = activeActionForAssign;
     const isLocal = team === 'local';
     const teamName = isLocal ? game.teamHome.name : game.teamAway.name;
     const players = isLocal ? game.teamHome.players : game.teamAway.players;
 
-    if (subActionId === 'atajado_poss') {
+    if (boton.id === 'atajado_poss') {
       const selectedPlayer = (activeActionForAssign as any).metadata as Player | null;
       return (
         <Portal>
@@ -2210,18 +2629,18 @@ const LiveGameView: React.FC<{
 
               <div className="flex flex-col gap-3 my-4">
                 <button
-                  onClick={() => handleShotConfirmed(team, 'atajado', selectedPlayer, true)}
+                  onClick={() => handleDynamicActionConfirmed(team, (activeActionForAssign as any).originalBoton || boton, selectedPlayer, true)}
                   className="py-4 px-6 rounded-2xl border border-white/10 bg-white/5 text-white font-bold text-xs uppercase tracking-wider hover:border-[#00fe00] hover:bg-[#00fe00]/5 transition-all text-center flex flex-col items-center justify-center gap-1"
                 >
                   <span className="font-black text-[#00fe00]">Mantiene Posesión</span>
-                  <span className="text-[9px] text-white/40 normal-case font-medium">El equipo atacante retiene la bocha</span>
+                  <span className="text-[9px] text-white/40 normal-case font-medium">El equipo atacante retiene la posesión</span>
                 </button>
                 <button
-                  onClick={() => handleShotConfirmed(team, 'atajado', selectedPlayer, false)}
+                  onClick={() => handleDynamicActionConfirmed(team, (activeActionForAssign as any).originalBoton || boton, selectedPlayer, false)}
                   className="py-4 px-6 rounded-2xl border border-white/10 bg-white/5 text-white font-bold text-xs uppercase tracking-wider hover:border-[#ef4444] hover:bg-[#ef4444]/5 transition-all text-center flex flex-col items-center justify-center gap-1"
                 >
                   <span className="font-black text-[#ef4444]">Pierde Posesión</span>
-                  <span className="text-[9px] text-white/40 normal-case font-medium">La posesión cambia de manos</span>
+                  <span className="text-[9px] text-white/40 normal-case font-medium">La posesión cambia al rival</span>
                 </button>
               </div>
 
@@ -2244,9 +2663,9 @@ const LiveGameView: React.FC<{
             <div className="flex justify-between items-center mb-4 shrink-0">
               <div>
                 <h3 className="contrail-font text-lg font-black text-white uppercase tracking-wider">
-                  Asignar Autor: {subActionId.toUpperCase()}
+                  Asignar Autor: {boton.nombre.toUpperCase()}
                 </h3>
-                <p className="text-[10px] text-white/50 uppercase font-bold mt-1">Selecciona el jugador que remató ({teamName})</p>
+                <p className="text-[10px] text-white/50 uppercase font-bold mt-1">Selecciona el jugador que realizó la acción ({teamName})</p>
               </div>
               <button
                 onClick={() => setActiveActionForAssign(null)}
@@ -2261,10 +2680,15 @@ const LiveGameView: React.FC<{
                 <button
                   key={p.id}
                   onClick={() => {
-                    if (subActionId === 'atajado') {
-                      setActiveActionForAssign({ team, cardId, subActionId: 'atajado_poss', metadata: p });
+                    if (boton.id.includes('atajado') || boton.kpi_subaccion === 'atajados') {
+                      setActiveActionForAssign({
+                        team,
+                        boton: { id: 'atajado_poss', nombre: 'Rebote de Atajada' },
+                        originalBoton: boton,
+                        metadata: p
+                      } as any);
                     } else {
-                      handleShotConfirmed(team, subActionId as any, p);
+                      handleDynamicActionConfirmed(team, boton, p);
                     }
                   }}
                   className="p-2.5 rounded-xl border border-white/5 bg-white/5 text-white hover:border-white/20 transition-all flex items-center gap-2 truncate text-left"
@@ -2280,10 +2704,15 @@ const LiveGameView: React.FC<{
             <div className="mt-5 pt-4 border-t border-white/10 flex gap-2 shrink-0">
               <button
                 onClick={() => {
-                  if (subActionId === 'atajado') {
-                    setActiveActionForAssign({ team, cardId, subActionId: 'atajado_poss', metadata: null });
+                  if (boton.id.includes('atajado') || boton.kpi_subaccion === 'atajados') {
+                    setActiveActionForAssign({
+                      team,
+                      boton: { id: 'atajado_poss', nombre: 'Rebote de Atajada' },
+                      originalBoton: boton,
+                      metadata: null
+                    } as any);
                   } else {
-                    handleShotConfirmed(team, subActionId as any, null);
+                    handleDynamicActionConfirmed(team, boton, null);
                   }
                 }}
                 className="flex-1 bg-white/5 hover:bg-white/10 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider transition-colors border border-white/5"
@@ -2319,56 +2748,295 @@ const LiveGameView: React.FC<{
     const lx = 50;
     const ly = 25;
 
-    switch (boton.flujo_consecuencia) {
-      case "abrir_modal_jugador_ataque":
-        setActiveActionForAssign({
-          team,
-          cardId: 'disparo_arco',
-          subActionId: boton.id.replace('remate_', '') as any
-        });
-        break;
+    const fc = boton.flujo_consecuencia || '';
 
-      case "registro_directo_sin_modal":
-        registerEvent(
-          boton.kpi_principal, // Registra el string 'Ingreso en área'
-          teamPossession,
-          lx,
-          ly,
-          `${boton.nombre}: Registro limpio`,
-          teamId,
-          undefined,
-          undefined,
-          null,
-          boton.kpi_principal,
-          team
-        );
-        break;
-
-      case "abrir_modal_infraccion_con_cambio_posesion":
-        setActiveFoul({
-          team,
-          type: 'committed',
-          subAction: boton.nombre
-        });
-        break;
-
-      case "abrir_modal_infraccion_mantiene_posesion":
-        setActiveFoul({
-          team,
-          type: 'received',
-          subAction: boton.nombre
-        });
-        break;
-
-      default:
-        console.warn(`Flujo de consecuencia no reconocido: ${boton.flujo_consecuencia}`);
-        break;
+    if (fc.startsWith('abrir_modal_jugador_')) {
+      setActiveActionForAssign({
+        team,
+        boton
+      });
+    } else if (
+      fc === 'abrir_modal_infraccion_con_cambio_posesion' ||
+      fc === 'abrir_modal_infraccion_mantiene_posesion' ||
+      fc === 'abrir_modal_tarjeta_minutos' ||
+      fc === 'abrir_modal_tarjetas_futbol' ||
+      fc === 'abrir_modal_falta_basket' ||
+      fc === 'abrir_modal_sancion_voley'
+    ) {
+      setActiveFoul({
+        team,
+        type: (fc === 'abrir_modal_infraccion_con_cambio_posesion' || fc === 'abrir_modal_tarjeta_minutos' || fc === 'abrir_modal_tarjetas_futbol' || fc === 'abrir_modal_falta_basket' || fc === 'abrir_modal_sancion_voley') ? 'committed' : 'received',
+        subAction: boton.nombre
+      });
+    } else if (fc === 'abrir_modal_video_ref' || fc === 'abrir_modal_var') {
+      setActiveGenericModal({
+        team,
+        type: fc.includes('var') ? 'var' : 'video_ref',
+        boton
+      });
+    } else if (fc === 'abrir_modal_sustitucion') {
+      setActiveGenericModal({
+        team,
+        type: 'sustitucion',
+        boton
+      });
+    } else if (fc === 'registro_directo_sin_modal') {
+      registerEvent(
+        boton.kpi_principal,
+        teamPossession,
+        lx,
+        ly,
+        `${boton.nombre}: Registro limpio`,
+        teamId,
+        undefined,
+        undefined,
+        null,
+        boton.kpi_principal,
+        team
+      );
+    } else {
+      console.warn(`Flujo de consecuencia no reconocido: ${fc}`);
+      registerEvent(
+        boton.kpi_principal || 'ACCION',
+        teamPossession,
+        lx,
+        ly,
+        `${boton.nombre}: Registro limpio`,
+        teamId,
+        undefined,
+        undefined,
+        null,
+        boton.kpi_principal || 'ACCION',
+        team
+      );
     }
   };
 
-  /**
-   * Renderizador Dinámico de Bloques de Equipo Basado en el JSON de Firestore
-   */
+  const renderGenericModal = () => {
+    if (!activeGenericModal || !game) return null;
+    const { team, type, boton } = activeGenericModal;
+    const isLocal = team === 'local';
+    const teamObj = isLocal ? game.teamHome : game.teamAway;
+    const teamId = teamObj.id;
+    const players = teamObj.players;
+
+    if (type === 'video_ref' || type === 'var') {
+      const modalTitle = type === 'var' ? 'Revisión de VAR' : 'Video Ref';
+      return (
+        <Portal>
+          <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-[9999]">
+            <div className="w-full max-w-md bg-[#131041]/95 border border-white/10 rounded-[32px] p-6 shadow-2xl flex flex-col">
+              <div className="text-center mb-5 border-b border-white/10 pb-3">
+                <span className="text-[9px] font-black text-[#00fe00] bg-[#00fe00]/10 border border-[#00fe00]/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider mb-1 block w-max mx-auto animate-pulse">
+                  Tecnología de Soporte
+                </span>
+                <h3 className="contrail-font text-lg font-black text-white uppercase tracking-wider">
+                  {modalTitle}
+                </h3>
+                <p className="text-[10px] text-white/55 uppercase font-bold mt-1">¿Cuál es el resultado de la revisión?</p>
+              </div>
+
+              <div className="flex flex-col gap-3 my-4">
+                <button
+                  onClick={() => {
+                    registerEvent(
+                      type.toUpperCase(),
+                      possession,
+                      50,
+                      25,
+                      `${modalTitle} - Decisión Confirmada`,
+                      teamId,
+                      undefined,
+                      undefined,
+                      null,
+                      `${type.toUpperCase()}_CONFIRMADO`,
+                      team
+                    );
+                    setActiveGenericModal(null);
+                  }}
+                  className="py-4 px-6 rounded-2xl border border-white/10 bg-[#00fe00]/5 text-white font-bold text-xs uppercase tracking-wider hover:border-[#00fe00] hover:bg-[#00fe00]/15 transition-all text-center flex flex-col items-center justify-center gap-1"
+                >
+                  <span className="font-black text-[#00fe00]">Confirmar Decisión</span>
+                  <span className="text-[9px] text-white/40 normal-case font-medium">Se mantiene la sanción/jugada original</span>
+                </button>
+                <button
+                  onClick={() => {
+                    registerEvent(
+                      type.toUpperCase(),
+                      possession,
+                      50,
+                      25,
+                      `${modalTitle} - Decisión Revertida`,
+                      teamId,
+                      undefined,
+                      undefined,
+                      null,
+                      `${type.toUpperCase()}_REVERTIDO`,
+                      team
+                    );
+                    setActiveGenericModal(null);
+                  }}
+                  className="py-4 px-6 rounded-2xl border border-white/10 bg-red-500/5 text-white font-bold text-xs uppercase tracking-wider hover:border-red-500 hover:bg-red-500/15 transition-all text-center flex flex-col items-center justify-center gap-1"
+                >
+                  <span className="font-black text-red-400">Revertir Decisión</span>
+                  <span className="text-[9px] text-white/40 normal-case font-medium">Se anula o cambia la decisión arbitral</span>
+                </button>
+              </div>
+
+              <button
+                onClick={() => setActiveGenericModal(null)}
+                className="bg-white/5 hover:bg-white/10 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider transition-colors border border-white/5 text-center"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </Portal>
+      );
+    }
+
+    if (type === 'sustitucion') {
+      const activeStarters = team === 'local' 
+        ? (game.metadata?.localStarters || []) 
+        : (game.metadata?.visitanteStarters || []);
+      const starterPlayers = players.filter(p => activeStarters.includes(p.id));
+      const substitutePlayers = players.filter(p => !activeStarters.includes(p.id));
+
+      return (
+        <Portal>
+          <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-[9999]">
+            <div className="w-full max-w-lg bg-[#131041]/95 border border-white/10 rounded-[32px] p-6 shadow-2xl flex flex-col max-h-[85vh]">
+              <div className="text-center mb-4 border-b border-white/10 pb-3">
+                <span className="text-[9px] font-black text-[#00fe00] bg-[#00fe00]/10 border border-[#00fe00]/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider mb-1 block w-max mx-auto">
+                  Sustitución de Jugadores
+                </span>
+                <h3 className="contrail-font text-lg font-black text-white uppercase tracking-wider">
+                  Realizar Cambio ({teamObj.name})
+                </h3>
+              </div>
+
+              <div className="flex-1 overflow-y-auto no-scrollbar space-y-4 py-2">
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-black text-white/50 uppercase tracking-widest">
+                    Jugador Saliente (Titular en cancha)
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto no-scrollbar border border-white/5 rounded-2xl bg-black/20 p-2">
+                    {starterPlayers.map(p => {
+                      const isSelected = subPlayerOut === p.id;
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => setSubPlayerOut(isSelected ? null : p.id)}
+                          className={`p-2.5 rounded-xl border flex items-center gap-2 transition-all text-left truncate ${isSelected
+                            ? 'bg-red-500/20 border-red-500/50 text-white shadow-md'
+                            : 'bg-white/5 border-white/5 text-white/70 hover:border-white/10 hover:text-white'
+                            }`}
+                        >
+                          <span className={`w-5 h-5 rounded-lg flex items-center justify-center text-[9px] font-black shrink-0 ${isSelected ? 'bg-red-500 text-white' : 'bg-white/10 text-white/50'}`}>
+                            {p.number}
+                          </span>
+                          <span className="font-bold text-[11px] truncate uppercase font-lato">{p.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-black text-white/50 uppercase tracking-widest">
+                    Jugador Entrante (Suplente en banca)
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto no-scrollbar border border-white/5 rounded-2xl bg-black/20 p-2">
+                    {substitutePlayers.map(p => {
+                      const isSelected = subPlayerIn === p.id;
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => setSubPlayerIn(isSelected ? null : p.id)}
+                          className={`p-2.5 rounded-xl border flex items-center gap-2 transition-all text-left truncate ${isSelected
+                            ? 'bg-[#00fe00]/20 border-[#00fe00]/50 text-white shadow-md'
+                            : 'bg-white/5 border-white/5 text-white/70 hover:border-white/10 hover:text-white'
+                            }`}
+                        >
+                          <span className={`w-5 h-5 rounded-lg flex items-center justify-center text-[9px] font-black shrink-0 ${isSelected ? 'bg-[#00fe00] text-black' : 'bg-white/10 text-white/50'}`}>
+                            {p.number}
+                          </span>
+                          <span className="font-bold text-[11px] truncate uppercase font-lato">{p.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5 pt-4 border-t border-white/10 flex gap-3 shrink-0">
+                <button
+                  onClick={() => {
+                    setActiveGenericModal(null);
+                    setSubPlayerOut(null);
+                    setSubPlayerIn(null);
+                  }}
+                  className="flex-1 bg-white/5 hover:bg-white/10 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider transition-colors border border-white/5"
+                >
+                  Cancelar
+                </button>
+                <button
+                  disabled={!subPlayerOut || !subPlayerIn}
+                  onClick={() => {
+                    if (!subPlayerOut || !subPlayerIn) return;
+                    const outP = players.find(p => p.id === subPlayerOut);
+                    const inP = players.find(p => p.id === subPlayerIn);
+                    
+                    if (outP && inP) {
+                      registerEvent(
+                        'SUSTITUCION',
+                        possession,
+                        50,
+                        25,
+                        `Sustitución: Sale ${outP.name} (#${outP.number}) - Entra ${inP.name} (#${inP.number})`,
+                        teamId,
+                        undefined,
+                        undefined,
+                        `${outP.name} -> ${inP.name}`,
+                        'SUSTITUCION',
+                        team
+                      );
+
+                      setGame(prev => {
+                        if (!prev) return null;
+                        const metadata = prev.metadata || {};
+                        const localStarters = metadata.localStarters || [];
+                        const visitanteStarters = metadata.visitanteStarters || [];
+                        const updatedStarters = (team === 'local' ? localStarters : visitanteStarters).map((id: string) => id === subPlayerOut ? subPlayerIn : id);
+                        return {
+                          ...prev,
+                          metadata: {
+                            ...metadata,
+                            localStarters: team === 'local' ? updatedStarters : localStarters,
+                            visitanteStarters: team === 'visitante' ? updatedStarters : visitanteStarters
+                          }
+                        };
+                      });
+                    }
+
+                    setActiveGenericModal(null);
+                    setSubPlayerOut(null);
+                    setSubPlayerIn(null);
+                  }}
+                  className="flex-[1.5] bg-[#00fe00] hover:bg-[#02e002] text-black font-black py-3 rounded-xl text-xs uppercase tracking-widest transition-colors font-contrail shadow-[0_0_15px_rgba(0,254,0,0.2)] disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Confirmar Cambio
+                </button>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      );
+    }
+
+    return null;
+  };
+
   const renderPressTeamBlock = (team: 'local' | 'visitante') => {
     if (!game || !dbAcciones || Object.keys(dbAcciones).length === 0) return null;
 
@@ -2377,39 +3045,131 @@ const LiveGameView: React.FC<{
     const teamColor = teamObj.primaryColor || (isLocal ? '#6d5dfc' : '#ef4444');
     const isCurrentPossession = (isLocal && possession === Possession.HOME) || (!isLocal && possession === Possession.AWAY);
 
+    // Extraemos las categorías de acciones cargadas desde el documento raíz
+    const accionesPeriodista = (dbAcciones as any).modos?.periodista?.bloque_acciones || [];
+
     if (!isCurrentPossession) {
       return (
-        <div
-          className="flex-none h-14 md:h-16 flex items-center p-4 rounded-3xl border border-white/5 bg-white/5 hover:bg-white/10 transition-all shadow-sm cursor-pointer opacity-55 hover:opacity-85"
-          onClick={() => {
-            setPossession(isLocal ? Possession.HOME : Possession.AWAY);
-            setPassCount(0);
-            if (navigator.vibrate) navigator.vibrate(50);
-          }}
-        >
-          <div className="flex items-center gap-3 w-full">
-            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: teamColor }}></div>
-            <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{teamObj.name}</span>
-            <div className="flex-1"></div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setPossession(isLocal ? Possession.HOME : Possession.AWAY);
-                setPassCount(0);
-                if (navigator.vibrate) navigator.vibrate(50);
-              }}
-              className="py-2 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#00fe00] text-white font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-2"
-            >
-              <i className="fa-solid fa-shield-halved text-[#00fe00] text-[10px] animate-pulse"></i>
-              <span>Recuperar Posesión</span>
-            </button>
+        <>
+          {/* Barra colapsada visible solo en pantallas pequeñas */}
+          <div
+            className="lg:hidden flex-none h-14 md:h-16 flex items-center p-4 rounded-3xl border border-white/5 bg-white/5 hover:bg-white/10 transition-all shadow-sm cursor-pointer opacity-55 hover:opacity-85 shrink-0"
+            onClick={() => {
+              setPossession(isLocal ? Possession.HOME : Possession.AWAY);
+              setPassCount(0);
+              if (navigator.vibrate) navigator.vibrate(50);
+            }}
+          >
+            <div className="flex items-center gap-3 w-full">
+              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: teamColor }}></div>
+              <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{teamObj.name}</span>
+              <div className="flex-1"></div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPossession(isLocal ? Possession.HOME : Possession.AWAY);
+                  setPassCount(0);
+                  if (navigator.vibrate) navigator.vibrate(50);
+                }}
+                className="py-2 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#00fe00] text-white font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-2"
+              >
+                <i className="fa-solid fa-shield-halved text-[#00fe00] text-[10px] animate-pulse"></i>
+                <span>Recuperar Posesión</span>
+              </button>
+            </div>
           </div>
-        </div>
+
+          {/* Bloque expandido visible en pantallas grandes */}
+          <div
+            className="hidden lg:flex flex-1 flex-col p-3 sm:p-4 rounded-3xl border border-white/10 shadow-2xl gap-3 min-h-0 overflow-hidden"
+            style={{
+              backgroundColor: `${teamColor}08`,
+              borderColor: `${teamColor}30`,
+            }}
+          >
+            <div className="flex justify-between items-center border-b border-white/5 pb-2 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: teamColor }}></div>
+                <span className="font-black text-sm text-white uppercase tracking-wider font-contrail">
+                  {teamObj.name}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowStartersModal(team)}
+                  className="text-[9px] font-black text-[#00fe00] bg-[#00fe00]/10 border border-[#00fe00]/20 px-3 py-1 rounded-full uppercase tracking-wider hover:bg-[#00fe00]/20 transition-all flex items-center gap-1"
+                >
+                  <i className="fa-solid fa-users text-[8px]"></i> Titulares
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPossession(isLocal ? Possession.HOME : Possession.AWAY);
+                    setPassCount(0);
+                    if (navigator.vibrate) navigator.vibrate(50);
+                  }}
+                  className="text-[9px] font-black text-white/50 bg-white/5 border border-white/10 px-3 py-1 rounded-full uppercase tracking-wider hover:bg-white/10 transition-all"
+                >
+                  Tomar Posesión
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch min-h-0 w-full">
+              {accionesPeriodista.map((bloque: any) => (
+                <div key={bloque.categoria} className="flex-1 flex flex-col gap-2 min-h-0">
+                  <h4 className="font-bold text-[9px] uppercase tracking-widest text-white/40 border-b border-white/5 pb-0.5">
+                    {bloque.categoria}
+                  </h4>
+
+                  <div className="flex-1 flex flex-col gap-2 justify-center">
+                    {bloque.cards.map((card: any) => {
+                      const isFaltaCometida = card.id === 'faltas_cometidas';
+
+                      return (
+                        <div
+                          key={card.id}
+                          className="flex-1 border border-white/5 rounded-xl bg-black/20 p-2 flex flex-col gap-1 min-h-0 justify-center"
+                        >
+                          <span className="font-bold text-[9px] uppercase tracking-widest text-white/55 shrink-0 flex justify-between">
+                            <span>{card.titulo}</span>
+                            {card.subtitulo && (
+                              <span className={`text-[7px] font-black uppercase ${isFaltaCometida ? 'text-[#ef4444]' : 'text-[#00fe00]'}`}>
+                                {card.subtitulo}
+                              </span>
+                            )}
+                          </span>
+
+                          <div className={card.layout_botones === 'grilla' ? "grid grid-cols-2 sm:grid-cols-3 gap-2 w-full" : "flex flex-wrap sm:flex-nowrap gap-2 w-full items-center"}>
+                            {card.botones.map((btn: any) => {
+                              return (
+                                <button
+                                  key={btn.id}
+                                  onClick={() => handlePressDynamicAction(team, card, btn)}
+                                  className="flex-1 py-2 px-2 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 text-white text-[10px] font-bold uppercase tracking-wider transition-all truncate text-center min-h-[36px] flex items-center justify-center"
+                                  style={{
+                                    borderColor: btn.color ? `${btn.color}40` : 'transparent',
+                                    color: btn.color || '#ffffff'
+                                  }}
+                                >
+                                  {btn.nombre}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
       );
     }
 
-    // Extraemos las categorías de acciones cargadas desde el documento raíz
-    const accionesPeriodista = (dbAcciones as any).modos?.periodista?.bloque_acciones || [];
+
 
     return (
       <div
@@ -2465,16 +3225,16 @@ const LiveGameView: React.FC<{
                         )}
                       </span>
 
-                      <div className="flex-1 flex gap-2 w-full items-center">
+                      <div className={card.layout_botones === 'grilla' ? "grid grid-cols-2 sm:grid-cols-3 gap-2 w-full" : "flex flex-wrap sm:flex-nowrap gap-2 w-full items-center"}>
                         {card.botones.map((btn: any) => {
                           let btnStyleClass = "bg-white/5 hover:bg-white/10 border-white/10 text-white";
                           if (isGolCard) {
-                            if (btn.id.includes('gol')) btnStyleClass = "bg-green-500/10 hover:bg-green-500/20 border-green-500/30 text-green-400";
-                            else if (btn.id.includes('atajado')) btnStyleClass = "bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/30 text-blue-400";
+                            if (btn.id.includes('gol') || btn.kpi_subaccion === 'goles') btnStyleClass = "bg-green-500/10 hover:bg-green-500/20 border-green-500/30 text-green-400";
+                            else if (btn.id.includes('atajado') || btn.kpi_subaccion === 'atajados') btnStyleClass = "bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/30 text-blue-400";
                             else btnStyleClass = "bg-orange-500/10 hover:bg-orange-500/20 border-orange-500/30 text-orange-400";
-                          } else if (isFaltaCometida) {
+                          } else if (isFaltaCometida || card.id.includes('cometidas')) {
                             btnStyleClass = "bg-[#ef4444]/5 hover:bg-[#ef4444]/15 border-[#ef4444]/10 text-white/90";
-                          } else if (card.id === 'faltas_recibidas') {
+                          } else if (card.id.includes('recibidas')) {
                             btnStyleClass = "bg-[#00fe00]/5 hover:bg-[#00fe00]/15 border-[#00fe00]/10 text-white/90";
                           }
 
@@ -2482,7 +3242,7 @@ const LiveGameView: React.FC<{
                             <button
                               key={btn.id}
                               onClick={() => handlePressDynamicAction(btn, team)}
-                              className={`flex-1 rounded-lg border font-black text-[10px] uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 min-h-[40px] px-2 ${btnStyleClass}`}
+                              className={`rounded-lg border font-black text-[9px] sm:text-[10px] uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 min-h-[40px] px-2 w-full text-center ${btnStyleClass}`}
                               title={btn.nombre}
                             >
                               <span className="truncate">{btn.nombre}</span>
@@ -2502,10 +3262,39 @@ const LiveGameView: React.FC<{
   };
 
   const renderPressLayout = () => {
+    const isLocalPossession = possession === Possession.HOME;
+    const localColor = game?.teamHome.primaryColor || '#6d5dfc';
+    const awayColor = game?.teamAway.primaryColor || '#ef4444';
+    const activeColor = isLocalPossession ? localColor : awayColor;
+    const activeTeamName = isLocalPossession ? game?.teamHome.name : game?.teamAway.name;
+
     return (
       <div className="w-full h-full p-2 sm:p-4 flex flex-col items-stretch min-h-0 min-w-0">
         <div className="w-full h-full bg-[#131041]/40 backdrop-blur-[16px] border border-white/10 rounded-[32px] p-3 sm:p-4 flex flex-col gap-2 shadow-2xl relative min-h-0 min-w-0 overflow-hidden">
-          <div className="flex-grow flex flex-col gap-2 items-stretch min-h-0 w-full">
+          
+          {/* Botón de Cambio de Posesión Prominente */}
+          {dbAcciones && (dbAcciones as any).reglamento?.trackea_posesion !== false && (
+            <div className="shrink-0 mb-2">
+              <button
+                onClick={() => {
+                  setPossession(isLocalPossession ? Possession.AWAY : Possession.HOME);
+                  setPassCount(0);
+                  if (navigator.vibrate) navigator.vibrate(50);
+                }}
+                style={{
+                  backgroundColor: `${activeColor}15`,
+                  borderColor: activeColor,
+                  boxShadow: `0 0 15px ${activeColor}20`
+                }}
+                className="w-full py-3.5 rounded-2xl border text-white font-black text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2 hover:bg-white/5"
+              >
+                <i className="fa-solid fa-shield-halved animate-pulse" style={{ color: activeColor }}></i>
+                <span>Cambio de Posesión ({activeTeamName} en control)</span>
+              </button>
+            </div>
+          )}
+
+          <div className="flex-grow flex flex-col lg:flex-row gap-4 items-stretch min-h-0 w-full">
             {renderPressTeamBlock('local')}
             {renderPressTeamBlock('visitante')}
           </div>
@@ -2962,7 +3751,14 @@ const LiveGameView: React.FC<{
               color: game?.teamHome?.secondaryColor || '#ffffff'
             }}
           >
-            <span className="text-[10px] md:text-sm font-black uppercase tracking-wider max-w-[80px] truncate">{game?.teamHome?.name || 'Local'}</span>
+            <div className="flex flex-col items-end min-w-0">
+              <span className="text-[10px] md:text-sm font-black uppercase tracking-wider max-w-[80px] truncate">{game?.teamHome?.name || 'Local'}</span>
+              {dbAcciones && (dbAcciones as any).reglamento?.modo_puntuacion === 'sets' && (
+                <span className="text-[9px] font-black text-white/50 uppercase tracking-widest mt-0.5 leading-none">
+                  Set: {game?.metadata?.setPointsHome || 0}
+                </span>
+              )}
+            </div>
             <span className="text-2xl md:text-4xl font-black leading-none">{game?.scoreHome || 0}</span>
           </button>
 
@@ -2980,57 +3776,66 @@ const LiveGameView: React.FC<{
               color: game?.teamAway?.secondaryColor || '#ffffff'
             }}
           >
-            <span className="text-[10px] md:text-sm font-black uppercase tracking-wider max-w-[80px] truncate">{game?.teamAway?.name || 'Visita'}</span>
+            <div className="flex flex-col items-start min-w-0">
+              <span className="text-[10px] md:text-sm font-black uppercase tracking-wider max-w-[80px] truncate">{game?.teamAway?.name || 'Visita'}</span>
+              {dbAcciones && (dbAcciones as any).reglamento?.modo_puntuacion === 'sets' && (
+                <span className="text-[9px] font-black text-white/50 uppercase tracking-widest mt-0.5 leading-none">
+                  Set: {game?.metadata?.setPointsAway || 0}
+                </span>
+              )}
+            </div>
             <span className="text-2xl md:text-4xl font-black leading-none">{game?.scoreAway || 0}</span>
           </button>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="relative">
-            <button
-              onClick={() => setShowPeriodMenu(!showPeriodMenu)}
-              className="bg-primary/10 text-primary font-black px-3 py-2 rounded-xl text-xs md:text-sm active:scale-95 transition-all shadow-sm border border-primary/5 hover:bg-primary/20"
-            >
-              {period}Q
-            </button>
-            {showPeriodMenu && (
-              <div className="absolute top-full right-0 mt-2 bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 shadow-2xl rounded-2xl p-1.5 z-[300] flex flex-col min-w-[60px] animate-in zoom-in duration-150">
-                {[1, 2, 3, 4].map(q => (
-                  <button
-                    key={q}
-                    onClick={() => handlePeriodRequest(q)}
-                    className={`px-4 py-2.5 text-[10px] font-black rounded-xl transition-colors ${period === q ? 'bg-primary text-white shadow-md' : 'text-white hover:bg-[#1e293b]/45 backdrop-blur-md border border-white/10'}`}
-                  >
-                    {q}Q
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="bg-[#1e293b]/45 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-xl border border-white/10 flex items-center gap-3">
-            <div className="hidden md:flex flex-col items-center gap-1.5 px-0.5 border-r border-white/10 pr-2">
-              <div
-                className={`w-2 h-2 rounded-full shadow-sm transition-all duration-500 ${!navigator.onLine
-                  ? 'bg-red-500 animate-pulse'
-                  : syncQueueLength > 0
-                    ? 'bg-amber-400 animate-bounce'
-                    : 'bg-emerald-500 shadow-emerald-500/50'
-                  }`}
-                title={!navigator.onLine ? 'Desconectado' : syncQueueLength > 0 ? 'Sincronizando...' : 'Sincronizado'}
-              />
-              <span className="text-[6px] font-black text-white/40 uppercase tracking-tighter leading-none">
-                {!navigator.onLine ? 'Off' : syncQueueLength > 0 ? 'Sync' : 'Cloud'}
-              </span>
+        {(!dbAcciones || (dbAcciones as any).reglamento?.por_tiempo !== false) && (
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="relative">
+              <button
+                onClick={() => setShowPeriodMenu(!showPeriodMenu)}
+                className="bg-primary/10 text-primary font-black px-3 py-2 rounded-xl text-xs md:text-sm active:scale-95 transition-all shadow-sm border border-primary/5 hover:bg-primary/20"
+              >
+                {period}Q
+              </button>
+              {showPeriodMenu && (
+                <div className="absolute top-full right-0 mt-2 bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 shadow-2xl rounded-2xl p-1.5 z-[300] flex flex-col min-w-[60px] animate-in zoom-in duration-150">
+                  {Array.from({ length: game?.metadata?.cantidadPeriodos || (dbAcciones as any).reglamento?.cantidad_periodos || 4 }, (_, i) => i + 1).map(q => (
+                    <button
+                      key={q}
+                      onClick={() => handlePeriodRequest(q)}
+                      className={`px-4 py-2.5 text-[10px] font-black rounded-xl transition-colors ${period === q ? 'bg-primary text-white shadow-md' : 'text-white hover:bg-[#1e293b]/45 backdrop-blur-md border border-white/10'}`}
+                    >
+                      {q}Q
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            <p className="text-lg md:text-xl font-black text-primary tabular-nums leading-none">{formatTime(seconds)}</p>
-            <button
-              onClick={toggleTimer}
-              className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-all text-sm font-black shadow-md ${isRunning ? 'bg-red-500 text-white' : 'bg-primary text-white animate-bounce-short'}`}
-            >
-              {isRunning ? '||' : '▶'}
-            </button>
+            <div className="bg-[#1e293b]/45 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-xl border border-white/10 flex items-center gap-3">
+              <div className="hidden md:flex flex-col items-center gap-1.5 px-0.5 border-r border-white/10 pr-2">
+                <div
+                  className={`w-2 h-2 rounded-full shadow-sm transition-all duration-500 ${!navigator.onLine
+                    ? 'bg-red-500 animate-pulse'
+                    : syncQueueLength > 0
+                      ? 'bg-amber-400 animate-bounce'
+                      : 'bg-emerald-500 shadow-emerald-500/50'
+                    }`}
+                  title={!navigator.onLine ? 'Desconectado' : syncQueueLength > 0 ? 'Sincronizando...' : 'Sincronizado'}
+                />
+                <span className="text-[6px] font-black text-white/40 uppercase tracking-tighter leading-none">
+                  {!navigator.onLine ? 'Off' : syncQueueLength > 0 ? 'Sync' : 'Cloud'}
+                </span>
+              </div>
+              <p className="text-lg md:text-xl font-black text-primary tabular-nums leading-none">{formatTime(seconds)}</p>
+              <button
+                onClick={toggleTimer}
+                className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-all text-sm font-black shadow-md ${isRunning ? 'bg-red-500 text-white' : 'bg-primary text-white animate-bounce-short'}`}
+              >
+                {isRunning ? '||' : '▶'}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </header>
 
       <main className="bg-[#1e293b]/45 backdrop-blur-md border border-white/10 overflow-hidden" style={{ flexGrow: 1, display: 'flex', minHeight: 0 }}>
@@ -3059,7 +3864,7 @@ const LiveGameView: React.FC<{
           </div>
         ) : (
           <>
-            {!isLandscape && (
+            {(!isLandscape || isPressMode) && (
               <aside className="hidden lg:flex w-[320px] flex-col p-5 bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border-r border-white/10 overflow-y-auto no-scrollbar">
                 {isPressMode ? (
                   renderPressSidebarLeft()
@@ -3353,52 +4158,54 @@ const LiveGameView: React.FC<{
                             ))}
                           </div>
 
-                          <div className="border-white p-6 rounded-[24px] border-[1px] border-white mb-6 shadow-inner flex flex-col gap-4">
-                            <div className={`flex justify-between items-center ${possessionExpanded ? 'border-b border-white/10 pb-3' : ''}`}>
-                              <div className="flex items-center gap-2">
-                                <i className="fa-solid fa-stopwatch text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>
-                                <h4 className="contrail-font text-[15px] font-black text-white uppercase tracking-wider">Posesión</h4>
+                          {dbAcciones && (dbAcciones as any).reglamento?.trackea_posesion !== false && (
+                            <div className="border-white p-6 rounded-[24px] border-[1px] border-white mb-6 shadow-inner flex flex-col gap-4">
+                              <div className={`flex justify-between items-center ${possessionExpanded ? 'border-b border-white/10 pb-3' : ''}`}>
+                                <div className="flex items-center gap-2">
+                                  <i className="fa-solid fa-stopwatch text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>
+                                  <h4 className="contrail-font text-[15px] font-black text-white uppercase tracking-wider">Posesión</h4>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-lg font-black text-white">{localPct}% / {awayPct}%</span>
+                                  <button
+                                    onClick={() => setPossessionExpanded(!possessionExpanded)}
+                                    className={`w-6 h-6 flex items-center justify-center rounded-full bg-white/5 transition-transform duration-300 ${possessionExpanded ? 'rotate-180' : ''}`}
+                                  >
+                                    <span className="text-[10px] text-white font-black" style={{ color: '#ffffff' }}>▼</span>
+                                  </button>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-3">
-                                <span className="text-lg font-black text-white">{localPct}% / {awayPct}%</span>
-                                <button
-                                  onClick={() => setPossessionExpanded(!possessionExpanded)}
-                                  className={`w-6 h-6 flex items-center justify-center rounded-full bg-white/5 transition-transform duration-300 ${possessionExpanded ? 'rotate-180' : ''}`}
-                                >
-                                  <span className="text-[10px] text-white font-black" style={{ color: '#ffffff' }}>▼</span>
-                                </button>
-                              </div>
-                            </div>
 
-                            {possessionExpanded && (
-                              <div className="animate-in slide-in-from-top duration-300">
-                                <div className="flex justify-between items-center mb-3">
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
-                                    <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider">Posesión Local</span>
+                              {possessionExpanded && (
+                                <div className="animate-in slide-in-from-top duration-300">
+                                  <div className="flex justify-between items-center mb-3">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
+                                      <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider">Posesión Local</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider">Posesión Visita</span>
+                                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
+                                    </div>
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider">Posesión Visita</span>
-                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
+                                  <div className="w-full h-10 bg-white/5 rounded-2xl overflow-hidden flex shadow-inner border border-white/10">
+                                    <div
+                                      className="h-full transition-all duration-700 ease-out flex items-center justify-center text-[16px] font-black text-white drop-shadow-sm"
+                                      style={{ width: `${localPct}%`, backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}
+                                    >
+                                      {localPct > 15 && `${localPct}%`}
+                                    </div>
+                                    <div
+                                      className="h-full transition-all duration-700 ease-out flex items-center justify-center text-[16px] font-black text-white drop-shadow-sm"
+                                      style={{ width: `${awayPct}%`, backgroundColor: game.teamAway.primaryColor || '#ef4444' }}
+                                    >
+                                      {awayPct > 15 && `${awayPct}%`}
+                                    </div>
                                   </div>
                                 </div>
-                                <div className="w-full h-10 bg-white/5 rounded-2xl overflow-hidden flex shadow-inner border border-white/10">
-                                  <div
-                                    className="h-full transition-all duration-700 ease-out flex items-center justify-center text-[16px] font-black text-white drop-shadow-sm"
-                                    style={{ width: `${localPct}%`, backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}
-                                  >
-                                    {localPct > 15 && `${localPct}%`}
-                                  </div>
-                                  <div
-                                    className="h-full transition-all duration-700 ease-out flex items-center justify-center text-[16px] font-black text-white drop-shadow-sm"
-                                    style={{ width: `${awayPct}%`, backgroundColor: game.teamAway.primaryColor || '#ef4444' }}
-                                  >
-                                    {awayPct > 15 && `${awayPct}%`}
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
+                              )}
+                            </div>
+                          )}
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Remates Totales Unificados */}
@@ -4075,7 +4882,7 @@ const LiveGameView: React.FC<{
             </div>
 
             {
-              !isLandscape && (
+              (!isLandscape || isPressMode) && (
                 <aside className="hidden lg:flex w-[320px] flex-col p-4 bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border-l border-white/10 overflow-y-auto no-scrollbar">
                   {isPressMode ? (
                     renderPressSidebarRight()
@@ -4084,42 +4891,44 @@ const LiveGameView: React.FC<{
                       <h3 className="contrail-font text-[16px] font-black text-white uppercase tracking-wider border-b border-white/10 pb-2 italic">Estadísticas En vivo</h3>
 
                       {/* Posesión Sidebar */}
-                      <div className="border-white p-4 rounded-[24px] border-[1px] border-white shadow-inner flex flex-col gap-2">
-                        <div className={`flex justify-between items-center ${possessionSidebarExpanded ? 'border-b border-white/10 pb-2 mb-1' : ''}`}>
-                          <div className="flex items-center gap-2">
-                            <i className="fa-solid fa-stopwatch text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>
-                            <p className="contrail-font text-[15px] font-black text-white uppercase tracking-wider leading-none">Posesión</p>
+                      {dbAcciones && (dbAcciones as any).reglamento?.trackea_posesion !== false && (
+                        <div className="border-white p-4 rounded-[24px] border-[1px] border-white shadow-inner flex flex-col gap-2">
+                          <div className={`flex justify-between items-center ${possessionSidebarExpanded ? 'border-b border-white/10 pb-2 mb-1' : ''}`}>
+                            <div className="flex items-center gap-2">
+                              <i className="fa-solid fa-stopwatch text-white text-lg" style={{ color: '#ffffff', opacity: 1 }}></i>
+                              <p className="contrail-font text-[15px] font-black text-white uppercase tracking-wider leading-none">Posesión</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="text-lg font-black text-white">{localPct}% / {awayPct}%</span>
+                              <button
+                                onClick={() => setPossessionSidebarExpanded(!possessionSidebarExpanded)}
+                                className={`w-5 h-5 flex items-center justify-center rounded-full bg-white/5 transition-transform duration-300 ${possessionSidebarExpanded ? 'rotate-180' : ''}`}
+                              >
+                                <span className="text-[8px] text-white font-black" style={{ color: '#ffffff' }}>▼</span>
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-lg font-black text-white">{localPct}% / {awayPct}%</span>
-                            <button
-                              onClick={() => setPossessionSidebarExpanded(!possessionSidebarExpanded)}
-                              className={`w-5 h-5 flex items-center justify-center rounded-full bg-white/5 transition-transform duration-300 ${possessionSidebarExpanded ? 'rotate-180' : ''}`}
-                            >
-                              <span className="text-[8px] text-white font-black" style={{ color: '#ffffff' }}>▼</span>
-                            </button>
-                          </div>
-                        </div>
 
-                        {possessionSidebarExpanded && (
-                          <div className="animate-in slide-in-from-top duration-300">
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
-                                {localPct}%
-                              </span>
-                              <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                                {awayPct}%
-                                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
-                              </span>
+                          {possessionSidebarExpanded && (
+                            <div className="animate-in slide-in-from-top duration-300">
+                              <div className="flex justify-between items-center mb-2">
+                                <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
+                                  {localPct}%
+                                </span>
+                                <span className="font-lato text-[15px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                                  {awayPct}%
+                                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
+                                </span>
+                              </div>
+                              <div className="w-full h-4 bg-white/5 rounded-full overflow-hidden flex border border-white/10">
+                                <div className="h-full transition-all duration-700" style={{ width: `${localPct}%`, backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
+                                <div className="h-full transition-all duration-700" style={{ width: `${awayPct}%`, backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
+                              </div>
                             </div>
-                            <div className="w-full h-4 bg-white/5 rounded-full overflow-hidden flex border border-white/10">
-                              <div className="h-full transition-all duration-700" style={{ width: `${localPct}%`, backgroundColor: game.teamHome.primaryColor || '#6d5dfc' }}></div>
-                              <div className="h-full transition-all duration-700" style={{ width: `${awayPct}%`, backgroundColor: game.teamAway.primaryColor || '#ef4444' }}></div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                          )}
+                        </div>
+                      )}
 
 
                       {/* Desgloses Detallados Sidebar */}
@@ -4175,7 +4984,7 @@ const LiveGameView: React.FC<{
         <div className="flex flex-1 items-center justify-around md:justify-center md:gap-16">
           <div className="flex items-center gap-4 md:gap-8">
             <button className={`text-2xl transition-all ${activeView === 'list' ? 'text-primary scale-110 drop-shadow-md' : 'text-white/30'}`} onClick={() => setActiveView(activeView === 'list' ? 'field' : 'list')}><i className="fa-solid fa-list"></i></button>
-            <button className={`text-2xl transition-all ${activeView === 'stats' ? 'text-primary scale-110 drop-shadow-md' : 'text-white/30'} ${!isLandscape ? 'lg:hidden' : ''}`} onClick={() => setActiveView(activeView === 'stats' ? 'field' : 'stats')}><i className="fa-solid fa-chart-simple"></i></button>
+            <button className={`text-2xl transition-all ${activeView === 'stats' ? 'text-primary scale-110 drop-shadow-md' : 'text-white/30'}`} onClick={() => setActiveView(activeView === 'stats' ? 'field' : 'stats')}><i className="fa-solid fa-chart-simple"></i></button>
           </div>
 
 
@@ -4212,6 +5021,7 @@ const LiveGameView: React.FC<{
       {isPressMode && renderStartersModal()}
       {isPressMode && renderFoulOutcomeModal()}
       {isPressMode && renderAssignPlayerPopover()}
+      {isPressMode && renderGenericModal()}
     </div >
   );
 };

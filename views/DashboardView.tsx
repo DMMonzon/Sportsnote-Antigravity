@@ -76,6 +76,9 @@ interface DashboardViewProps {
     role: UserRole;
     name: string;
     avatar?: string;
+    plan?: 'free' | 'premium' | 'admin';
+    cycleStartDate?: number;
+    matchesCreatedInCycle?: number;
   };
   matches: Game[];
   tacticalSchemes: TacticalScheme[];
@@ -87,6 +90,27 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = React.useState<SectionId>('juegos');
   const [showRecycleModal, setShowRecycleModal] = React.useState<Game | null>(null);
+  const [seedingStatus, setSeedingStatus] = React.useState<string | null>(null);
+
+  const seedFirestore = async () => {
+    setSeedingStatus('Sembrando base de datos...');
+    try {
+      const { doc, setDoc } = await import('firebase/firestore');
+      const { db } = await import('../services/firebase');
+      const dbAccionesJson = (await import('../acciones_de_deportes.json')).default;
+
+      for (const sport of dbAccionesJson) {
+        const docRef = doc(db, 'config_deportes', sport.id);
+        await setDoc(docRef, sport);
+        console.log(`Documento de ${sport.id} subido con éxito.`);
+      }
+      setSeedingStatus('¡Base de datos sembrada con éxito!');
+      setTimeout(() => setSeedingStatus(null), 3000);
+    } catch (err: any) {
+      console.error(err);
+      setSeedingStatus(`Error al sembrar: ${err.message}`);
+    }
+  };
 
   const statsData = useMemo(() => {
     const allChains = matches.flatMap(g => g.passChains || []);
@@ -146,6 +170,47 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
         </div>
       </div>
 
+      {/* Indicador de Consumo (Solo para usuarios FREE) */}
+      {(user.plan === 'free' || !user.plan) && (
+        <div className="mb-6 p-5 rounded-2xl bg-[#131041]/90 border border-yellow-500/25 max-w-3xl shadow-xl relative overflow-hidden animate-stagger" style={{ animationDelay: '150ms' }}>
+          <div className="absolute top-0 right-0 w-24 h-24 bg-yellow-500/5 rounded-full blur-xl pointer-events-none"></div>
+          
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center text-yellow-500">
+                <i className="fa-solid fa-crown"></i>
+              </div>
+              <div>
+                <p className="text-white text-xs font-black uppercase tracking-wider">
+                  Plan Free — Partidos en este ciclo
+                </p>
+                {user.cycleStartDate && (
+                  <p className="text-[10px] text-white/50 font-bold uppercase mt-0.5">
+                    Tu cuota se renovará el {new Date(user.cycleStartDate + 30 * 24 * 60 * 60 * 1000).toLocaleDateString([], { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="text-right shrink-0">
+              <span className="font-contrail text-xl text-white italic">
+                {user.matchesCreatedInCycle || 0} <span className="text-white/40 font-lato font-normal not-italic text-sm">/ 4</span>
+              </span>
+            </div>
+          </div>
+
+          <div className="w-full bg-white/5 h-2 rounded-full mt-3 overflow-hidden border border-white/5">
+            <div 
+              className={`h-full rounded-full transition-all duration-500 ${
+                (user.matchesCreatedInCycle || 0) >= 4 
+                  ? 'bg-gradient-to-r from-red-500 to-orange-500' 
+                  : 'bg-gradient-to-r from-yellow-500 to-amber-400'
+              }`}
+              style={{ width: `${Math.min(100, ((user.matchesCreatedInCycle || 0) / 4) * 100)}%` }}
+            ></div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col xl:flex-row justify-between items-end gap-8 mt-4 mb-4">
         <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">
           <div className="bg-[#131041]/90 border border-white/5 rounded-xl p-5 flex flex-col h-[200px] shadow-2xl overflow-y-auto no-scrollbar animate-stagger" style={{ animationDelay: '200ms' }}>
@@ -184,7 +249,10 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
         </div>
 
         <div className="flex flex-wrap sm:flex-nowrap gap-4 w-full xl:w-auto shrink-0 justify-end animate-stagger" style={{ animationDelay: '400ms' }}>
-          <button onClick={() => navigate('/new-game')} className="bg-[#b4b4b4] text-black px-8 py-5 font-bold text-[11px] uppercase tracking-[2px] hover:bg-[#c0c0c0] transition-all active:scale-95 flex items-center justify-center gap-3 w-full sm:w-auto shadow-[0_0_20px_rgba(180,180,180,0.2)]">
+          <button
+            onClick={() => navigate('/new-game')}
+            className="bg-[#b4b4b4] text-black px-8 py-5 font-bold text-[11px] uppercase tracking-[2px] hover:bg-[#c0c0c0] transition-all active:scale-95 flex items-center justify-center gap-3 w-full sm:w-auto shadow-[0_0_20px_rgba(180,180,180,0.2)]"
+          >
             INICIAR NUEVO <i className="fa-solid fa-arrow-right"></i>
           </button>
           <button onClick={() => navigate('/history')} className="bg-[#1a1c23] text-white border border-white/5 px-8 py-5 font-bold text-[11px] uppercase tracking-[2px] hover:bg-[#252830] transition-all active:scale-95 flex items-center justify-center gap-3 w-full sm:w-auto">
@@ -334,6 +402,19 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
         </div>
 
         <div className="flex flex-wrap sm:flex-nowrap gap-4 w-full xl:w-auto shrink-0 justify-end animate-stagger" style={{ animationDelay: '400ms' }}>
+          <button
+            onClick={seedFirestore}
+            disabled={seedingStatus !== null}
+            className={`px-8 py-5 font-bold text-[11px] uppercase tracking-[2px] transition-all active:scale-95 flex items-center justify-center gap-3 w-full sm:w-auto shadow-md ${
+              seedingStatus?.includes('éxito') 
+                ? 'bg-[#00fe00] text-black hover:bg-[#02e002]'
+                : seedingStatus?.includes('Error') 
+                  ? 'bg-red-600 text-white hover:bg-red-700'
+                  : 'bg-primary text-white hover:bg-brandDark'
+            }`}
+          >
+            {seedingStatus || 'SEMBRAR CONFIG DEPORTES (FIRESTORE)'} <i className="fa-solid fa-cloud-arrow-up"></i>
+          </button>
           <button className="bg-[#b4b4b4] text-black px-8 py-5 font-bold text-[11px] uppercase tracking-[2px] hover:bg-[#c0c0c0] transition-all active:scale-95 flex items-center justify-center gap-3 w-full sm:w-auto shadow-[0_0_20px_rgba(180,180,180,0.2)]">
             REGLAMENTO <i className="fa-solid fa-arrow-right"></i>
           </button>
@@ -439,6 +520,8 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
           </div>
         </div>
       )}
+
+
 
     </div>
   );

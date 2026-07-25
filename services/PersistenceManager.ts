@@ -1,5 +1,5 @@
 import { AppState, Game, TacticalScheme } from '../types';
-import { db, collection, doc, setDoc, getDocs, query, where, deleteDoc, serverTimestamp } from './firebase';
+import { db, collection, doc, getDoc, setDoc, getDocs, query, where, deleteDoc, serverTimestamp } from './firebase';
 
 const STORAGE_KEY = 'sportsnote_db';
 const SYNC_QUEUE_KEY = 'sportsnote_sync_queue';
@@ -357,5 +357,128 @@ export const PersistenceManager = {
     } catch (e) {
       console.error("Error hydrating from cloud:", e);
     }
+  },
+
+  // --- User Profile / Quota Management ---
+  getUserProfile: async (uid: string): Promise<any> => {
+    if (uid === 'mock_press_user') {
+      return {
+        plan: 'free',
+        cycleStartDate: Date.now(),
+        matchesCreatedInCycle: 0
+      };
+    }
+
+    if (!navigator.onLine) {
+      const state = PersistenceManager.loadStateLocal();
+      if (state.currentUser && state.currentUser.uid === uid) {
+        return {
+          plan: state.currentUser.plan || 'free',
+          cycleStartDate: state.currentUser.cycleStartDate || Date.now(),
+          matchesCreatedInCycle: state.currentUser.matchesCreatedInCycle || 0
+        };
+      }
+      return { plan: 'free', cycleStartDate: Date.now(), matchesCreatedInCycle: 0 };
+    }
+
+    try {
+      const userRef = doc(db, 'users', uid);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists()) {
+        const data = userSnap.data();
+        return {
+          plan: data.plan || 'free',
+          cycleStartDate: data.cycleStartDate || null,
+          matchesCreatedInCycle: typeof data.matchesCreatedInCycle === 'number' ? data.matchesCreatedInCycle : 0
+        };
+      } else {
+        const defaultProfile = {
+          plan: 'free',
+          cycleStartDate: serverTimestamp(),
+          matchesCreatedInCycle: 0
+        };
+        await setDoc(userRef, defaultProfile);
+        
+        return {
+          plan: 'free',
+          cycleStartDate: Date.now(),
+          matchesCreatedInCycle: 0
+        };
+      }
+    } catch (e) {
+      console.error("Error getting user profile:", e);
+      const state = PersistenceManager.loadStateLocal();
+      if (state.currentUser && state.currentUser.uid === uid) {
+        return {
+          plan: state.currentUser.plan || 'free',
+          cycleStartDate: state.currentUser.cycleStartDate || Date.now(),
+          matchesCreatedInCycle: state.currentUser.matchesCreatedInCycle || 0
+        };
+      }
+      return { plan: 'free', cycleStartDate: Date.now(), matchesCreatedInCycle: 0 };
+    }
+  },
+
+  checkAndResetUserCycle: async (uid: string, profile: { plan: string; cycleStartDate: any; matchesCreatedInCycle: number }): Promise<{ plan: string; cycleStartDate: any; matchesCreatedInCycle: number; updated: boolean }> => {
+    if (uid === 'mock_press_user') {
+      return { ...profile, updated: false };
+    }
+
+    const startMs = getTimestampMillis(profile.cycleStartDate);
+    const now = Date.now();
+    const elapsed = now - startMs;
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+    if (elapsed >= THIRTY_DAYS_MS) {
+      const updatedProfile = {
+        ...profile,
+        cycleStartDate: now,
+        matchesCreatedInCycle: 0
+      };
+
+      if (navigator.onLine) {
+        try {
+          const userRef = doc(db, 'users', uid);
+          await setDoc(userRef, {
+            cycleStartDate: serverTimestamp(),
+            matchesCreatedInCycle: 0
+          }, { merge: true });
+        } catch (e) {
+          console.error("Error updating user cycle in Firestore:", e);
+        }
+      }
+
+      return {
+        ...updatedProfile,
+        updated: true
+      };
+    }
+
+    return {
+      ...profile,
+      updated: false
+    };
   }
+};
+
+// Helper function to extract milliseconds from any Firebase Timestamp, Date, string, or number
+export const getTimestampMillis = (timestamp: any): number => {
+  if (!timestamp) return Date.now();
+  if (typeof timestamp.toDate === 'function') {
+    return timestamp.toDate().getTime();
+  }
+  if (typeof timestamp.seconds === 'number') {
+    return timestamp.seconds * 1000;
+  }
+  if (timestamp instanceof Date) {
+    return timestamp.getTime();
+  }
+  if (typeof timestamp === 'number') {
+    return timestamp;
+  }
+  if (typeof timestamp === 'string') {
+    return new Date(timestamp).getTime();
+  }
+  return Date.now();
 };

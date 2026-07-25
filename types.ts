@@ -111,6 +111,7 @@ export interface Game {
   createdAt: number;
   passChains: number[];
   role?: UserRole;
+  sportId?: string;
   activeTacticId?: string;
   isFavorite?: boolean;
   ownerId?: string;
@@ -132,6 +133,9 @@ export interface AppState {
     role: UserRole;
     name: string;
     avatar?: string;
+    plan?: 'free' | 'premium' | 'admin';
+    cycleStartDate?: number;
+    matchesCreatedInCycle?: number;
   } | null;
   matches: Game[];
   activeGameId?: string | null;
