@@ -467,8 +467,9 @@ const LiveGameView: React.FC<{
   tacticalSchemes: TacticalScheme[],
   onUpdateTactics: (tactics: TacticalScheme[]) => void,
   onExitGame: (game: Game) => void,
-  onAnnulGame: () => void
-}> = ({ role, tacticalSchemes, onUpdateTactics, onExitGame, onAnnulGame }) => {
+  onAnnulGame: () => void,
+  onConsumeMatchQuota?: (gameId: string) => Promise<boolean>
+}> = ({ role, tacticalSchemes, onUpdateTactics, onExitGame, onAnnulGame, onConsumeMatchQuota }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [game, setGame] = useState<Game | null>(null);
@@ -482,36 +483,20 @@ const LiveGameView: React.FC<{
 
     const fetchAcciones = async () => {
       try {
-        const sportId = game.sportId || 'hockey_cesped';
-        console.log(`Cargando acciones para el deporte: ${sportId}`);
+        const sportId = game.sportType || 'hockey_cesped';
+        console.log(`Cargando acciones dinámicas desde Firestore para el deporte (documento): ${sportId}`);
 
-        const docRef = doc(db, 'config_deportes', 'acciones_de_deportes');
+        const docRef = doc(db, 'config_deportes', sportId);
         const docSnap = await getDoc(docRef);
 
         let sportConfig = null;
 
         if (docSnap.exists()) {
-          const data = docSnap.data();
-          if (Array.isArray(data)) {
-            sportConfig = data.find((s: any) => s.id === sportId);
-          } else if (data.sports && Array.isArray(data.sports)) {
-            sportConfig = data.sports.find((s: any) => s.id === sportId);
-          } else if (data.deportes && Array.isArray(data.deportes)) {
-            sportConfig = data.deportes.find((s: any) => s.id === sportId);
-          } else if (data[sportId]) {
-            sportConfig = data[sportId];
-          } else {
-            for (const key of Object.keys(data)) {
-              if (Array.isArray(data[key])) {
-                sportConfig = data[key].find((s: any) => s.id === sportId);
-                if (sportConfig) break;
-              }
-            }
-          }
+          sportConfig = docSnap.data();
         }
 
-        if (!sportConfig) {
-          console.warn(`No se encontró config en Firestore para ${sportId}. Buscando en JSON local...`);
+        if (!sportConfig || !sportConfig.reglamento) {
+          console.warn(`No se encontró config válida en Firestore para el documento ${sportId}. Buscando en JSON local...`);
           if (Array.isArray(localSportsConfig)) {
             sportConfig = localSportsConfig.find((s: any) => s.id === sportId);
           }
@@ -524,7 +509,7 @@ const LiveGameView: React.FC<{
         }
       } catch (err) {
         console.error('Error al recuperar las acciones dinámicas de Firestore:', err);
-        const sportId = game.sportId || 'hockey_cesped';
+        const sportId = game.sportType || 'hockey_cesped';
         console.log(`Aplicando fallback local para: ${sportId}`);
         const sportConfig = (localSportsConfig as any[]).find((s: any) => s.id === sportId);
         if (sportConfig) {
@@ -534,7 +519,7 @@ const LiveGameView: React.FC<{
     };
 
     fetchAcciones();
-  }, [game?.sportId]);
+  }, [game?.sportType]);
 
   const [isRunning, setIsRunning] = useState(false);
   const [seconds, setSeconds] = useState(0);
@@ -600,10 +585,27 @@ const LiveGameView: React.FC<{
   const [isFlipped, setIsFlipped] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showFinishConfirm, setShowFinishConfirm] = useState(false);
+  const [showSuspendConfirm, setShowSuspendConfirm] = useState(false);
+  const [suspensionReason, setSuspensionReason] = useState('');
   const [showResumePrompt, setShowResumePrompt] = useState(false);
   const [pendingActiveGame, setPendingActiveGame] = useState<any>(null);
   const [syncQueueLength, setSyncQueueLength] = useState(PersistenceManager.getSyncQueueLength());
   const [orientationTrigger, setOrientationTrigger] = useState(0);
+
+  const checkAndTriggerQuotaConsumption = () => {
+    if (!game || game.isCounted) return;
+
+    // Marcamos localmente isCounted a true para prevenir que llamadas concurrentes (clicks dobles) vuelvan a entrar a esta lógica
+    game.isCounted = true;
+
+    if (onConsumeMatchQuota) {
+      onConsumeMatchQuota(game.id).catch(err => {
+        console.error("Error al consumir la cuota de partido:", err);
+        // Si hay un error crítico y no se guardó, revertimos el flag local para permitir reintentos
+        if (game) game.isCounted = false;
+      });
+    }
+  };
 
   useEffect(() => {
     const handleResize = () => setOrientationTrigger(prev => prev + 1);
@@ -849,6 +851,12 @@ const LiveGameView: React.FC<{
       setTimeout(() => setSnackbar(prev => ({ ...prev, visible: false })), 3500);
       return;
     }
+    
+    // Si el cronómetro no estaba corriendo y se va a iniciar, se dispara el descuento del partido
+    if (!isRunning) {
+      checkAndTriggerQuotaConsumption();
+    }
+
     setIsRunning(!isRunning);
   };
 
@@ -1095,6 +1103,11 @@ const LiveGameView: React.FC<{
     pressTeam?: 'local' | 'visitante'
   ) => {
     const eventId = Math.random().toString(36).substr(2, 5);
+
+    // Disparar consumo de la cuota mensual si es una acción de juego real
+    if (type !== 'NOTA VOZ' && type !== 'NOTA TEXTO') {
+      checkAndTriggerQuotaConsumption();
+    }
 
     if (game) {
       const attackingTeamId = possession === Possession.HOME ? game.teamHome.id : game.teamAway.id;
@@ -1598,6 +1611,7 @@ const LiveGameView: React.FC<{
       setIsLoading(true); // Feedback visual de guardado
 
       const cleanGame = JSON.parse(JSON.stringify(game));
+      cleanGame.status = 'finished';
 
       const payload = {
         ...cleanGame,
@@ -1605,6 +1619,7 @@ const LiveGameView: React.FC<{
         timestamp: serverTimestamp(),
         localTeam: game.teamHome.name,
         visitorTeam: game.teamAway.name,
+        status: 'finished',
         stats: isPressMode ? {
           local: {
             gol: game.scoreHome,
@@ -1641,6 +1656,60 @@ const LiveGameView: React.FC<{
     } catch (error) {
       console.error('❌ Error crítico al guardar el partido en Firebase:', error);
       setSnackbar({ message: "Error al guardar en la nube. Inténtalo de nuevo.", visible: true });
+      setTimeout(() => setSnackbar(prev => ({ ...prev, visible: false })), 3500);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSuspendGame = () => {
+    setIsRunning(false); // Detener el cronómetro automáticamente al intentar suspender
+    setIsMenuOpen(false);
+    setShowSuspendConfirm(true);
+  };
+
+  const confirmSuspendGame = async () => {
+    setShowSuspendConfirm(false);
+    
+    if (!id || !game || !auth.currentUser) {
+      console.error("❌ No se puede suspender el partido: Faltan datos esenciales.");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      const cleanGame = JSON.parse(JSON.stringify(game));
+      cleanGame.status = 'suspended';
+      cleanGame.suspensionReason = suspensionReason;
+      cleanGame.suspendedAt = Date.now();
+
+      const payload = {
+        ...cleanGame,
+        authorId: auth.currentUser.uid,
+        timestamp: serverTimestamp(),
+        localTeam: game.teamHome.name,
+        visitorTeam: game.teamAway.name,
+        status: 'suspended',
+        suspensionReason: suspensionReason,
+        suspendedAt: Date.now(),
+        isFavorite: game.isFavorite || false
+      };
+
+      // Guardar en Firebase
+      await setDoc(doc(db, 'matches', id), payload, { merge: true });
+      console.log('✅ Partido suspendido en Firebase exitosamente');
+      
+      // Limpiar almacenamiento local de sesión activa
+      StorageService.clearActiveGame();
+      onExitGame(cleanGame);
+      
+      // Navegar de regreso al dashboard
+      navigate('/dashboard', { replace: true });
+
+    } catch (error) {
+      console.error('❌ Error crítico al suspender el partido en Firebase:', error);
+      setSnackbar({ message: "Error al suspender en la nube. Inténtalo de nuevo.", visible: true });
       setTimeout(() => setSnackbar(prev => ({ ...prev, visible: false })), 3500);
     } finally {
       setIsLoading(false);
@@ -3666,6 +3735,47 @@ const LiveGameView: React.FC<{
         </Portal>
       )}
 
+      {/* Modal Confirmar Suspender Juego */}
+      {showSuspendConfirm && (
+        <Portal>
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+            <div className="relative w-full max-w-sm bg-[#1e293b]/45 backdrop-blur-md border border-white/10 p-8 rounded-[40px] shadow-2xl animate-in zoom-in duration-200 text-center">
+              <div className="text-4xl mb-4 text-amber-500"><i className="fa-solid fa-pause"></i></div>
+              <h3 className="contrail-font text-2xl text-white uppercase mb-2">Suspender Partido</h3>
+              <p className="text-[11px] font-bold text-white/60 uppercase leading-relaxed mb-4">
+                Ingresa el motivo de la suspensión o interrupción del juego:
+              </p>
+              
+              <textarea
+                value={suspensionReason}
+                onChange={(e) => setSuspensionReason(e.target.value)}
+                placeholder="Ej. Lluvia fuerte, falta de luz, disturbios, etc."
+                className="w-full h-24 bg-white/5 border border-white/10 p-3 rounded-xl text-xs font-bold text-white focus:border-amber-500 outline-none shadow-inner mb-6 resize-none placeholder-white/30"
+              />
+
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={confirmSuspendGame}
+                  disabled={!suspensionReason.trim()}
+                  className="w-full bg-amber-500 text-black font-black py-4 rounded-2xl active:scale-95 text-xs uppercase shadow-lg shadow-amber-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  CONFIRMAR SUSPENSIÓN
+                </button>
+                <button
+                  onClick={() => {
+                    setShowSuspendConfirm(false);
+                    setSuspensionReason('');
+                  }}
+                  className="w-full bg-[#1e293b]/45 backdrop-blur-md border border-white/10 text-white font-black py-4 rounded-2xl active:scale-95 text-xs uppercase border border-white/10 transition-all"
+                >
+                  CANCELAR
+                </button>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
       {isMenuOpen && (
         <Portal>
           <div className="fixed inset-0 z-[400] flex">
@@ -3681,6 +3791,13 @@ const LiveGameView: React.FC<{
                   className="w-full text-left p-4 rounded-xl bg-primary/10 text-primary font-black text-[11px] uppercase tracking-widest flex items-center gap-3 transition-all active:scale-95 mb-4 hover:bg-primary/20"
                 >
                   <i className="fa-solid fa-flag-checkered text-white"></i> Finalizar Match
+                </button>
+
+                <button
+                  onClick={handleSuspendGame}
+                  className="w-full text-left p-4 rounded-xl bg-amber-500/10 text-amber-500 font-black text-[11px] uppercase tracking-widest flex items-center gap-3 transition-all active:scale-95 mb-4 hover:bg-amber-500/20"
+                >
+                  <i className="fa-solid fa-pause text-amber-500"></i> Suspender Juego
                 </button>
 
                 <div className="py-2 border-b border-white/10 mb-2">

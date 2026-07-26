@@ -360,8 +360,8 @@ export const PersistenceManager = {
   },
 
   // --- User Profile / Quota Management ---
-  getUserProfile: async (uid: string): Promise<any> => {
-    if (uid === 'mock_press_user') {
+  getUserProfile: async (email: string): Promise<any> => {
+    if (email === 'mock_press_user') {
       return {
         plan: 'free',
         cycleStartDate: Date.now(),
@@ -371,35 +371,72 @@ export const PersistenceManager = {
 
     if (!navigator.onLine) {
       const state = PersistenceManager.loadStateLocal();
-      if (state.currentUser && state.currentUser.uid === uid) {
+      if (state.currentUser && state.currentUser.email === email) {
         return {
           plan: state.currentUser.plan || 'free',
           cycleStartDate: state.currentUser.cycleStartDate || Date.now(),
-          matchesCreatedInCycle: state.currentUser.matchesCreatedInCycle || 0
+          matchesCreatedInCycle: state.currentUser.matchesCreatedInCycle || 0,
+          docId: state.currentUser.docId
         };
       }
       return { plan: 'free', cycleStartDate: Date.now(), matchesCreatedInCycle: 0 };
     }
 
     try {
-      const userRef = doc(db, 'users', uid);
-      const userSnap = await getDoc(userRef);
+      // REGLA 2: Consistencia en el ID del Documento
+      // Buscamos el documento en authorized_users usando el campo email (consistente con LoginView)
+      const usersRef = collection(db, 'authorized_users');
+      const q = query(usersRef, where('email', '==', email));
+      const querySnapshot = await getDocs(q);
 
-      if (userSnap.exists()) {
-        const data = userSnap.data();
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        const data = userDoc.data();
+        const docId = userDoc.id; // ID consistente (ej. 'sportsnote.app')
+        const docRef = doc(db, 'authorized_users', docId);
+        
+        let plan = 'free';
+        if (data.status === 'free' || data.status === 'premium') {
+          plan = data.status;
+        } else if (data.plan === 'free' || data.plan === 'premium' || data.plan === 'admin') {
+          plan = data.plan;
+        }
+
+        let cycleStartDate = data.cycleStartDate;
+        let matchesCreatedInCycle = data.matchesCreatedInCycle;
+        let needsUpdate = false;
+
+        // REGLA 3: Verificación Previa. Solo agregamos si no estaban definidos
+        if (cycleStartDate === undefined || cycleStartDate === null) {
+          cycleStartDate = serverTimestamp();
+          needsUpdate = true;
+        }
+        if (matchesCreatedInCycle === undefined || matchesCreatedInCycle === null) {
+          matchesCreatedInCycle = 0;
+          needsUpdate = true;
+        }
+
+        if (needsUpdate) {
+          // REGLA 1: Uso Obligatorio de merge: true para no pisar campos preexistentes (email, role, status)
+          await setDoc(docRef, {
+            cycleStartDate: data.cycleStartDate || cycleStartDate,
+            matchesCreatedInCycle: typeof data.matchesCreatedInCycle === 'number' ? data.matchesCreatedInCycle : matchesCreatedInCycle,
+            plan: data.plan || plan
+          }, { merge: true });
+          
+          if (typeof cycleStartDate !== 'number') {
+            cycleStartDate = Date.now();
+          }
+        }
+
         return {
-          plan: data.plan || 'free',
-          cycleStartDate: data.cycleStartDate || null,
-          matchesCreatedInCycle: typeof data.matchesCreatedInCycle === 'number' ? data.matchesCreatedInCycle : 0
+          plan: plan,
+          cycleStartDate: cycleStartDate,
+          matchesCreatedInCycle: typeof matchesCreatedInCycle === 'number' ? matchesCreatedInCycle : 0,
+          docId: docId
         };
       } else {
-        const defaultProfile = {
-          plan: 'free',
-          cycleStartDate: serverTimestamp(),
-          matchesCreatedInCycle: 0
-        };
-        await setDoc(userRef, defaultProfile);
-        
+        // Fallback por si no existe
         return {
           plan: 'free',
           cycleStartDate: Date.now(),
@@ -409,19 +446,20 @@ export const PersistenceManager = {
     } catch (e) {
       console.error("Error getting user profile:", e);
       const state = PersistenceManager.loadStateLocal();
-      if (state.currentUser && state.currentUser.uid === uid) {
+      if (state.currentUser && state.currentUser.email === email) {
         return {
           plan: state.currentUser.plan || 'free',
           cycleStartDate: state.currentUser.cycleStartDate || Date.now(),
-          matchesCreatedInCycle: state.currentUser.matchesCreatedInCycle || 0
+          matchesCreatedInCycle: state.currentUser.matchesCreatedInCycle || 0,
+          docId: state.currentUser.docId
         };
       }
       return { plan: 'free', cycleStartDate: Date.now(), matchesCreatedInCycle: 0 };
     }
   },
 
-  checkAndResetUserCycle: async (uid: string, profile: { plan: string; cycleStartDate: any; matchesCreatedInCycle: number }): Promise<{ plan: string; cycleStartDate: any; matchesCreatedInCycle: number; updated: boolean }> => {
-    if (uid === 'mock_press_user') {
+  checkAndResetUserCycle: async (email: string, profile: { plan: string; cycleStartDate: any; matchesCreatedInCycle: number; docId?: string }): Promise<{ plan: string; cycleStartDate: any; matchesCreatedInCycle: number; updated: boolean; docId?: string }> => {
+    if (email === 'mock_press_user') {
       return { ...profile, updated: false };
     }
 
@@ -439,11 +477,26 @@ export const PersistenceManager = {
 
       if (navigator.onLine) {
         try {
-          const userRef = doc(db, 'users', uid);
-          await setDoc(userRef, {
-            cycleStartDate: serverTimestamp(),
-            matchesCreatedInCycle: 0
-          }, { merge: true });
+          let docId = profile.docId;
+          
+          // Si no tenemos el docId, lo resolvemos por query de email
+          if (!docId) {
+            const usersRef = collection(db, 'authorized_users');
+            const q = query(usersRef, where('email', '==', email));
+            const querySnapshot = await getDocs(q);
+            if (!querySnapshot.empty) {
+              docId = querySnapshot.docs[0].id;
+            }
+          }
+
+          if (docId) {
+            const userRef = doc(db, 'authorized_users', docId);
+            // REGLA 1: Uso Obligatorio de merge: true
+            await setDoc(userRef, {
+              cycleStartDate: serverTimestamp(),
+              matchesCreatedInCycle: 0
+            }, { merge: true });
+          }
         } catch (e) {
           console.error("Error updating user cycle in Firestore:", e);
         }

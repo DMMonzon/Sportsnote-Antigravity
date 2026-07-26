@@ -22,26 +22,28 @@ const AppContent: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const refreshUserProfile = async (uid: string) => {
-    if (!uid) return;
+  const refreshUserProfile = async (email: string) => {
+    if (!email) return;
     try {
-      const profile = await PersistenceManager.getUserProfile(uid);
-      const checked = await PersistenceManager.checkAndResetUserCycle(uid, profile);
+      const profile = await PersistenceManager.getUserProfile(email);
+      const checked = await PersistenceManager.checkAndResetUserCycle(email, profile);
       
       setState(prev => {
-        if (!prev.currentUser || prev.currentUser.uid !== uid) return prev;
+        if (!prev.currentUser || prev.currentUser.email !== email) return prev;
         
         const updatedUser = {
           ...prev.currentUser,
           plan: checked.plan,
           cycleStartDate: getTimestampMillis(checked.cycleStartDate),
-          matchesCreatedInCycle: checked.matchesCreatedInCycle
+          matchesCreatedInCycle: checked.matchesCreatedInCycle,
+          docId: checked.docId || prev.currentUser.docId
         };
 
         if (
           prev.currentUser.plan === updatedUser.plan &&
           prev.currentUser.cycleStartDate === updatedUser.cycleStartDate &&
-          prev.currentUser.matchesCreatedInCycle === updatedUser.matchesCreatedInCycle
+          prev.currentUser.matchesCreatedInCycle === updatedUser.matchesCreatedInCycle &&
+          prev.currentUser.docId === updatedUser.docId
         ) {
           return prev;
         }
@@ -58,10 +60,10 @@ const AppContent: React.FC = () => {
 
   // Refrescar el perfil del usuario al cambiar o iniciar
   useEffect(() => {
-    if (state.currentUser?.uid) {
-      refreshUserProfile(state.currentUser.uid);
+    if (state.currentUser?.email) {
+      refreshUserProfile(state.currentUser.email);
     }
-  }, [state.currentUser?.uid]);
+  }, [state.currentUser?.email]);
 
   // Guardar estado automáticamente en cada cambio
   useEffect(() => {
@@ -79,15 +81,16 @@ const AppContent: React.FC = () => {
 
   const handleLogin = async (user: { id: string, uid: string, email: string, role: UserRole, name: string, avatar?: string }) => {
     // 1. Recuperar el perfil del usuario desde Firestore
-    const profile = await PersistenceManager.getUserProfile(user.uid);
+    const profile = await PersistenceManager.getUserProfile(user.email);
     // 2. Comprobar y resetear ciclo móvil si aplica
-    const checked = await PersistenceManager.checkAndResetUserCycle(user.uid, profile);
+    const checked = await PersistenceManager.checkAndResetUserCycle(user.email, profile);
 
     const fullUser = {
       ...user,
       plan: checked.plan,
       cycleStartDate: getTimestampMillis(checked.cycleStartDate),
-      matchesCreatedInCycle: checked.matchesCreatedInCycle
+      matchesCreatedInCycle: checked.matchesCreatedInCycle,
+      docId: checked.docId
     };
 
     const newState = {
@@ -118,33 +121,75 @@ const AppContent: React.FC = () => {
     // Verificar si el usuario free superó el límite de partidos
     const plan = currentUser.plan || 'free';
     if (plan === 'free') {
-      const profile = await PersistenceManager.getUserProfile(currentUser.uid);
-      const checked = await PersistenceManager.checkAndResetUserCycle(currentUser.uid, profile);
+      const profile = await PersistenceManager.getUserProfile(currentUser.email);
+      const checked = await PersistenceManager.checkAndResetUserCycle(currentUser.email, profile);
       if (checked.matchesCreatedInCycle >= 4) {
         console.warn("Límite de partidos superado. Creación bloqueada.");
         return;
       }
     }
 
-    const newGame = {
+    const newGame: Game = {
       ...game,
       userId: currentUser.uid, // Used for legacy sync
       ownerId: currentUser.uid, // Used for tactics and ownership
-      authorId: currentUser.uid // Used for proper Firestore filtering
+      authorId: currentUser.uid, // Used for proper Firestore filtering
+      isCounted: false, // Por defecto, el partido no está contabilizado
+      status: game.status || 'active' // Estado del partido
     };
     
     // Ensure it is saved locally AND queued for sync immediately
     PersistenceManager.createGame(newGame);
 
+    const isScheduled = newGame.status === 'scheduled';
+
+    const newState = {
+      ...state,
+      matches: [...state.matches, newGame],
+      activeGameId: isScheduled ? (state.activeGameId || null) : newGame.id
+    };
+    setState(newState);
+    
+    if (isScheduled) {
+      navigate('/dashboard');
+    } else {
+      navigate(`/live/${newGame.id}`);
+    }
+  };
+
+  const consumeMatchQuota = async (gameId: string): Promise<boolean> => {
+    const currentUser = state.currentUser;
+    if (!currentUser) return false;
+
+    // 1. Buscar el partido localmente
+    const matchIndex = state.matches.findIndex(m => m.id === gameId);
+    if (matchIndex === -1) return false;
+
+    const match = state.matches[matchIndex];
+    
+    // Si ya está contabilizado, ignorar para evitar doble descuento
+    if (match.isCounted) return false;
+
+    // 2. Marcar como contabilizado
+    const updatedMatch = { ...match, isCounted: true };
+    const updatedMatches = [...state.matches];
+    updatedMatches[matchIndex] = updatedMatch;
+
+    // Actualizar PersistenceManager (guarda en localStorage y encola la sincronización)
+    PersistenceManager.updateGame(updatedMatch);
+
     let updatedUser = { ...currentUser };
+    const plan = currentUser.plan || 'free';
 
     if (plan === 'free') {
+      // Incrementar contador
       const nextCount = (currentUser.matchesCreatedInCycle || 0) + 1;
       updatedUser.matchesCreatedInCycle = nextCount;
 
       if (navigator.onLine) {
         try {
-          const userRef = doc(db, 'users', currentUser.uid);
+          const docId = currentUser.docId || currentUser.email.split('@')[0];
+          const userRef = doc(db, 'authorized_users', docId);
           await setDoc(userRef, {
             matchesCreatedInCycle: nextCount
           }, { merge: true });
@@ -154,14 +199,14 @@ const AppContent: React.FC = () => {
       }
     }
 
-    const newState = {
-      ...state,
+    // Actualizar el estado de React (se propaga al Dashboard y guarda en localStorage)
+    setState(prev => ({
+      ...prev,
       currentUser: updatedUser,
-      matches: [...state.matches, newGame],
-      activeGameId: newGame.id
-    };
-    setState(newState);
-    navigate(`/live/${newGame.id}`);
+      matches: updatedMatches
+    }));
+
+    return true;
   };
 
   const closeActiveGame = (finalGame?: Game) => {
@@ -260,6 +305,7 @@ const AppContent: React.FC = () => {
               onUpdateTactics={handleUpdateTactics}
               onExitGame={(game) => closeActiveGame(game)}
               onAnnulGame={handleAnnulGame}
+              onConsumeMatchQuota={consumeMatchQuota}
             />
             : <Navigate to="/" />
         } />

@@ -202,8 +202,8 @@ const NewGameView: React.FC<NewGameViewProps> = ({ user, onCreate }) => {
 
     setCheckingQuota(true);
     try {
-      const profile = await PersistenceManager.getUserProfile(user.uid);
-      const checked = await PersistenceManager.checkAndResetUserCycle(user.uid, profile);
+      const profile = await PersistenceManager.getUserProfile(user.email);
+      const checked = await PersistenceManager.checkAndResetUserCycle(user.email, profile);
       
       setCheckingQuota(false);
       if (checked.matchesCreatedInCycle >= 4) {
@@ -224,11 +224,37 @@ const NewGameView: React.FC<NewGameViewProps> = ({ user, onCreate }) => {
   const template = location.state?.template as Game | undefined;
   const [selectedSportId, setSelectedSportId] = useState<string>(location.state?.sportId || template?.sportId || 'hockey_cesped');
 
+  const queryParams = new URLSearchParams(location.search);
+  const isScheduleMode = queryParams.get('mode') === 'schedule';
+
+  const [fecha, setFecha] = useState<string>(
+    template?.createdAt 
+      ? new Date(template.createdAt).toISOString().split('T')[0] 
+      : new Date().toISOString().split('T')[0]
+  );
+
   const sports = [
-    { id: 'hockey_cesped', name: 'Hockey', bg: 'https://images.unsplash.com/photo-1587280501635-68a0e82cd5ff?q=80&w=600&auto=format&fit=crop', icon: 'fa-solid fa-hockey-puck', subtitle: 'FIH Oficial • Registro Neutral' },
-    { id: 'futbol', name: 'Fútbol', bg: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=600&auto=format&fit=crop', icon: 'fa-solid fa-futbol', subtitle: 'FIFA Oficial • Registro Neutral' },
-    { id: 'voley', name: 'Vóley', bg: 'https://images.unsplash.com/photo-1592656094267-764a450201c5?q=80&w=600&auto=format&fit=crop', icon: 'fa-solid fa-volleyball', subtitle: 'FIVB Oficial • Registro Neutral' },
-    { id: 'basket', name: 'Básquet', bg: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=600&auto=format&fit=crop', icon: 'fa-solid fa-basketball', subtitle: 'FIBA Oficial • Registro Neutral' }
+    { id: 'hockey_cesped', name: 'Hockey', bg: 'https://images.unsplash.com/photo-1734159319354-b9ead78dd441?q=80&w=1000', icon: 'fa-solid fa-hockey-puck', subtitle: 'FIH Oficial • Registro Neutral' },
+    { id: 'futbol', name: 'Fútbol', bg: 'https://images.unsplash.com/photo-1686121177669-0ab65867ab84?q=80&w=1000', icon: 'fa-solid fa-futbol', subtitle: 'FIFA Oficial • Registro Neutral' },
+    { id: 'voley', name: 'Vóley', bg: 'https://images.unsplash.com/photo-1666901356149-93f2eb3ba5a2?q=80&w=1000', icon: 'fa-solid fa-volleyball', subtitle: 'FIVB Oficial • Registro Neutral' },
+    { id: 'basket', name: 'Básquet', bg: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=1000', icon: 'fa-solid fa-basketball', subtitle: 'FIBA Oficial • Registro Neutral' }
+  ];
+
+  const handleSportSelect = (sportId: string) => {
+    setSelectedSportId(sportId);
+  };
+
+  const currentIndex = sports.findIndex(s => s.id === selectedSportId) !== -1 
+    ? sports.findIndex(s => s.id === selectedSportId) 
+    : 0;
+
+  const leftIndex = (currentIndex - 1 + sports.length) % sports.length;
+  const rightIndex = (currentIndex + 1) % sports.length;
+
+  const visibleSports = [
+    { ...sports[leftIndex], slot: 'left' },
+    { ...sports[currentIndex], slot: 'center' },
+    { ...sports[rightIndex], slot: 'right' }
   ];
 
   const currentSport = sports.find(s => s.id === selectedSportId) || sports[0];
@@ -264,7 +290,9 @@ const NewGameView: React.FC<NewGameViewProps> = ({ user, onCreate }) => {
   const [teamAwayPrimary, setTeamAwayPrimary] = useState(template?.teamAway.primaryColor || '#FF0000');
   const [teamAwaySecondary, setTeamAwaySecondary] = useState(template?.teamAway.secondaryColor || '#FFFFFF');
 
-  const [registroMode, setRegistroMode] = useState<'visual' | 'botones'>('visual');
+  const [registroMode, setRegistroMode] = useState<'visual' | 'botones'>(
+    user.role === UserRole.COACH ? 'visual' : 'botones'
+  );
 
   // Metadata para Periodistas (Prensa)
   const [torneo, setTorneo] = useState(template?.metadata?.torneo || '');
@@ -315,7 +343,7 @@ const NewGameView: React.FC<NewGameViewProps> = ({ user, onCreate }) => {
         sportType,
         sportId: selectedSportId,
         authorId: auth.currentUser?.uid || PersistenceManager.loadStateLocal().currentUser?.uid || '',
-        registroMode: role === UserRole.PRESS ? 'botones' : registroMode,
+        registroMode: role === UserRole.COACH ? registroMode : 'botones',
         teamHome: {
           id: 'th_' + Date.now(),
           name: teamHome.toUpperCase(),
@@ -333,11 +361,13 @@ const NewGameView: React.FC<NewGameViewProps> = ({ user, onCreate }) => {
         scoreHome: 0,
         scoreAway: 0,
         events: [],
-        isLive: true,
+        isLive: !isScheduleMode,
         duration: 0,
         role,
-        createdAt: Date.now(),
+        createdAt: (isScheduleMode && fecha) ? (new Date(`${fecha}T${hora || '00:00'}`).getTime() || Date.now()) : Date.now(),
         passChains: [],
+        isCounted: false,
+        status: isScheduleMode ? 'scheduled' : 'active',
         metadata: {
           torneo: torneo || 'Partido Único',
           jornada: jornada || 'Fecha 1',
@@ -386,37 +416,41 @@ const NewGameView: React.FC<NewGameViewProps> = ({ user, onCreate }) => {
       </header>
 
       <div className="flex-1 flex flex-col gap-6 max-w-5xl mx-auto w-full pb-20">
-        <div className="w-full mb-2 animate-stagger" style={{ animationDelay: '50ms' }}>
-          <p className="text-[#b4b4b4] text-[10px] font-black tracking-[3px] uppercase mb-3">Selecciona Deporte</p>
-          <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory no-scrollbar scroll-smooth">
-            {sports.map((s) => {
-              const isSelected = selectedSportId === s.id;
+        <div className="w-full mb-2 animate-stagger h-[180px] flex flex-col justify-center" style={{ animationDelay: '50ms' }}>
+          <p className="text-[#b4b4b4] text-[10px] font-black tracking-[3px] uppercase mb-3 text-center">Selecciona Deporte</p>
+          <div className="flex gap-6 justify-center items-center w-full h-full overflow-visible">
+            {visibleSports.map((s) => {
+              const isSelected = s.slot === 'center';
               return (
                 <button
+                  id={`sport-card-${s.id}`}
                   key={s.id}
                   type="button"
-                  onClick={() => setSelectedSportId(s.id)}
-                  className={`snap-center shrink-0 w-64 h-36 rounded-[28px] relative overflow-hidden border transition-all duration-300 ${
+                  onClick={() => handleSportSelect(s.id)}
+                  className={`shrink-0 w-64 h-36 rounded-[28px] relative overflow-hidden border transition-all duration-300 ease-out cursor-pointer bg-slate-800 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 ${
                     isSelected 
-                      ? 'border-[#00fe00] shadow-[0_0_20px_rgba(0,254,0,0.3)] scale-105 z-10' 
-                      : 'border-white/10 opacity-60 hover:opacity-90 hover:scale-[1.02]'
+                      ? 'scale-105 border-[#00fe00] shadow-[0_0_30px_rgba(0,254,0,0.35)] z-10 opacity-100' 
+                      : 'scale-90 border-white/5 opacity-40 hover:opacity-60 z-0'
                   }`}
                 >
-                  <img 
-                    src={s.bg} 
-                    alt={s.name} 
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500" 
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/10"></div>
+                  {s.bg && (
+                    <img 
+                      src={s.bg} 
+                      alt={s.name} 
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 hover:scale-105" 
+                      loading="lazy"
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/10"></div>
                   
                   <div className="absolute inset-0 p-5 flex flex-col justify-between items-start text-left">
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm border ${
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm border transition-colors duration-300 ${
                       isSelected ? 'bg-[#00fe00]/20 border-[#00fe00]/50 text-[#00fe00]' : 'bg-white/5 border-white/10 text-white/70'
                     }`}>
                       <i className={s.icon}></i>
                     </div>
                     <div>
-                      <h4 className="font-contrail text-2xl text-white italic tracking-wider leading-none uppercase">
+                      <h4 className="font-contrail text-2xl text-white italic tracking-wider leading-none uppercase drop-shadow">
                         {s.name}
                       </h4>
                       <p className="text-[9px] text-white/50 font-bold uppercase tracking-widest mt-1">
@@ -563,16 +597,29 @@ const NewGameView: React.FC<NewGameViewProps> = ({ user, onCreate }) => {
                 placeholder="Ej: Club Harrods"
               />
             </div>
-            <div>
-              <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Hora</label>
-              <input
-                type="time"
-                className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-bold text-white focus:border-[#00fe00] outline-none shadow-inner"
-                value={hora}
-                onChange={e => setHora(e.target.value)}
-              />
-            </div>
-            <div className="md:col-span-2">
+            {isScheduleMode && (
+              <>
+                <div>
+                  <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Fecha del Partido</label>
+                  <input
+                    type="date"
+                    className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-bold text-white focus:border-[#00fe00] outline-none shadow-inner [color-scheme:dark]"
+                    value={fecha}
+                    onChange={e => setFecha(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Hora</label>
+                  <input
+                    type="time"
+                    className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-bold text-white focus:border-[#00fe00] outline-none shadow-inner"
+                    value={hora}
+                    onChange={e => setHora(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
+            <div className="md:col-span-2 lg:col-span-2">
               <label className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1.5 block">Árbitros / Jueces</label>
               <input
                 className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-bold text-white focus:border-[#00fe00] outline-none shadow-inner"
@@ -640,7 +687,7 @@ const NewGameView: React.FC<NewGameViewProps> = ({ user, onCreate }) => {
           </GlassCard>
         </div>
 
-        {role !== UserRole.PRESS && (
+        {role === UserRole.COACH && (
           <GlassCard className="p-6 lg:p-8 relative z-10">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-8 h-8 rounded-full bg-[#38bdf8]/20 flex items-center justify-center text-[#38bdf8] text-sm"><i className="fa-solid fa-sliders"></i></div>
@@ -718,7 +765,13 @@ const NewGameView: React.FC<NewGameViewProps> = ({ user, onCreate }) => {
             onClick={handleStartGame}
             disabled={checkingQuota}
           >
-            {checkingQuota ? 'VERIFICANDO CUOTA...' : <>COMENZAR JUEGO <i className="fa-solid fa-arrow-right"></i></>}
+            {checkingQuota ? (
+              'VERIFICANDO CUOTA...'
+            ) : isScheduleMode ? (
+              <>PROGRAMAR JUEGO <i className="fa-solid fa-calendar-check"></i></>
+            ) : (
+              <>COMENZAR JUEGO <i className="fa-solid fa-arrow-right"></i></>
+            )}
           </button>
         </div>
       </div>

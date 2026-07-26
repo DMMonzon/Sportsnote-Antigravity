@@ -4,7 +4,21 @@ import { PersistenceManager } from '../services/PersistenceManager';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
 
-const GameAccordion: React.FC<{ g: Game, onStats: () => void, onShare: () => void, onRecycle: () => void, onFavorite: () => void, onDelete: () => void }> = ({ g, onStats, onShare, onRecycle, onFavorite, onDelete }) => {
+const getSportIcon = (sportId?: string) => {
+  switch (sportId) {
+    case 'futbol':
+      return <i className="fa-solid fa-futbol text-white/50 text-[10px] mt-0.5" title="Fútbol"></i>;
+    case 'voley':
+      return <i className="fa-solid fa-volleyball text-white/50 text-[10px] mt-0.5" title="Vóley"></i>;
+    case 'basket':
+      return <i className="fa-solid fa-basketball text-white/50 text-[10px] mt-0.5" title="Básquet"></i>;
+    case 'hockey_cesped':
+    default:
+      return <i className="fa-solid fa-hockey-puck text-white/50 text-[10px] mt-0.5" title="Hockey"></i>;
+  }
+};
+
+const GameAccordion: React.FC<{ g: Game, isPressMode?: boolean, onStats: () => void, onShare: () => void, onRecycle: () => void, onFavorite: () => void, onDelete: () => void }> = ({ g, isPressMode, onStats, onShare, onRecycle, onFavorite, onDelete }) => {
   const [expanded, setExpanded] = React.useState(false);
 
   return (
@@ -14,8 +28,9 @@ const GameAccordion: React.FC<{ g: Game, onStats: () => void, onShare: () => voi
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-center gap-2 truncate flex-1 min-w-0 pr-2">
-          <span className="text-[10px] font-bold text-white/50 uppercase tracking-widest shrink-0 w-10 text-center">
-            {new Date(g.createdAt).toLocaleDateString([], { month: '2-digit', day: '2-digit' })}
+          <span className="text-[10px] font-bold text-white/50 uppercase tracking-widest shrink-0 w-10 text-center flex flex-col items-center justify-center">
+            <span>{new Date(g.createdAt).toLocaleDateString([], { month: '2-digit', day: '2-digit' })}</span>
+            {isPressMode && getSportIcon(g.sportId || g.sportType)}
           </span>
           <div className="flex items-center justify-between gap-2 flex-1 min-w-0 bg-black/40 px-3 py-2 rounded-lg">
             <span className="truncate text-right flex-1 text-white text-[11px] font-bold">{g.teamHome.name}</span>
@@ -27,10 +42,10 @@ const GameAccordion: React.FC<{ g: Game, onStats: () => void, onShare: () => voi
           </div>
         </div>
         <button
-          className="text-white/50 hover:text-white px-2 py-1 rounded-full transition-colors flex items-center justify-center shrink-0"
+          className="text-white/50 hover:text-white px-2 py-1 rounded-full transition-all flex items-center justify-center shrink-0 opacity-0 group-hover/accordion:opacity-100 duration-200"
           onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
         >
-          <i className={`fa-solid fa-chevron-right transition-transform duration-300 ${expanded ? 'rotate-90' : ''}`}></i>
+          <i className="fa-solid fa-ellipsis-vertical text-white/70"></i>
         </button>
       </div>
 
@@ -91,6 +106,9 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
   const [activeSection, setActiveSection] = React.useState<SectionId>('juegos');
   const [showRecycleModal, setShowRecycleModal] = React.useState<Game | null>(null);
   const [seedingStatus, setSeedingStatus] = React.useState<string | null>(null);
+
+  const scheduledMatches = useMemo(() => matches.filter(m => m.status === 'scheduled'), [matches]);
+  const playedMatches = useMemo(() => matches.filter(m => m.status !== 'scheduled'), [matches]);
 
   const seedFirestore = async () => {
     setSeedingStatus('Sembrando base de datos...');
@@ -170,80 +188,78 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
         </div>
       </div>
 
-      {/* Indicador de Consumo (Solo para usuarios FREE) */}
-      {(user.plan === 'free' || !user.plan) && (
-        <div className="mb-6 p-5 rounded-2xl bg-[#131041]/90 border border-yellow-500/25 max-w-3xl shadow-xl relative overflow-hidden animate-stagger" style={{ animationDelay: '150ms' }}>
-          <div className="absolute top-0 right-0 w-24 h-24 bg-yellow-500/5 rounded-full blur-xl pointer-events-none"></div>
-          
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center text-yellow-500">
-                <i className="fa-solid fa-crown"></i>
+      <div className="flex flex-col xl:flex-row justify-between items-end gap-8 mt-4 mb-4">
+        <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">
+          <div className="bg-[#131041]/90 border border-white/5 rounded-xl p-5 flex flex-col h-auto min-h-[240px] justify-between shadow-2xl animate-stagger" style={{ animationDelay: '200ms' }}>
+            <div className="flex flex-col gap-3">
+              <h3 className="text-white text-base md:text-lg font-black tracking-wider uppercase flex items-center gap-2 shrink-0">
+                <i className="fa-solid fa-clock-rotate-left text-cyan-400"></i> Últimos Juegos
+              </h3>
+              <div className="space-y-3">
+                {playedMatches.slice(-3).reverse().map((g) => (
+                  <GameAccordion key={g.id} g={g} isPressMode={user.role === UserRole.PRESS} onStats={() => navigate(`/summary/${g.id}`)} onShare={() => handleShare(g)} onRecycle={() => setShowRecycleModal(g)} onFavorite={() => handleToggleFavorite(g)} onDelete={() => handleDeleteGame(g)} />
+                ))}
+                {playedMatches.length === 0 && <p className="text-[11px] text-white/40 italic p-4 text-center">Sin registros disponibles.</p>}
               </div>
-              <div>
-                <p className="text-white text-xs font-black uppercase tracking-wider">
-                  Plan Free — Partidos en este ciclo
-                </p>
-                {user.cycleStartDate && (
-                  <p className="text-[10px] text-white/50 font-bold uppercase mt-0.5">
-                    Tu cuota se renovará el {new Date(user.cycleStartDate + 30 * 24 * 60 * 60 * 1000).toLocaleDateString([], { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                  </p>
+            </div>
+            <div className="pt-3 border-t border-white/5 text-left shrink-0">
+              <a href="#/history" className="text-[10px] font-black text-[#00ff87] hover:text-[#00e676] uppercase tracking-widest transition-colors inline-flex items-center gap-1.5 hover:translate-x-0.5 duration-200">
+                Ver historial de juegos <i className="fa-solid fa-arrow-right-long text-[9px] translate-y-px text-inherit"></i>
+              </a>
+            </div>
+          </div>
+
+          <div className="bg-[#131041]/90 border border-white/5 rounded-xl p-5 flex flex-col h-auto min-h-[240px] justify-between shadow-2xl animate-stagger" style={{ animationDelay: '300ms' }}>
+            <div className="flex flex-col gap-3">
+              <h3 className="text-white text-base md:text-lg font-black tracking-wider uppercase flex items-center gap-2 shrink-0">
+                <i className="fa-solid fa-calendar-days text-cyan-400"></i> Agenda Próxima
+              </h3>
+              <div className="space-y-3">
+                {scheduledMatches.length > 0 ? (
+                  scheduledMatches.map((g) => (
+                    <div key={g.id} className="group/agenda relative flex items-center justify-between bg-white/5 hover:bg-white/10 p-2 rounded-xl transition-all overflow-hidden animate-in fade-in duration-200">
+                      <div className="flex items-center gap-2 truncate flex-1 min-w-0 pr-2">
+                        <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest shrink-0 w-10 text-center flex flex-col items-center justify-center">
+                          <span>{new Date(g.createdAt).toLocaleDateString([], { day: '2-digit', month: '2-digit' })}</span>
+                          {user.role === UserRole.PRESS && getSportIcon(g.sportId)}
+                        </span>
+                        <div className="flex items-center gap-2 flex-1 min-w-0 bg-black/40 px-3 py-2 rounded-lg">
+                          <span className="truncate flex-1 text-white text-[11px] font-bold uppercase tracking-tighter">vs {g.teamAway.name}</span>
+                          <span className="text-[9px] font-black text-[#b4b4b4] px-2.5 py-1 rounded-md leading-none shrink-0 bg-[#b4b4b4]/10">PROGRAMADO</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 opacity-0 group-hover/agenda:opacity-100 transition-opacity duration-200 shrink-0 items-center px-2">
+                        <button className="hover:scale-125 transition-transform text-white/50 hover:text-white" title="Comenzar ahora" onClick={() => navigate(`/live/${g.id}`)}>
+                          <i className="fa-solid fa-play"></i>
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  [{ r: 'Lions Club', d: '24/05', sportId: 'futbol' }, { r: 'Tigres HC', d: '28/05', sportId: 'hockey_cesped' }].map((g, i) => (
+                    <div key={i} className="group/agenda relative flex items-center justify-between bg-white/5 hover:bg-white/10 p-2 rounded-xl transition-all overflow-hidden">
+                      <div className="flex items-center gap-2 truncate flex-1 min-w-0 pr-2">
+                        <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest shrink-0 w-10 text-center flex flex-col items-center justify-center">
+                          <span>{g.d}</span>
+                          {user.role === UserRole.PRESS && getSportIcon(g.sportId)}
+                        </span>
+                        <div className="flex items-center gap-2 flex-1 min-w-0 bg-black/40 px-3 py-2 rounded-lg">
+                          <span className="truncate flex-1 text-white text-[11px] font-bold uppercase tracking-tighter">vs {g.r}</span>
+                          <span className="text-[9px] font-black text-[#b4b4b4] px-2.5 py-1 rounded-md leading-none shrink-0 bg-[#b4b4b4]/10">PENDIENTE</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 opacity-0 group-hover/agenda:opacity-100 transition-opacity duration-200 shrink-0 items-center px-2">
+                        <button className="hover:scale-125 transition-transform text-white/50 hover:text-white" title="Editar"><i className="fa-solid fa-pen"></i></button>
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
             </div>
-            <div className="text-right shrink-0">
-              <span className="font-contrail text-xl text-white italic">
-                {user.matchesCreatedInCycle || 0} <span className="text-white/40 font-lato font-normal not-italic text-sm">/ 4</span>
-              </span>
-            </div>
-          </div>
-
-          <div className="w-full bg-white/5 h-2 rounded-full mt-3 overflow-hidden border border-white/5">
-            <div 
-              className={`h-full rounded-full transition-all duration-500 ${
-                (user.matchesCreatedInCycle || 0) >= 4 
-                  ? 'bg-gradient-to-r from-red-500 to-orange-500' 
-                  : 'bg-gradient-to-r from-yellow-500 to-amber-400'
-              }`}
-              style={{ width: `${Math.min(100, ((user.matchesCreatedInCycle || 0) / 4) * 100)}%` }}
-            ></div>
-          </div>
-        </div>
-      )}
-
-      <div className="flex flex-col xl:flex-row justify-between items-end gap-8 mt-4 mb-4">
-        <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">
-          <div className="bg-[#131041]/90 border border-white/5 rounded-xl p-5 flex flex-col h-[200px] shadow-2xl overflow-y-auto no-scrollbar animate-stagger" style={{ animationDelay: '200ms' }}>
-            <p className="text-[#b4b4b4] text-[9px] font-bold tracking-widest uppercase mb-4 flex items-center gap-2">
-              <i className="fa-solid fa-clock-rotate-left"></i> Últimos Juegos
-            </p>
-            <div className="space-y-3">
-              {matches.slice(-3).reverse().map((g) => (
-                <GameAccordion key={g.id} g={g} onStats={() => navigate(`/summary/${g.id}`)} onShare={() => handleShare(g)} onRecycle={() => setShowRecycleModal(g)} onFavorite={() => handleToggleFavorite(g)} onDelete={() => handleDeleteGame(g)} />
-              ))}
-              {matches.length === 0 && <p className="text-[11px] text-white/40 italic p-4 text-center">Sin registros disponibles.</p>}
-            </div>
-          </div>
-
-          <div className="bg-[#131041]/90 border border-white/5 rounded-xl p-5 flex flex-col h-[200px] shadow-2xl overflow-y-auto no-scrollbar animate-stagger" style={{ animationDelay: '300ms' }}>
-            <p className="text-[#b4b4b4] text-[9px] font-bold tracking-widest uppercase mb-4 flex items-center gap-2">
-              <i className="fa-solid fa-calendar-days"></i> Agenda Próxima
-            </p>
-            <div className="space-y-3">
-              {[{ r: 'Lions Club', d: '24/05' }, { r: 'Tigres HC', d: '28/05' }].map((g, i) => (
-                <div key={i} className="group/agenda relative flex items-center justify-between bg-white/5 hover:bg-white/10 p-2 rounded-xl transition-all overflow-hidden">
-                  <div className="flex items-center gap-2 truncate flex-1 min-w-0 pr-2">
-                    <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest shrink-0 w-10 text-center">{g.d}</span>
-                    <div className="flex items-center gap-2 flex-1 min-w-0 bg-black/40 px-3 py-2 rounded-lg">
-                      <span className="truncate flex-1 text-white text-[11px] font-bold uppercase tracking-tighter">vs {g.r}</span>
-                      <span className="text-[9px] font-black text-[#b4b4b4] px-2.5 py-1 rounded-md leading-none shrink-0 bg-[#b4b4b4]/10">PENDIENTE</span>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 opacity-0 group-hover/agenda:opacity-100 transition-opacity duration-200 shrink-0 items-center px-2">
-                    <button className="hover:scale-125 transition-transform text-white/50 hover:text-white" title="Editar"><i className="fa-solid fa-pen"></i></button>
-                  </div>
-                </div>
-              ))}
+            <div className="pt-3 border-t border-white/5 text-left shrink-0">
+              <a href="#/new-game?mode=schedule" className="text-[10px] font-black text-[#00ff87] hover:text-[#00e676] uppercase tracking-widest transition-colors inline-flex items-center gap-1.5 hover:translate-x-0.5 duration-200">
+                Programar juegos futuros <i className="fa-solid fa-arrow-right-long text-[9px] translate-y-px text-inherit"></i>
+              </a>
             </div>
           </div>
         </div>
@@ -251,12 +267,9 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
         <div className="flex flex-wrap sm:flex-nowrap gap-4 w-full xl:w-auto shrink-0 justify-end animate-stagger" style={{ animationDelay: '400ms' }}>
           <button
             onClick={() => navigate('/new-game')}
-            className="bg-[#b4b4b4] text-black px-8 py-5 font-bold text-[11px] uppercase tracking-[2px] hover:bg-[#c0c0c0] transition-all active:scale-95 flex items-center justify-center gap-3 w-full sm:w-auto shadow-[0_0_20px_rgba(180,180,180,0.2)]"
+            className="bg-[#00ff87] text-[#0d0e12] hover:bg-[#00e676] px-10 py-5 font-black text-[12px] uppercase tracking-[3px] font-contrail italic transition-all duration-300 active:scale-95 flex items-center justify-center gap-3 w-full sm:w-auto shadow-[0_0_20px_rgba(0,255,135,0.45)] hover:shadow-[0_0_35px_rgba(0,255,135,0.65)] hover:scale-[1.02]"
           >
-            INICIAR NUEVO <i className="fa-solid fa-arrow-right"></i>
-          </button>
-          <button onClick={() => navigate('/history')} className="bg-[#1a1c23] text-white border border-white/5 px-8 py-5 font-bold text-[11px] uppercase tracking-[2px] hover:bg-[#252830] transition-all active:scale-95 flex items-center justify-center gap-3 w-full sm:w-auto">
-            VER HISTORIAL <i className="fa-solid fa-chevron-right text-white/40"></i>
+            INICIAR NUEVO JUEGO <i className="fa-solid fa-arrow-right text-[#0d0e12]"></i>
           </button>
         </div>
       </div>
@@ -460,6 +473,35 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
           </button>
         ))}
         <div className="hidden md:block flex-1"></div>
+
+        {/* Compact Free Plan Widget in Sidebar */}
+        {(user.plan === 'free' || !user.plan) && (
+          <div className="hidden md:flex flex-col gap-2 p-4 mx-2 mb-4 bg-white/5 border border-white/10 rounded-xl shrink-0 text-white font-lato w-[calc(100%-16px)]">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-yellow-500 flex items-center gap-1.5">
+                <i className="fa-solid fa-crown text-yellow-500"></i> Plan Free
+              </span>
+              <span className="text-xs font-black font-contrail text-white">
+                {user.matchesCreatedInCycle || 0} <span className="text-white/40 font-lato font-normal text-[10px]">/ 4</span>
+              </span>
+            </div>
+            <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden border border-white/5">
+              <div 
+                className={`h-full rounded-full transition-all duration-500 ${
+                  (user.matchesCreatedInCycle || 0) >= 4 
+                    ? 'bg-gradient-to-r from-red-500 to-orange-500' 
+                    : 'bg-gradient-to-r from-yellow-500 to-amber-400'
+                }`}
+                style={{ width: `${Math.min(100, ((user.matchesCreatedInCycle || 0) / 4) * 100)}%` }}
+              ></div>
+            </div>
+            {user.cycleStartDate && (
+              <p className="text-[8px] text-white/40 font-bold uppercase tracking-wide leading-none mt-0.5">
+                Renueva: {new Date(user.cycleStartDate + 30 * 24 * 60 * 60 * 1000).toLocaleDateString([], { day: '2-digit', month: '2-digit' })}
+              </p>
+            )}
+          </div>
+        )}
       </nav>
 
       <main className="relative z-10 flex-1 flex flex-col order-1 md:order-2 overflow-hidden p-4 md:p-6 pb-2 md:pb-6 gap-4">

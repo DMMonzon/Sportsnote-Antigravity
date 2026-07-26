@@ -100,7 +100,7 @@ export interface MatchStats {
 
 export interface Game {
   id: string;
-  sportType: SportType;
+  sportType: string;
   teamHome: Team;
   teamAway: Team;
   scoreHome: number;
@@ -118,6 +118,10 @@ export interface Game {
   userId?: string;
   authorId?: string;
   registroMode?: 'visual' | 'botones';
+  isCounted?: boolean;
+  status?: 'active' | 'suspended' | 'finished';
+  suspensionReason?: string;
+  suspendedAt?: number;
 
   // Campos adicionales para el Modo Periodista
   metadata?: MatchMetadata;
@@ -136,6 +140,7 @@ export interface AppState {
     plan?: 'free' | 'premium' | 'admin';
     cycleStartDate?: number;
     matchesCreatedInCycle?: number;
+    docId?: string;
   } | null;
   matches: Game[];
   activeGameId?: string | null;
