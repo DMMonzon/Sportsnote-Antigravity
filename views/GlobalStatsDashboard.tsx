@@ -180,15 +180,15 @@ const GlobalStatsDashboard: React.FC<GlobalStatsDashboardProps> = ({ matches }) 
                 {/* Promedios */}
                 <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     {[
-                        { id: 'disparos', label: 'Disparos / PJ', value: averages.disparos, color: '#6d5dfc', icon: <i className="fa-solid fa-futbol"></i> },
-                        { id: 'recuperos', label: 'Recuperos / PJ', value: averages.recuperos, color: '#10b981', icon: <i className="fa-solid fa-arrow-trend-up"></i> },
-                        { id: 'pérdidas', label: 'Pérdidas / PJ', value: averages.pérdidas, color: '#ef4444', icon: <i className="fa-solid fa-arrow-trend-down"></i> },
-                        { id: 'faltas', label: 'Faltas / PJ', value: averages.faltas, color: '#f59e0b', icon: <i className="fa-solid fa-triangle-exclamation"></i> }
+                        { id: 'disparos', label: 'Disparos / PJ', value: averages.disparos, color: '#6d5dfc', icon: <i className="fa-solid fa-futbol text-[#38bdf8]"></i> },
+                        { id: 'recuperos', label: 'Recuperos / PJ', value: averages.recuperos, color: '#10b981', icon: <i className="fa-solid fa-arrow-trend-up text-[#38bdf8]"></i> },
+                        { id: 'pérdidas', label: 'Pérdidas / PJ', value: averages.pérdidas, color: '#ef4444', icon: <i className="fa-solid fa-arrow-trend-down text-[#38bdf8]"></i> },
+                        { id: 'faltas', label: 'Faltas / PJ', value: averages.faltas, color: '#f59e0b', icon: <i className="fa-solid fa-triangle-exclamation text-[#38bdf8]"></i> }
                     ].map(stat => (
                         <GlassCard key={stat.id} className="p-6 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-shadow">
                             <div className="flex items-center gap-3 mb-4">
                                 <span className="text-2xl">{stat.icon}</span>
-                                <span className="text-[9px] font-black text-white/70 uppercase tracking-widest">{stat.label}</span>
+                                <span className="text-[9px] font-black text-[#a5b4fc] uppercase tracking-widest">{stat.label}</span>
                             </div>
                             <p className="text-4xl font-black" style={{ color: activeLines[stat.id as keyof typeof activeLines] ? stat.color : 'rgba(255,255,255,0.2)' }}>
                                 {stat.value}
@@ -200,7 +200,9 @@ const GlobalStatsDashboard: React.FC<GlobalStatsDashboardProps> = ({ matches }) 
                 {/* Gráfico */}
                 <GlassCard className="p-6 lg:p-10 min-h-[500px] flex flex-col w-full mb-8">
                     <div className="flex justify-between items-center mb-8 px-4">
-                        <h3 className="text-[11px] font-black text-white/50 uppercase tracking-[3px] italic">Evolución de Performance</h3>
+                        <h3 className="font-contrail text-xl font-black uppercase tracking-wider italic text-white flex items-center gap-2.5">
+                            <i className="fa-solid fa-chart-line text-[#38bdf8]"></i> Evolución de Performance
+                        </h3>
                     </div>
 
                     <div className="flex-1 w-full min-h-[350px]">

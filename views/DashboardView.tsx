@@ -105,30 +105,9 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = React.useState<SectionId>('juegos');
   const [showRecycleModal, setShowRecycleModal] = React.useState<Game | null>(null);
-  const [seedingStatus, setSeedingStatus] = React.useState<string | null>(null);
 
   const scheduledMatches = useMemo(() => matches.filter(m => m.status === 'scheduled'), [matches]);
   const playedMatches = useMemo(() => matches.filter(m => m.status !== 'scheduled'), [matches]);
-
-  const seedFirestore = async () => {
-    setSeedingStatus('Sembrando base de datos...');
-    try {
-      const { doc, setDoc } = await import('firebase/firestore');
-      const { db } = await import('../services/firebase');
-      const dbAccionesJson = (await import('../acciones_de_deportes.json')).default;
-
-      for (const sport of dbAccionesJson) {
-        const docRef = doc(db, 'config_deportes', sport.id);
-        await setDoc(docRef, sport);
-        console.log(`Documento de ${sport.id} subido con éxito.`);
-      }
-      setSeedingStatus('¡Base de datos sembrada con éxito!');
-      setTimeout(() => setSeedingStatus(null), 3000);
-    } catch (err: any) {
-      console.error(err);
-      setSeedingStatus(`Error al sembrar: ${err.message}`);
-    }
-  };
 
   const statsData = useMemo(() => {
     const allChains = matches.flatMap(g => g.passChains || []);
@@ -190,16 +169,16 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
 
       <div className="flex flex-col xl:flex-row justify-between items-end gap-8 mt-4 mb-4">
         <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">
-          <div className="bg-[#131041]/90 border border-white/5 rounded-xl p-5 flex flex-col h-auto min-h-[240px] justify-between shadow-2xl animate-stagger" style={{ animationDelay: '200ms' }}>
+          <div className="bg-[#131041]/90 border border-white/5 rounded-2xl p-5 flex flex-col h-auto min-h-[240px] justify-between shadow-2xl animate-stagger" style={{ animationDelay: '200ms' }}>
             <div className="flex flex-col gap-3">
-              <h3 className="text-white text-base md:text-lg font-black tracking-wider uppercase flex items-center gap-2 shrink-0">
-                <i className="fa-solid fa-clock-rotate-left text-cyan-400"></i> Últimos Juegos
+              <h3 className="font-contrail text-xl font-black tracking-wider uppercase italic text-white flex items-center gap-2.5 shrink-0">
+                <i className="fa-solid fa-clock-rotate-left text-[#38bdf8]"></i> Últimos Juegos
               </h3>
               <div className="space-y-3">
                 {playedMatches.slice(-3).reverse().map((g) => (
                   <GameAccordion key={g.id} g={g} isPressMode={user.role === UserRole.PRESS} onStats={() => navigate(`/summary/${g.id}`)} onShare={() => handleShare(g)} onRecycle={() => setShowRecycleModal(g)} onFavorite={() => handleToggleFavorite(g)} onDelete={() => handleDeleteGame(g)} />
                 ))}
-                {playedMatches.length === 0 && <p className="text-[11px] text-white/40 italic p-4 text-center">Sin registros disponibles.</p>}
+                {playedMatches.length === 0 && <p className="text-[11px] text-[#a5b4fc]/60 italic p-4 text-center">Sin registros disponibles.</p>}
               </div>
             </div>
             <div className="pt-3 border-t border-white/5 text-left shrink-0">
@@ -209,23 +188,23 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
             </div>
           </div>
 
-          <div className="bg-[#131041]/90 border border-white/5 rounded-xl p-5 flex flex-col h-auto min-h-[240px] justify-between shadow-2xl animate-stagger" style={{ animationDelay: '300ms' }}>
+          <div className="bg-[#131041]/90 border border-white/5 rounded-2xl p-5 flex flex-col h-auto min-h-[240px] justify-between shadow-2xl animate-stagger" style={{ animationDelay: '300ms' }}>
             <div className="flex flex-col gap-3">
-              <h3 className="text-white text-base md:text-lg font-black tracking-wider uppercase flex items-center gap-2 shrink-0">
-                <i className="fa-solid fa-calendar-days text-cyan-400"></i> Agenda Próxima
+              <h3 className="font-contrail text-xl font-black tracking-wider uppercase italic text-white flex items-center gap-2.5 shrink-0">
+                <i className="fa-solid fa-calendar-days text-[#38bdf8]"></i> Agenda Próxima
               </h3>
               <div className="space-y-3">
                 {scheduledMatches.length > 0 ? (
                   scheduledMatches.map((g) => (
-                    <div key={g.id} className="group/agenda relative flex items-center justify-between bg-white/5 hover:bg-white/10 p-2 rounded-xl transition-all overflow-hidden animate-in fade-in duration-200">
+                    <div key={g.id} className="group/agenda relative flex items-center justify-between bg-[#131041]/60 border border-white/5 hover:bg-white/10 p-2 rounded-2xl transition-all overflow-hidden animate-in fade-in duration-200">
                       <div className="flex items-center gap-2 truncate flex-1 min-w-0 pr-2">
-                        <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest shrink-0 w-10 text-center flex flex-col items-center justify-center">
+                        <span className="text-[9px] font-bold text-[#a5b4fc] uppercase tracking-widest shrink-0 w-10 text-center flex flex-col items-center justify-center">
                           <span>{new Date(g.createdAt).toLocaleDateString([], { day: '2-digit', month: '2-digit' })}</span>
                           {user.role === UserRole.PRESS && getSportIcon(g.sportId)}
                         </span>
-                        <div className="flex items-center gap-2 flex-1 min-w-0 bg-black/40 px-3 py-2 rounded-lg">
+                        <div className="flex items-center gap-2 flex-1 min-w-0 bg-black/40 px-3 py-2 rounded-xl">
                           <span className="truncate flex-1 text-white text-[11px] font-bold uppercase tracking-tighter">vs {g.teamAway.name}</span>
-                          <span className="text-[9px] font-black text-[#b4b4b4] px-2.5 py-1 rounded-md leading-none shrink-0 bg-[#b4b4b4]/10">PROGRAMADO</span>
+                          <span className="text-[9px] font-black text-[#a5b4fc] px-2.5 py-1 rounded-md leading-none shrink-0 bg-[#a5b4fc]/10">PROGRAMADO</span>
                         </div>
                       </div>
                       <div className="flex gap-2 opacity-0 group-hover/agenda:opacity-100 transition-opacity duration-200 shrink-0 items-center px-2">
@@ -237,15 +216,15 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
                   ))
                 ) : (
                   [{ r: 'Lions Club', d: '24/05', sportId: 'futbol' }, { r: 'Tigres HC', d: '28/05', sportId: 'hockey_cesped' }].map((g, i) => (
-                    <div key={i} className="group/agenda relative flex items-center justify-between bg-white/5 hover:bg-white/10 p-2 rounded-xl transition-all overflow-hidden">
+                    <div key={i} className="group/agenda relative flex items-center justify-between bg-[#131041]/60 border border-white/5 hover:bg-white/10 p-2 rounded-2xl transition-all overflow-hidden">
                       <div className="flex items-center gap-2 truncate flex-1 min-w-0 pr-2">
-                        <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest shrink-0 w-10 text-center flex flex-col items-center justify-center">
+                        <span className="text-[9px] font-bold text-[#a5b4fc] uppercase tracking-widest shrink-0 w-10 text-center flex flex-col items-center justify-center">
                           <span>{g.d}</span>
                           {user.role === UserRole.PRESS && getSportIcon(g.sportId)}
                         </span>
-                        <div className="flex items-center gap-2 flex-1 min-w-0 bg-black/40 px-3 py-2 rounded-lg">
+                        <div className="flex items-center gap-2 flex-1 min-w-0 bg-black/40 px-3 py-2 rounded-xl">
                           <span className="truncate flex-1 text-white text-[11px] font-bold uppercase tracking-tighter">vs {g.r}</span>
-                          <span className="text-[9px] font-black text-[#b4b4b4] px-2.5 py-1 rounded-md leading-none shrink-0 bg-[#b4b4b4]/10">PENDIENTE</span>
+                          <span className="text-[9px] font-black text-[#a5b4fc] px-2.5 py-1 rounded-md leading-none shrink-0 bg-[#a5b4fc]/10">PENDIENTE</span>
                         </div>
                       </div>
                       <div className="flex gap-2 opacity-0 group-hover/agenda:opacity-100 transition-opacity duration-200 shrink-0 items-center px-2">
@@ -292,22 +271,22 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
 
       <div className="flex flex-col xl:flex-row justify-between items-end gap-8 mt-4 mb-4">
         <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">
-          <div className="bg-[#131041]/90 border border-white/5 rounded-xl p-6 flex flex-col justify-center h-[160px] shadow-2xl animate-stagger" style={{ animationDelay: '200ms' }}>
-            <p className="text-[#b4b4b4] text-[9px] font-bold tracking-widest uppercase mb-2 flex items-center gap-2">
-              <i className="fa-solid fa-user-check"></i> Jugadores Registrados
-            </p>
+          <div className="bg-[#131041]/90 border border-white/5 rounded-2xl p-6 flex flex-col justify-center h-[160px] shadow-2xl animate-stagger" style={{ animationDelay: '200ms' }}>
+            <h3 className="font-contrail text-xl font-black uppercase tracking-wider italic text-white flex items-center gap-2.5 mb-2">
+              <i className="fa-solid fa-user-check text-[#38bdf8]"></i> Jugadores Registrados
+            </h3>
             <div className="flex items-baseline gap-4 mt-2">
               <h4 className="text-6xl font-contrail text-white leading-none">{PersistenceManager.loadStateLocal().players?.length || 0}</h4>
-              <span className="text-[10px] font-bold text-white/50 uppercase tracking-widest">En Plantilla</span>
+              <span className="text-[10px] font-bold text-[#a5b4fc] uppercase tracking-widest">En Plantilla</span>
             </div>
           </div>
-          <div className="bg-[#131041]/90 border border-white/5 rounded-xl p-6 flex flex-col justify-center h-[160px] shadow-2xl animate-stagger" style={{ animationDelay: '300ms' }}>
-            <p className="text-[#b4b4b4] text-[9px] font-bold tracking-widest uppercase mb-2 flex items-center gap-2">
-              <i className="fa-solid fa-bolt"></i> Estado
-            </p>
+          <div className="bg-[#131041]/90 border border-white/5 rounded-2xl p-6 flex flex-col justify-center h-[160px] shadow-2xl animate-stagger" style={{ animationDelay: '300ms' }}>
+            <h3 className="font-contrail text-xl font-black uppercase tracking-wider italic text-white flex items-center gap-2.5 mb-2">
+              <i className="fa-solid fa-bolt text-[#38bdf8]"></i> Estado
+            </h3>
             <div className="flex items-baseline gap-4 mt-2">
               <h4 className="text-6xl font-contrail text-[#b4b4b4] leading-none">{PersistenceManager.loadStateLocal().players?.length || 0}</h4>
-              <span className="text-[10px] font-bold text-white/50 uppercase tracking-widest">Activos</span>
+              <span className="text-[10px] font-bold text-[#a5b4fc] uppercase tracking-widest">Activos</span>
             </div>
           </div>
         </div>
@@ -340,22 +319,22 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
 
       <div className="flex flex-col xl:flex-row justify-between items-end gap-8 mt-4 mb-4">
         <div className="flex-1 w-full grid grid-cols-2 md:grid-cols-3 gap-4 max-w-4xl">
-          <div className="bg-[#131041]/90 border border-white/5 rounded-xl p-5 flex flex-col justify-center shadow-2xl animate-stagger" style={{ animationDelay: '200ms' }}>
-            <p className="text-[#b4b4b4] text-[9px] font-bold tracking-widest uppercase mb-2 flex items-center gap-2">
-              <i className="fa-solid fa-link"></i> Cadenas Prom.
-            </p>
+          <div className="bg-[#131041]/90 border border-white/5 rounded-2xl p-5 flex flex-col justify-center shadow-2xl animate-stagger" style={{ animationDelay: '200ms' }}>
+            <h3 className="font-contrail text-xl font-black uppercase tracking-wider italic text-white flex items-center gap-2.5 mb-2">
+              <i className="fa-solid fa-link text-[#38bdf8]"></i> Cadenas Prom.
+            </h3>
             <h4 className="text-4xl font-contrail text-white">{statsData.avgChains}</h4>
           </div>
-          <div className="bg-[#131041]/90 border border-white/5 rounded-xl p-5 flex flex-col justify-center shadow-2xl animate-stagger" style={{ animationDelay: '300ms' }}>
-            <p className="text-[#b4b4b4] text-[9px] font-bold tracking-widest uppercase mb-2 flex items-center gap-2">
-              <i className="fa-solid fa-futbol"></i> Goles Totales
-            </p>
+          <div className="bg-[#131041]/90 border border-white/5 rounded-2xl p-5 flex flex-col justify-center shadow-2xl animate-stagger" style={{ animationDelay: '300ms' }}>
+            <h3 className="font-contrail text-xl font-black uppercase tracking-wider italic text-white flex items-center gap-2.5 mb-2">
+              <i className="fa-solid fa-futbol text-[#38bdf8]"></i> Goles Totales
+            </h3>
             <h4 className="text-4xl font-contrail text-white">{statsData.totalGoals}</h4>
           </div>
-          <div className="bg-[#131041]/90 border border-white/5 rounded-xl p-5 flex flex-col justify-center col-span-2 md:col-span-1 shadow-2xl animate-stagger" style={{ animationDelay: '400ms' }}>
-            <p className="text-[#b4b4b4] text-[9px] font-bold tracking-widest uppercase mb-2 flex items-center gap-2">
-              <i className="fa-solid fa-chart-line"></i> Evolución Ofensiva
-            </p>
+          <div className="bg-[#131041]/90 border border-white/5 rounded-2xl p-5 flex flex-col justify-center col-span-2 md:col-span-1 shadow-2xl animate-stagger" style={{ animationDelay: '400ms' }}>
+            <h3 className="font-contrail text-xl font-black uppercase tracking-wider italic text-white flex items-center gap-2.5 mb-2">
+              <i className="fa-solid fa-chart-line text-[#38bdf8]"></i> Evolución Ofensiva
+            </h3>
             <div className="w-full h-12 mt-2">
               {statsData.sparklineData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
@@ -365,7 +344,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
                 </ResponsiveContainer>
               ) : (
                 <div className="w-full h-full flex items-center justify-center border border-white/10 rounded-lg border-dashed">
-                  <span className="text-[9px] text-white/30 font-bold uppercase">Sin datos</span>
+                  <span className="text-[9px] text-[#a5b4fc] font-bold uppercase">Sin datos</span>
                 </div>
               )}
             </div>
@@ -400,34 +379,21 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, matches, onLogout }
 
       <div className="flex flex-col xl:flex-row justify-between items-end gap-8 mt-4 mb-4">
         <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">
-          <div className="bg-[#131041]/90 border border-white/5 rounded-xl p-6 flex flex-col justify-center h-[160px] shadow-2xl animate-stagger" style={{ animationDelay: '200ms' }}>
-            <p className="text-[#b4b4b4] text-[9px] font-bold tracking-widest uppercase mb-2 flex items-center gap-2">
-              <i className="fa-solid fa-stopwatch"></i> Formato de Juego
-            </p>
+          <div className="bg-[#131041]/90 border border-white/5 rounded-2xl p-6 flex flex-col justify-center h-[160px] shadow-2xl animate-stagger" style={{ animationDelay: '200ms' }}>
+            <h3 className="font-contrail text-xl font-black uppercase tracking-wider italic text-white flex items-center gap-2.5 mb-2">
+              <i className="fa-solid fa-stopwatch text-[#38bdf8]"></i> Formato de Juego
+            </h3>
             <p className="text-2xl font-contrail text-white mt-2">4 Cuartos • 15 min</p>
           </div>
-          <div className="bg-[#131041]/90 border border-white/5 rounded-xl p-6 flex flex-col justify-center h-[160px] shadow-2xl animate-stagger" style={{ animationDelay: '300ms' }}>
-            <p className="text-[#b4b4b4] text-[9px] font-bold tracking-widest uppercase mb-2 flex items-center gap-2">
-              <i className="fa-solid fa-address-book"></i> Listas Activas
-            </p>
+          <div className="bg-[#131041]/90 border border-white/5 rounded-2xl p-6 flex flex-col justify-center h-[160px] shadow-2xl animate-stagger" style={{ animationDelay: '300ms' }}>
+            <h3 className="font-contrail text-xl font-black uppercase tracking-wider italic text-white flex items-center gap-2.5 mb-2">
+              <i className="fa-solid fa-address-book text-[#38bdf8]"></i> Listas Activas
+            </h3>
             <h4 className="text-5xl font-contrail text-white mt-2">4</h4>
           </div>
         </div>
 
         <div className="flex flex-wrap sm:flex-nowrap gap-4 w-full xl:w-auto shrink-0 justify-end animate-stagger" style={{ animationDelay: '400ms' }}>
-          <button
-            onClick={seedFirestore}
-            disabled={seedingStatus !== null}
-            className={`px-8 py-5 font-bold text-[11px] uppercase tracking-[2px] transition-all active:scale-95 flex items-center justify-center gap-3 w-full sm:w-auto shadow-md ${
-              seedingStatus?.includes('éxito') 
-                ? 'bg-[#00fe00] text-black hover:bg-[#02e002]'
-                : seedingStatus?.includes('Error') 
-                  ? 'bg-red-600 text-white hover:bg-red-700'
-                  : 'bg-primary text-white hover:bg-brandDark'
-            }`}
-          >
-            {seedingStatus || 'SEMBRAR CONFIG DEPORTES (FIRESTORE)'} <i className="fa-solid fa-cloud-arrow-up"></i>
-          </button>
           <button className="bg-[#b4b4b4] text-black px-8 py-5 font-bold text-[11px] uppercase tracking-[2px] hover:bg-[#c0c0c0] transition-all active:scale-95 flex items-center justify-center gap-3 w-full sm:w-auto shadow-[0_0_20px_rgba(180,180,180,0.2)]">
             REGLAMENTO <i className="fa-solid fa-arrow-right"></i>
           </button>

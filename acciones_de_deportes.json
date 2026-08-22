@@ -5,11 +5,20 @@
     "reglamento": {
       "jugadores_titulares": 11,
       "modo_puntuacion": "goles_corridos",
+      "tipo_tanteador": "goles_corridos",
       "por_tiempo": true,
       "duracion_periodo_minutos": 15,
       "cantidad_periodos": 4,
       "permite_empate": true,
-      "trackea_posesion": true
+      "trackea_posesion": true,
+      "widgets_header": {
+        "mostrar_faltas_equipo": true,
+        "limite_faltas_bonus": 0,
+        "mostrar_cambios_disponibles": true,
+        "max_cambios": 99,
+        "mostrar_video_challenges": true,
+        "max_challenges": 2
+      }
     },
     "modos": {
       "periodista": {
@@ -142,11 +151,20 @@
     "reglamento": {
       "jugadores_titulares": 11,
       "modo_puntuacion": "goles_corridos",
+      "tipo_tanteador": "goles_corridos",
       "por_tiempo": true,
       "duracion_periodo_minutos": 45,
       "cantidad_periodos": 2,
       "permite_empate": true,
-      "trackea_posesion": true
+      "trackea_posesion": true,
+      "widgets_header": {
+        "mostrar_faltas_equipo": true,
+        "limite_faltas_bonus": 0,
+        "mostrar_cambios_disponibles": true,
+        "max_cambios": 5,
+        "mostrar_video_challenges": true,
+        "max_challenges": 2
+      }
     },
     "modos": {
       "periodista": {
@@ -277,11 +295,20 @@
     "reglamento": {
       "jugadores_titulares": 6,
       "modo_puntuacion": "sets",
+      "tipo_tanteador": "sets_puntos",
       "puntos_para_ganar_set": 25,
       "diferencia_minima_puntos": 2,
       "limite_sets_configurable": true,
       "por_tiempo": false,
-      "trackea_posesion": false
+      "trackea_posesion": false,
+      "widgets_header": {
+        "mostrar_faltas_equipo": false,
+        "limite_faltas_bonus": 0,
+        "mostrar_cambios_disponibles": true,
+        "max_cambios": 6,
+        "mostrar_video_challenges": true,
+        "max_challenges": 2
+      }
     },
     "modos": {
       "periodista": {
@@ -366,8 +393,20 @@
     "reglamento": {
       "jugadores_titulares": 5,
       "modo_puntuacion": "puntos_corridos",
-      "por_tiempo": false,
-      "trackea_posesion": false
+      "tipo_tanteador": "puntos_corridos",
+      "por_tiempo": true,
+      "duracion_periodo_minutos": 10,
+      "cantidad_periodos": 4,
+      "permite_empate": false,
+      "trackea_posesion": false,
+      "widgets_header": {
+        "mostrar_faltas_equipo": true,
+        "limite_faltas_bonus": 5,
+        "mostrar_cambios_disponibles": true,
+        "max_cambios": 99,
+        "mostrar_video_challenges": true,
+        "max_challenges": 2
+      }
     },
     "modos": {
       "periodista": {

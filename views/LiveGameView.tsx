@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { telemetryService, TelemetryEvent } from '../services/telemetryService';
@@ -11,6 +11,7 @@ const Portal: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 import { UserRole, Game, GameEvent, Possession, TacticalScheme } from '../types';
 
 import { PersistenceManager } from '../services/PersistenceManager';
+import { dbService } from '../services/dbService';
 import { aiService } from '../services/aiService';
 import { StorageService } from '../services/StorageService';
 import { PitchMap } from '../components/PitchMap';
@@ -165,11 +166,11 @@ const StatComparisonCard = ({ title, icon, homeData, awayData, allEvents, homeCo
 
   const getOutcomes = (events: GameEvent[]) => {
     const outcomes = { gol: 0, atajado: 0, desviado: 0, perdida: 0 };
-    events.forEach(ev => {
-      const idx = allEvents.findIndex(e => e.id === ev.id);
+    (events || []).forEach(ev => {
+      const idx = (allEvents || []).findIndex(e => e.id === ev.id);
       if (idx !== -1 && idx < allEvents.length - 1) {
         const next = allEvents[idx + 1];
-        const nextType = next.type.toUpperCase();
+        const nextType = (next?.type || '').toUpperCase();
         if (nextType.includes('GOL')) outcomes.gol++;
         else if (nextType.includes('ATAJADO')) outcomes.atajado++;
         else if (nextType.includes('DESVIADO')) outcomes.desviado++;
@@ -579,6 +580,44 @@ const LiveGameView: React.FC<{
   const [subPlayerIn, setSubPlayerIn] = useState<string | null>(null);
   const [activeGenericModal, setActiveGenericModal] = useState<{ team: 'local' | 'visitante'; type: 'video_ref' | 'var' | 'sustitucion'; boton: any } | null>(null);
 
+  // Configuración adaptativa de Reglamento & Widgets Header
+  const reglamentoConfig = useMemo(() => {
+    return (dbAcciones as any)?.reglamento || {};
+  }, [dbAcciones]);
+
+  const widgetsHeaderConfig = useMemo(() => {
+    return reglamentoConfig.widgets_header || {
+      mostrar_faltas_equipo: true,
+      limite_faltas_bonus: 5,
+      mostrar_cambios_disponibles: true,
+      max_cambios: 5,
+      mostrar_video_challenges: true,
+      max_challenges: 2
+    };
+  }, [reglamentoConfig]);
+
+  const getTeamWidgetStats = (teamId: string, teamSide: 'local' | 'visitante') => {
+    const events = game?.events || [];
+
+    const subsCount = events.filter(e =>
+      (e.teamId === teamId || e.team === teamSide) &&
+      (e.type?.toUpperCase().includes('SUSTITUCION') || e.action?.toUpperCase().includes('SUSTITUCION') || e.actionCode === 'SUSTITUCION')
+    ).length;
+
+    const periodFoulsCount = events.filter(e =>
+      (e.teamId === teamId || e.team === teamSide) &&
+      (e.period === period) &&
+      (e.type?.toUpperCase().includes('FALTA') || e.actionCode === 'FALTA_COMETIDA')
+    ).length;
+
+    const challengesCount = events.filter(e =>
+      (e.teamId === teamId || e.team === teamSide) &&
+      (e.type?.toUpperCase().includes('VAR') || e.type?.toUpperCase().includes('VIDEO_REF') || e.action?.toUpperCase().includes('VAR') || e.action?.toUpperCase().includes('VIDEO_REF'))
+    ).length;
+
+    return { subsCount, periodFoulsCount, challengesCount };
+  };
+
 
   // Estados de orientación de la cancha
   const [isLandscape, setIsLandscape] = useState(false);
@@ -597,6 +636,11 @@ const LiveGameView: React.FC<{
 
     // Marcamos localmente isCounted a true para prevenir que llamadas concurrentes (clicks dobles) vuelvan a entrar a esta lógica
     game.isCounted = true;
+
+    // Creación inmediata del documento en Firestore /matches/{matchId}
+    dbService.createMatchInFirestore(game).catch(err => {
+      console.error("Error al crear el documento inicial del partido en Firestore:", err);
+    });
 
     if (onConsumeMatchQuota) {
       onConsumeMatchQuota(game.id).catch(err => {
@@ -659,12 +703,15 @@ const LiveGameView: React.FC<{
       try {
         const activeGame = StorageService.getActiveGame();
 
-        if (activeGame) {
+        if (activeGame && activeGame.game?.id === id) {
           setPendingActiveGame(activeGame);
           setShowResumePrompt(true);
           setIsLoading(false);
           clearTimeout(timeoutId);
         } else {
+          if (activeGame && activeGame.game?.id !== id) {
+            StorageService.clearActiveGame();
+          }
           // Load fresh from DB if not active locally
           const data = PersistenceManager.getGame(id);
           if (data) {
@@ -1146,6 +1193,51 @@ const LiveGameView: React.FC<{
 
       const sector = getSectorInfo(x, y);
 
+      // Codificación estandarizada del evento
+      const computeActionCode = (t: string, pAction?: string, pDetails?: string): string => {
+        if (pAction) {
+          const actUpper = pAction.toUpperCase().replace(/\s+/g, '_');
+          if (actUpper.includes('REMATE') && actUpper.includes('GOL')) return 'DISPARO_GOL';
+          if (actUpper.includes('REMATE') && (actUpper.includes('ATAJADO') || actUpper.includes('DESVIADO'))) return 'DISPARO_ATAJADO';
+          if (actUpper.includes('CORNER') || actUpper.includes('CÓRNER')) return 'CÓRNER_CORTO';
+          if (actUpper.includes('FALTA')) return 'FALTA_COMETIDA';
+          if (actUpper === 'PUNTOS_1' || actUpper === 'PUNTO_1') return 'PUNTOS_1';
+          if (actUpper === 'PUNTOS_2' || actUpper === 'PUNTO_2') return 'PUNTOS_2';
+          if (actUpper === 'PUNTOS_3' || actUpper === 'PUNTO_3') return 'PUNTOS_3';
+          if (actUpper === 'PERDIDA' || actUpper === 'PÉRDIDA' || actUpper === 'TURNOVER') return 'TURNOVER';
+          return actUpper;
+        }
+        const tUpper = t.toUpperCase().replace(/\s+/g, '_');
+        if (tUpper.includes('GOL')) return 'DISPARO_GOL';
+        if (tUpper.includes('DISPARO')) return (pDetails?.toLowerCase().includes('gol') ? 'DISPARO_GOL' : 'DISPARO_ATAJADO');
+        if (tUpper.includes('CÓRNER') || tUpper.includes('CORNER')) return 'CÓRNER_CORTO';
+        if (tUpper.includes('FALTA')) return 'FALTA_COMETIDA';
+        if (tUpper.includes('PÉRDIDA') || tUpper.includes('PERDIDA')) return 'TURNOVER';
+        if (tUpper === 'PUNTOS_1') return 'PUNTOS_1';
+        if (tUpper === 'PUNTOS_2') return 'PUNTOS_2';
+        if (tUpper === 'PUNTOS_3') return 'PUNTOS_3';
+        return tUpper;
+      };
+
+      const computedActionCode = computeActionCode(type, pressAction, finalDetails);
+      const computedTeamSide: 'home' | 'away' = (eventTeamId === prev.teamHome.id || pressTeam === 'local') ? 'home' : 'away';
+
+      const targetPlayers = computedTeamSide === 'home' ? (prev.teamHome?.players || []) : (prev.teamAway?.players || []);
+      let foundPlayerId: string | null = null;
+      let foundPlayerNumber: number | string | null = null;
+
+      if (pressPlayerName) {
+        const matchedPlayer = targetPlayers.find(p => p.name === pressPlayerName || p.id === pressPlayerName || p.number.toString() === pressPlayerName);
+        if (matchedPlayer) {
+          foundPlayerId = matchedPlayer.id;
+          foundPlayerNumber = matchedPlayer.number;
+        } else {
+          foundPlayerId = null;
+          const parsedNum = parseInt(pressPlayerName, 10);
+          foundPlayerNumber = !isNaN(parsedNum) ? parsedNum : null;
+        }
+      }
+
       const event: GameEvent = {
         id: eventId,
         timestamp: Date.now(),
@@ -1166,7 +1258,11 @@ const LiveGameView: React.FC<{
         action: pressAction,
         team: pressTeam,
         period: period,
-        timestampStr: formatTime(seconds)
+        timestampStr: formatTime(seconds),
+        actionCode: computedActionCode,
+        teamSide: computedTeamSide,
+        playerId: foundPlayerId,
+        playerNumber: foundPlayerNumber
       };
 
       let updatedScoreHome = prev.scoreHome;
@@ -1509,22 +1605,22 @@ const LiveGameView: React.FC<{
 
   const getStat = (types: string[], teamId?: string) => {
     const targetTeamId = teamId || game.teamHome.id;
-    return game.events.filter(e => {
+    return (game.events || []).filter(e => {
       const isTeam = e.teamId === targetTeamId;
-      const isTarget = types.some(t => e.type.toUpperCase().includes(t.toUpperCase()));
-      const periodMatch = periodFilter === 'ALL' || e.gameTime.startsWith(`${periodFilter}Q`);
+      const isTarget = types.some(t => (e.type || '').toUpperCase().includes(t.toUpperCase()));
+      const periodMatch = periodFilter === 'ALL' || (e.gameTime || '').startsWith(`${periodFilter}Q`);
       return isTeam && isTarget && periodMatch;
     }).length;
   };
 
   const getDetailedStat = (types: string[], teamId?: string) => {
     const targetTeamId = teamId || game.teamHome.id;
-    const events = game.events.filter(e => {
+    const events = (game.events || []).filter(e => {
       const isTeam = e.teamId === targetTeamId;
       const isTarget = types.some(t => {
-        return e.type.toUpperCase().includes(t.toUpperCase());
+        return (e.type || '').toUpperCase().includes(t.toUpperCase());
       });
-      const periodMatch = periodFilter === 'ALL' || e.gameTime.startsWith(`${periodFilter}Q`);
+      const periodMatch = periodFilter === 'ALL' || (e.gameTime || '').startsWith(`${periodFilter}Q`);
       return isTeam && isTarget && periodMatch;
     });
 
@@ -3372,7 +3468,59 @@ const LiveGameView: React.FC<{
     );
   };
 
-  if (isLoading || (!game && !showResumePrompt)) {
+  if (isLoading || !game) {
+    if (!game && showResumePrompt) {
+      return (
+        <div className="min-h-screen bg-[#0c0a21]">
+          <Portal>
+            <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+              <div className="relative w-full max-w-sm bg-[#1e293b]/45 backdrop-blur-md border border-white/10 p-8 rounded-[40px] shadow-2xl animate-in zoom-in duration-200 text-center">
+                <div className="text-4xl mb-4 text-white"><i className="fa-solid fa-hourglass-half"></i></div>
+                <h3 className="contrail-font text-2xl text-white uppercase mb-2">Partido en Curso</h3>
+                <p className="text-[11px] font-bold text-white uppercase leading-relaxed mb-8">
+                  Tienes un partido sin finalizar guardado localmente. ¿Deseas continuar el partido anterior o empezar uno nuevo?
+                </p>
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={() => {
+                      if (pendingActiveGame) {
+                        setGame(pendingActiveGame.game);
+                        setSeconds(pendingActiveGame.seconds);
+                        setPeriod(pendingActiveGame.period);
+                        setPossession(pendingActiveGame.possession);
+                        setLocalPossessionTime(pendingActiveGame.localPossessionTime);
+                        setAwayPossessionTime(pendingActiveGame.awayPossessionTime);
+                        setPassCount(pendingActiveGame.passCount);
+                        setIsRunning(pendingActiveGame.isRunning);
+                        if (pendingActiveGame.game.activeTacticId) setActiveTacticId(pendingActiveGame.game.activeTacticId);
+                      }
+                      setShowResumePrompt(false);
+                    }}
+                    className="w-full bg-primary text-white font-black py-4 rounded-2xl active:scale-95 text-xs uppercase shadow-lg shadow-primary/20 transition-all"
+                  >
+                    CONTINUAR PARTIDO
+                  </button>
+                  <button
+                    onClick={() => {
+                      StorageService.clearActiveGame();
+                      setShowResumePrompt(false);
+                      if (id) {
+                        const data = PersistenceManager.getGame(id);
+                        if (data) setGame(data);
+                      }
+                    }}
+                    className="w-full bg-red-50 text-red-600 font-black py-4 rounded-2xl active:scale-95 text-xs uppercase border border-red-200 transition-all hover:bg-red-100"
+                  >
+                    EMPEZAR DE CERO
+                  </button>
+                </div>
+              </div>
+            </div>
+          </Portal>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#0c0a21] text-white gap-4">
         {loadError ? (
@@ -3381,7 +3529,7 @@ const LiveGameView: React.FC<{
             <p className="font-bold text-sm uppercase">{loadError}</p>
             <button
               onClick={() => navigate('/dashboard')}
-              className="mt-6 px-6 py-3 bg-[#1e293b]/45 backdrop-blur-md border border-white/10/10 rounded-full font-black text-xs uppercase hover:bg-[#1e293b]/45 backdrop-blur-md border border-white/10/20 transition-colors"
+              className="mt-6 px-6 py-3 bg-[#1e293b]/45 backdrop-blur-md border border-white/10 rounded-full font-black text-xs uppercase hover:bg-[#1e293b]/45 backdrop-blur-md border border-white/10 transition-colors"
             >
               Volver al inicio
             </button>
@@ -3396,60 +3544,11 @@ const LiveGameView: React.FC<{
     );
   }
 
-  // Si showResumePrompt es true y game es null, renderizamos solo el modal usando un div vacío como base
-  if (!game && showResumePrompt) {
-    return (
-      <div className="min-h-screen bg-[#0c0a21]">
-        <Portal>
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
-            <div className="relative w-full max-w-sm bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 p-8 rounded-[40px] shadow-2xl animate-in zoom-in duration-200 text-center">
-              <div className="text-4xl mb-4 text-white"><i className="fa-solid fa-hourglass-half"></i></div>
-              <h3 className="contrail-font contrail-font text-2xl text-white uppercase mb-2">Partido en Curso</h3>
-              <p className="text-[11px] font-bold text-white uppercase leading-relaxed mb-8">
-                Tienes un partido sin finalizar guardado localmente. ¿Deseas continuar el partido anterior o empezar uno nuevo?
-              </p>
-              <div className="flex flex-col gap-3">
-                <button
-                  onClick={() => {
-                    if (pendingActiveGame) {
-                      setGame(pendingActiveGame.game);
-                      setSeconds(pendingActiveGame.seconds);
-                      setPeriod(pendingActiveGame.period);
-                      setPossession(pendingActiveGame.possession);
-                      setLocalPossessionTime(pendingActiveGame.localPossessionTime);
-                      setAwayPossessionTime(pendingActiveGame.awayPossessionTime);
-                      setPassCount(pendingActiveGame.passCount);
-                      setIsRunning(pendingActiveGame.isRunning);
-                      if (pendingActiveGame.game.activeTacticId) setActiveTacticId(pendingActiveGame.game.activeTacticId);
-                    }
-                    setShowResumePrompt(false);
-                  }}
-                  className="w-full bg-primary text-white font-black py-4 rounded-2xl active:scale-95 text-xs uppercase shadow-lg shadow-primary/20 transition-all"
-                >
-                  CONTINUAR PARTIDO
-                </button>
-                <button
-                  onClick={() => {
-                    StorageService.clearActiveGame();
-                    onAnnulGame();
-                    navigate('/new-game');
-                  }}
-                  className="w-full bg-red-50 text-red-600 font-black py-4 rounded-2xl active:scale-95 text-xs uppercase border border-red-200 transition-all hover:bg-red-100"
-                >
-                  EMPEZAR UNO NUEVO
-                </button>
-              </div>
-            </div>
-          </div>
-        </Portal>
-      </div>
-    );
-  }
-
-  const hasPasses = game.passChains.length > 0;
-  const pAvg = hasPasses ? (game.passChains.reduce((a, b) => a + b, 0) / game.passChains.length).toFixed(1) : 0;
-  const pMax = hasPasses ? Math.max(...game.passChains) : 0;
-  const pMin = hasPasses ? Math.min(...game.passChains) : 0;
+  const passChains = game.passChains || [];
+  const hasPasses = passChains.length > 0;
+  const pAvg = hasPasses ? (passChains.reduce((a, b) => a + b, 0) / passChains.length).toFixed(1) : 0;
+  const pMax = hasPasses ? Math.max(...passChains) : 0;
+  const pMin = hasPasses ? Math.min(...passChains) : 0;
 
   const getEventForPassCount = (count: number) => {
     return game.events.find(e => e.details?.includes(`(${count} pases)`));
@@ -3511,16 +3610,16 @@ const LiveGameView: React.FC<{
 
 
   const getTeamsStat = (types: string[]) => {
-    const home = game.events.filter(e => {
+    const home = (game.events || []).filter(e => {
       const isTeam = e.teamId === game.teamHome.id;
-      const isTarget = types.some(t => e.type.toUpperCase().includes(t.toUpperCase()));
-      const periodMatch = periodFilter === 'ALL' || e.gameTime.startsWith(`${periodFilter}Q`);
+      const isTarget = types.some(t => (e.type || '').toUpperCase().includes(t.toUpperCase()));
+      const periodMatch = periodFilter === 'ALL' || (e.gameTime || '').startsWith(`${periodFilter}Q`);
       return isTeam && isTarget && periodMatch;
     }).length;
-    const away = game.events.filter(e => {
+    const away = (game.events || []).filter(e => {
       const isTeam = e.teamId === game.teamAway.id;
-      const isTarget = types.some(t => e.type.toUpperCase().includes(t.toUpperCase()));
-      const periodMatch = periodFilter === 'ALL' || e.gameTime.startsWith(`${periodFilter}Q`);
+      const isTarget = types.some(t => (e.type || '').toUpperCase().includes(t.toUpperCase()));
+      const periodMatch = periodFilter === 'ALL' || (e.gameTime || '').startsWith(`${periodFilter}Q`);
       return isTeam && isTarget && periodMatch;
     }).length;
     return { home, away };
@@ -3849,64 +3948,132 @@ const LiveGameView: React.FC<{
         </Portal>
       )}
 
-      <header className="h-16 md:h-20 flex items-center justify-between px-4 md:px-6 bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border-b border-white/10 shadow-sm z-[200]" style={{ flexShrink: 0 }}>
-        <button onClick={() => setIsMenuOpen(true)} className="w-8 h-8 flex flex-col items-center justify-center gap-1.5 group">
-          <div className="w-6 h-0.5 bg-black" />
-          <div className="w-6 h-0.5 bg-black" />
-          <div className="w-4 h-0.5 bg-black self-start ml-1" />
+      <header className="min-h-[64px] md:min-h-[80px] py-2 flex items-center justify-between px-3 md:px-6 bg-[#1e293b]/45 backdrop-blur-md border-b border-white/10 shadow-lg z-[200]" style={{ flexShrink: 0 }}>
+        {/* Botón Menú Lateral */}
+        <button onClick={() => setIsMenuOpen(true)} className="w-8 h-8 flex flex-col items-center justify-center gap-1.5 group shrink-0">
+          <div className="w-6 h-0.5 bg-white group-hover:bg-primary transition-colors" />
+          <div className="w-6 h-0.5 bg-white group-hover:bg-primary transition-colors" />
+          <div className="w-4 h-0.5 bg-white group-hover:bg-primary transition-colors self-start ml-1" />
         </button>
-        <div className="flex-1 flex justify-center items-center gap-2 md:gap-6 overflow-hidden">
-          {/* Home Team Score Block */}
-          <button
-            onClick={() => selectPossession(Possession.HOME)}
-            className={`px-4 md:px-6 py-2 rounded-2xl flex items-center gap-3 border transition-all duration-500 shadow-md ${possession === Possession.HOME
-              ? 'scale-110 z-10 opacity-100 shadow-xl border-white/20'
-              : 'scale-95 opacity-50 border-transparent'
-              } ${!isRunning && possession === Possession.NONE && seconds === 0 ? 'animate-pulse border-white/40' : ''}`}
-            style={{
-              backgroundColor: game?.teamHome?.primaryColor || '#6d5dfc',
-              color: game?.teamHome?.secondaryColor || '#ffffff'
-            }}
-          >
-            <div className="flex flex-col items-end min-w-0">
-              <span className="text-[10px] md:text-sm font-black uppercase tracking-wider max-w-[80px] truncate">{game?.teamHome?.name || 'Local'}</span>
-              {dbAcciones && (dbAcciones as any).reglamento?.modo_puntuacion === 'sets' && (
-                <span className="text-[9px] font-black text-white/50 uppercase tracking-widest mt-0.5 leading-none">
-                  Set: {game?.metadata?.setPointsHome || 0}
-                </span>
-              )}
-            </div>
-            <span className="text-2xl md:text-4xl font-black leading-none">{game?.scoreHome || 0}</span>
-          </button>
+
+        {/* Tablero Central Adaptativo */}
+        <div className="flex-1 flex justify-center items-center gap-2 md:gap-6 overflow-hidden px-2">
+          {/* Bloque Equipo Local */}
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <button
+              onClick={() => selectPossession(Possession.HOME)}
+              className={`px-3 md:px-5 py-2 rounded-2xl flex items-center gap-3 border transition-all duration-500 shadow-md ${
+                possession === Possession.HOME
+                  ? 'scale-105 z-10 opacity-100 shadow-xl border-white/30'
+                  : 'scale-95 opacity-60 border-transparent hover:opacity-90'
+                } ${!isRunning && possession === Possession.NONE && seconds === 0 ? 'animate-pulse border-white/40' : ''}`}
+              style={{
+                backgroundColor: game?.teamHome?.primaryColor || '#6d5dfc',
+                color: game?.teamHome?.secondaryColor || '#ffffff'
+              }}
+            >
+              <div className="flex flex-col items-end min-w-0">
+                <span className="text-[10px] md:text-sm font-black uppercase tracking-wider max-w-[90px] md:max-w-[120px] truncate">{game?.teamHome?.name || 'Local'}</span>
+                {reglamentoConfig?.tipo_tanteador === 'sets_puntos' && (
+                  <span className="text-[9px] font-black text-white/70 uppercase tracking-widest leading-none mt-0.5">
+                    PTS SET: {game?.metadata?.setPointsHome || 0}
+                  </span>
+                )}
+              </div>
+              <span className="text-2xl md:text-4xl font-black leading-none">{game?.scoreHome || 0}</span>
+            </button>
+
+            {/* Micro-badges Equipo Local */}
+            {(() => {
+              const stats = getTeamWidgetStats(game?.teamHome?.id || '', 'local');
+              const isFoulsBonus = widgetsHeaderConfig.limite_faltas_bonus > 0 && stats.periodFoulsCount >= widgetsHeaderConfig.limite_faltas_bonus;
+              return (
+                <div className="flex items-center gap-1 flex-wrap justify-end">
+                  {widgetsHeaderConfig.mostrar_cambios_disponibles && (
+                    <span className="bg-white/5 border border-white/10 rounded-lg px-1.5 py-0.5 text-[8px] md:text-[9px] font-bold text-white/80" title="Sustituciones realizadas">
+                      CAMBIOS: {stats.subsCount}/{widgetsHeaderConfig.max_cambios || 5}
+                    </span>
+                  )}
+                  {widgetsHeaderConfig.mostrar_faltas_equipo && (
+                    <span className={`border rounded-lg px-1.5 py-0.5 text-[8px] md:text-[9px] font-bold transition-all ${
+                      isFoulsBonus 
+                        ? 'bg-red-500/30 text-red-300 border-red-500/60 animate-pulse font-black' 
+                        : 'bg-white/5 border-white/10 text-white/80'
+                    }`} title="Faltas de equipo en período actual">
+                      FALTAS: {stats.periodFoulsCount}
+                    </span>
+                  )}
+                  {widgetsHeaderConfig.mostrar_video_challenges && (
+                    <span className="bg-white/5 border border-white/10 rounded-lg px-1.5 py-0.5 text-[8px] md:text-[9px] font-bold text-cyan-300" title="Video Challenges / VAR">
+                      VAR: {stats.challengesCount}/{widgetsHeaderConfig.max_challenges || 2}
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
 
           <NSeparator />
 
-          {/* Away Team Score Block */}
-          <button
-            onClick={() => selectPossession(Possession.AWAY)}
-            className={`px-4 md:px-6 py-2 rounded-2xl flex items-center flex-row-reverse gap-3 border transition-all duration-500 shadow-md ${possession === Possession.AWAY
-              ? 'scale-110 z-10 opacity-100 shadow-xl border-white/20'
-              : 'scale-95 opacity-50 border-transparent'
-              } ${!isRunning && possession === Possession.NONE && seconds === 0 ? 'animate-pulse border-white/40' : ''}`}
-            style={{
-              backgroundColor: game?.teamAway?.primaryColor || '#ef4444',
-              color: game?.teamAway?.secondaryColor || '#ffffff'
-            }}
-          >
-            <div className="flex flex-col items-start min-w-0">
-              <span className="text-[10px] md:text-sm font-black uppercase tracking-wider max-w-[80px] truncate">{game?.teamAway?.name || 'Visita'}</span>
-              {dbAcciones && (dbAcciones as any).reglamento?.modo_puntuacion === 'sets' && (
-                <span className="text-[9px] font-black text-white/50 uppercase tracking-widest mt-0.5 leading-none">
-                  Set: {game?.metadata?.setPointsAway || 0}
-                </span>
-              )}
-            </div>
-            <span className="text-2xl md:text-4xl font-black leading-none">{game?.scoreAway || 0}</span>
-          </button>
+          {/* Bloque Equipo Visitante */}
+          <div className="flex flex-col items-start gap-1 shrink-0">
+            <button
+              onClick={() => selectPossession(Possession.AWAY)}
+              className={`px-3 md:px-5 py-2 rounded-2xl flex items-center flex-row-reverse gap-3 border transition-all duration-500 shadow-md ${
+                possession === Possession.AWAY
+                  ? 'scale-105 z-10 opacity-100 shadow-xl border-white/30'
+                  : 'scale-95 opacity-60 border-transparent hover:opacity-90'
+                } ${!isRunning && possession === Possession.NONE && seconds === 0 ? 'animate-pulse border-white/40' : ''}`}
+              style={{
+                backgroundColor: game?.teamAway?.primaryColor || '#ef4444',
+                color: game?.teamAway?.secondaryColor || '#ffffff'
+              }}
+            >
+              <div className="flex flex-col items-start min-w-0">
+                <span className="text-[10px] md:text-sm font-black uppercase tracking-wider max-w-[90px] md:max-w-[120px] truncate">{game?.teamAway?.name || 'Visita'}</span>
+                {reglamentoConfig?.tipo_tanteador === 'sets_puntos' && (
+                  <span className="text-[9px] font-black text-white/70 uppercase tracking-widest leading-none mt-0.5">
+                    PTS SET: {game?.metadata?.setPointsAway || 0}
+                  </span>
+                )}
+              </div>
+              <span className="text-2xl md:text-4xl font-black leading-none">{game?.scoreAway || 0}</span>
+            </button>
+
+            {/* Micro-badges Equipo Visitante */}
+            {(() => {
+              const stats = getTeamWidgetStats(game?.teamAway?.id || '', 'visitante');
+              const isFoulsBonus = widgetsHeaderConfig.limite_faltas_bonus > 0 && stats.periodFoulsCount >= widgetsHeaderConfig.limite_faltas_bonus;
+              return (
+                <div className="flex items-center gap-1 flex-wrap justify-start">
+                  {widgetsHeaderConfig.mostrar_cambios_disponibles && (
+                    <span className="bg-white/5 border border-white/10 rounded-lg px-1.5 py-0.5 text-[8px] md:text-[9px] font-bold text-white/80" title="Sustituciones realizadas">
+                      CAMBIOS: {stats.subsCount}/{widgetsHeaderConfig.max_cambios || 5}
+                    </span>
+                  )}
+                  {widgetsHeaderConfig.mostrar_faltas_equipo && (
+                    <span className={`border rounded-lg px-1.5 py-0.5 text-[8px] md:text-[9px] font-bold transition-all ${
+                      isFoulsBonus 
+                        ? 'bg-red-500/30 text-red-300 border-red-500/60 animate-pulse font-black' 
+                        : 'bg-white/5 border-white/10 text-white/80'
+                    }`} title="Faltas de equipo en período actual">
+                      FALTAS: {stats.periodFoulsCount}
+                    </span>
+                  )}
+                  {widgetsHeaderConfig.mostrar_video_challenges && (
+                    <span className="bg-white/5 border border-white/10 rounded-lg px-1.5 py-0.5 text-[8px] md:text-[9px] font-bold text-cyan-300" title="Video Challenges / VAR">
+                      VAR: {stats.challengesCount}/{widgetsHeaderConfig.max_challenges || 2}
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
         </div>
 
-        {(!dbAcciones || (dbAcciones as any).reglamento?.por_tiempo !== false) && (
-          <div className="flex items-center gap-3 shrink-0">
+        {/* Bloque Tiempo & Cronómetro */}
+        {(!dbAcciones || reglamentoConfig?.por_tiempo !== false) && (
+          <div className="flex items-center gap-2 md:gap-3 shrink-0">
             <div className="relative">
               <button
                 onClick={() => setShowPeriodMenu(!showPeriodMenu)}
@@ -3915,12 +4082,12 @@ const LiveGameView: React.FC<{
                 {period}Q
               </button>
               {showPeriodMenu && (
-                <div className="absolute top-full right-0 mt-2 bg-[#1e293b]/45 backdrop-blur-md border border-white/10 border border-white/10 shadow-2xl rounded-2xl p-1.5 z-[300] flex flex-col min-w-[60px] animate-in zoom-in duration-150">
-                  {Array.from({ length: game?.metadata?.cantidadPeriodos || (dbAcciones as any).reglamento?.cantidad_periodos || 4 }, (_, i) => i + 1).map(q => (
+                <div className="absolute top-full right-0 mt-2 bg-[#1e293b]/90 backdrop-blur-md border border-white/10 shadow-2xl rounded-2xl p-1.5 z-[300] flex flex-col min-w-[60px] animate-in zoom-in duration-150">
+                  {Array.from({ length: game?.metadata?.cantidadPeriodos || reglamentoConfig?.cantidad_periodos || 4 }, (_, i) => i + 1).map(q => (
                     <button
                       key={q}
                       onClick={() => handlePeriodRequest(q)}
-                      className={`px-4 py-2.5 text-[10px] font-black rounded-xl transition-colors ${period === q ? 'bg-primary text-white shadow-md' : 'text-white hover:bg-[#1e293b]/45 backdrop-blur-md border border-white/10'}`}
+                      className={`px-4 py-2.5 text-[10px] font-black rounded-xl transition-colors ${period === q ? 'bg-primary text-white shadow-md' : 'text-white hover:bg-white/10'}`}
                     >
                       {q}Q
                     </button>
@@ -3928,8 +4095,8 @@ const LiveGameView: React.FC<{
                 </div>
               )}
             </div>
-            <div className="bg-[#1e293b]/45 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-xl border border-white/10 flex items-center gap-3">
-              <div className="hidden md:flex flex-col items-center gap-1.5 px-0.5 border-r border-white/10 pr-2">
+            <div className="bg-[#1e293b]/45 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-xl flex items-center gap-2 md:gap-3">
+              <div className="hidden md:flex flex-col items-center gap-1 px-0.5 border-r border-white/10 pr-2">
                 <div
                   className={`w-2 h-2 rounded-full shadow-sm transition-all duration-500 ${!navigator.onLine
                     ? 'bg-red-500 animate-pulse'
@@ -3946,7 +4113,7 @@ const LiveGameView: React.FC<{
               <p className="text-lg md:text-xl font-black text-primary tabular-nums leading-none">{formatTime(seconds)}</p>
               <button
                 onClick={toggleTimer}
-                className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-all text-sm font-black shadow-md ${isRunning ? 'bg-red-500 text-white' : 'bg-primary text-white animate-bounce-short'}`}
+                className={`w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center active:scale-90 transition-all text-xs md:text-sm font-black shadow-md ${isRunning ? 'bg-red-500 text-white' : 'bg-primary text-white animate-bounce-short'}`}
               >
                 {isRunning ? '||' : '▶'}
               </button>

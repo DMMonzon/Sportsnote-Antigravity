@@ -1,5 +1,6 @@
 
 import { Game, AppState, UserRole } from '../types';
+import { db, auth, doc, setDoc, serverTimestamp } from './firebase';
 
 const STORAGE_KEY = 'sportsnote_db';
 
@@ -55,5 +56,33 @@ export const dbService = {
   getGame: (id: string): Game | undefined => {
     const state = dbService.loadState();
     return state.matches.find(g => g.id === id);
+  },
+
+  /**
+   * Creación Inmediata de Documento e ID de Partido en Firestore /matches/{matchId}
+   */
+  createMatchInFirestore: async (game: Game) => {
+    try {
+      const matchRef = doc(db, 'matches', game.id);
+      const currentAuthorId = auth.currentUser?.uid || game.authorId || game.userId || game.ownerId || '';
+      
+      const payload = {
+        ...game,
+        id: game.id,
+        authorId: currentAuthorId,
+        sportType: game.sportType || game.sportId || 'HOCKEY_FIELD',
+        status: 'active',
+        isCounted: true,
+        createdAt: serverTimestamp()
+      };
+
+      await setDoc(matchRef, payload, { merge: true });
+      console.log(`Documento /matches/${game.id} creado en Firestore con authorId: ${currentAuthorId}`);
+      return payload;
+    } catch (error) {
+      console.error("Error al crear documento del partido en Firestore:", error);
+      throw error;
+    }
   }
 };
+

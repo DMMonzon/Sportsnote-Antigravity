@@ -6,6 +6,10 @@ import { PersistenceManager, getTimestampMillis } from './services/PersistenceMa
 import { db } from './services/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
+import { StorageService } from './services/StorageService';
+
+import { ErrorBoundary } from './components/ErrorBoundary';
+
 // Views
 import LoginView from './views/LoginView';
 import DashboardView from './views/DashboardView';
@@ -138,6 +142,9 @@ const AppContent: React.FC = () => {
       status: game.status || 'active' // Estado del partido
     };
     
+    // Clear any stale active match state before saving new game
+    StorageService.clearActiveGame();
+
     // Ensure it is saved locally AND queued for sync immediately
     PersistenceManager.createGame(newGame);
 
@@ -299,14 +306,16 @@ const AppContent: React.FC = () => {
 
         <Route path="/live/:id" element={
           state.currentUser
-            ? <LiveGameView
-              role={state.currentUser.role}
-              tacticalSchemes={state.tacticalSchemes}
-              onUpdateTactics={handleUpdateTactics}
-              onExitGame={(game) => closeActiveGame(game)}
-              onAnnulGame={handleAnnulGame}
-              onConsumeMatchQuota={consumeMatchQuota}
-            />
+            ? <ErrorBoundary>
+                <LiveGameView
+                  role={state.currentUser.role}
+                  tacticalSchemes={state.tacticalSchemes}
+                  onUpdateTactics={handleUpdateTactics}
+                  onExitGame={(game) => closeActiveGame(game)}
+                  onAnnulGame={handleAnnulGame}
+                  onConsumeMatchQuota={consumeMatchQuota}
+                />
+              </ErrorBoundary>
             : <Navigate to="/" />
         } />
 

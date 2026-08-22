@@ -69,6 +69,12 @@ export interface GameEvent {
   period?: number;
   team?: 'local' | 'visitante';
   timestampStr?: string; // formato compacto 'MM:SS'
+
+  // Campos estandarizados y codificados
+  actionCode?: string; // e.g. 'DISPARO_GOL', 'DISPARO_ATAJADO', 'CÓRNER_CORTO', 'FALTA_COMETIDA', 'PUNTOS_1', 'PUNTOS_2', 'PUNTOS_3', 'TURNOVER'
+  teamSide?: 'home' | 'away';
+  playerId?: string | null;
+  playerNumber?: number | string | null;
 }
 
 export interface MatchMetadata {

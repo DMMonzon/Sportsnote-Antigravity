@@ -107,37 +107,37 @@ const SquadView: React.FC<SquadViewProps> = ({ matches }) => {
                 {/* Formulario */}
                 <div className="flex flex-col gap-6 lg:col-span-1">
                     <GlassCard className="p-8 shadow-xl relative overflow-hidden">
-                        <p className="text-[10px] font-black text-white/50 uppercase tracking-widest italic border-b border-white/10 pb-2 mb-6 relative z-10">
-                            {isEditing ? 'Editar Jugador' : 'Nuevo Jugador'}
-                        </p>
+                        <h3 className="font-contrail text-xl font-black uppercase tracking-wider italic text-white flex items-center gap-2.5 border-b border-white/10 pb-3 mb-6 relative z-10">
+                            <i className="fa-solid fa-user-plus text-[#38bdf8]"></i> {isEditing ? 'Editar Jugador' : 'Nuevo Jugador'}
+                        </h3>
 
                         <div className="space-y-5 relative z-10">
                             <div>
-                                <label className="text-[9px] font-black text-white uppercase tracking-widest block mb-1.5 opacity-60">Nombre y Apellido</label>
+                                <label className="text-[9px] font-black text-[#a5b4fc] uppercase tracking-widest block mb-1.5 opacity-80">Nombre y Apellido</label>
                                 <input
                                     type="text"
                                     value={newPlayer.name}
                                     onChange={e => setNewPlayer({ ...newPlayer, name: e.target.value })}
-                                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-xs font-bold text-white outline-none focus:border-[#00fe00] transition-all shadow-inner placeholder-white/30"
+                                    className="w-full bg-[#131041]/60 border border-white/10 rounded-2xl px-5 py-4 text-xs font-bold text-white outline-none focus:border-[#00fe00] transition-all shadow-inner placeholder-white/30"
                                     placeholder="Ej: Mateo Gómez"
                                 />
                             </div>
                             <div>
-                                <label className="text-[9px] font-black text-white uppercase tracking-widest block mb-1.5 opacity-60">Dorsal</label>
+                                <label className="text-[9px] font-black text-[#a5b4fc] uppercase tracking-widest block mb-1.5 opacity-80">Dorsal</label>
                                 <input
                                     type="number"
                                     value={newPlayer.number}
                                     onChange={e => setNewPlayer({ ...newPlayer, number: e.target.value })}
-                                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-xs font-bold text-white outline-none focus:border-[#00fe00] transition-all shadow-inner placeholder-white/30"
+                                    className="w-full bg-[#131041]/60 border border-white/10 rounded-2xl px-5 py-4 text-xs font-bold text-white outline-none focus:border-[#00fe00] transition-all shadow-inner placeholder-white/30"
                                     placeholder="Ej: 10"
                                 />
                             </div>
                             <div>
-                                <label className="text-[9px] font-black text-white uppercase tracking-widest block mb-1.5 opacity-60">Comentarios</label>
+                                <label className="text-[9px] font-black text-[#a5b4fc] uppercase tracking-widest block mb-1.5 opacity-80">Comentarios</label>
                                 <textarea
                                     value={newPlayer.comments}
                                     onChange={e => setNewPlayer({ ...newPlayer, comments: e.target.value })}
-                                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-xs font-bold text-white outline-none focus:border-[#00fe00] transition-all shadow-inner h-28 resize-none placeholder-white/30"
+                                    className="w-full bg-[#131041]/60 border border-white/10 rounded-2xl px-5 py-4 text-xs font-bold text-white outline-none focus:border-[#00fe00] transition-all shadow-inner h-28 resize-none placeholder-white/30"
                                     placeholder="Notas adicionales..."
                                 />
                             </div>
@@ -160,7 +160,7 @@ const SquadView: React.FC<SquadViewProps> = ({ matches }) => {
                                         </button>
                                         <button
                                             onClick={resetForm}
-                                            className="text-[9px] font-black text-white/50 uppercase tracking-widest text-center py-2 underline opacity-50 hover:opacity-100"
+                                            className="text-[9px] font-black text-[#a5b4fc] uppercase tracking-widest text-center py-2 underline opacity-70 hover:opacity-100"
                                         >
                                             cancelar edición
                                         </button>
@@ -174,7 +174,9 @@ const SquadView: React.FC<SquadViewProps> = ({ matches }) => {
                 {/* Listado */}
                 <div className="flex flex-col gap-6 lg:col-span-2">
                     <div className="flex items-center justify-between px-2">
-                        <p className="text-[11px] font-black text-white/50 uppercase tracking-[2px] italic">Plantilla Registrada ({squad.length})</p>
+                        <h3 className="font-contrail text-xl font-black uppercase tracking-wider italic text-white flex items-center gap-2.5">
+                            <i className="fa-solid fa-users text-[#38bdf8]"></i> Plantilla Registrada ({squad.length})
+                        </h3>
                     </div>
 
                     <div className="grid grid-cols-1 gap-4">
