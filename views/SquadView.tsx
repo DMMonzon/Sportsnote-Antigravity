@@ -108,7 +108,7 @@ const SquadView: React.FC<SquadViewProps> = ({ matches }) => {
                 <div className="flex flex-col gap-6 lg:col-span-1">
                     <GlassCard className="p-8 shadow-xl relative overflow-hidden">
                         <h3 className="font-contrail text-xl font-black uppercase tracking-wider italic text-white flex items-center gap-2.5 border-b border-white/10 pb-3 mb-6 relative z-10">
-                            <i className="fa-solid fa-user-plus text-[#38bdf8]"></i> {isEditing ? 'Editar Jugador' : 'Nuevo Jugador'}
+                            <i className="fa-solid fa-user-plus text-[#c6ff00]"></i> {isEditing ? 'Editar Jugador' : 'Nuevo Jugador'}
                         </h3>
 
                         <div className="space-y-5 relative z-10">
@@ -118,7 +118,7 @@ const SquadView: React.FC<SquadViewProps> = ({ matches }) => {
                                     type="text"
                                     value={newPlayer.name}
                                     onChange={e => setNewPlayer({ ...newPlayer, name: e.target.value })}
-                                    className="w-full bg-[#131041]/60 border border-white/10 rounded-2xl px-5 py-4 text-xs font-bold text-white outline-none focus:border-[#00fe00] transition-all shadow-inner placeholder-white/30"
+                                    className="w-full bg-[#1c1236]/60 border border-white/10 rounded-2xl px-5 py-4 text-xs font-bold text-white outline-none focus:border-[#c6ff00] transition-all shadow-inner placeholder-white/30"
                                     placeholder="Ej: Mateo Gómez"
                                 />
                             </div>
@@ -128,7 +128,7 @@ const SquadView: React.FC<SquadViewProps> = ({ matches }) => {
                                     type="number"
                                     value={newPlayer.number}
                                     onChange={e => setNewPlayer({ ...newPlayer, number: e.target.value })}
-                                    className="w-full bg-[#131041]/60 border border-white/10 rounded-2xl px-5 py-4 text-xs font-bold text-white outline-none focus:border-[#00fe00] transition-all shadow-inner placeholder-white/30"
+                                    className="w-full bg-[#1c1236]/60 border border-white/10 rounded-2xl px-5 py-4 text-xs font-bold text-white outline-none focus:border-[#c6ff00] transition-all shadow-inner placeholder-white/30"
                                     placeholder="Ej: 10"
                                 />
                             </div>
@@ -137,7 +137,7 @@ const SquadView: React.FC<SquadViewProps> = ({ matches }) => {
                                 <textarea
                                     value={newPlayer.comments}
                                     onChange={e => setNewPlayer({ ...newPlayer, comments: e.target.value })}
-                                    className="w-full bg-[#131041]/60 border border-white/10 rounded-2xl px-5 py-4 text-xs font-bold text-white outline-none focus:border-[#00fe00] transition-all shadow-inner h-28 resize-none placeholder-white/30"
+                                    className="w-full bg-[#1c1236]/60 border border-white/10 rounded-2xl px-5 py-4 text-xs font-bold text-white outline-none focus:border-[#c6ff00] transition-all shadow-inner h-28 resize-none placeholder-white/30"
                                     placeholder="Notas adicionales..."
                                 />
                             </div>
@@ -145,7 +145,7 @@ const SquadView: React.FC<SquadViewProps> = ({ matches }) => {
                             <div className="flex flex-col gap-3 pt-4">
                                 <button
                                     onClick={handleSavePlayer}
-                                    className="w-full bg-[#00fe00] text-black font-black py-5 rounded-2xl active:scale-95 text-[11px] uppercase tracking-widest shadow-[0_0_15px_rgba(0,254,0,0.2)] transition-all hover:bg-[#00fe00]/80"
+                                    className="w-full bg-[#c6ff00] text-black font-black py-5 rounded-2xl active:scale-95 text-[11px] uppercase tracking-widest shadow-[0_0_15px_rgba(198,255,0,0.25)] transition-all hover:bg-[#c6ff00]/80"
                                 >
                                     {isEditing ? 'ACTUALIZAR DATOS' : 'GUARDAR JUGADOR'}
                                 </button>
@@ -175,7 +175,7 @@ const SquadView: React.FC<SquadViewProps> = ({ matches }) => {
                 <div className="flex flex-col gap-6 lg:col-span-2">
                     <div className="flex items-center justify-between px-2">
                         <h3 className="font-contrail text-xl font-black uppercase tracking-wider italic text-white flex items-center gap-2.5">
-                            <i className="fa-solid fa-users text-[#38bdf8]"></i> Plantilla Registrada ({squad.length})
+                            <i className="fa-solid fa-users text-[#c6ff00]"></i> Plantilla Registrada ({squad.length})
                         </h3>
                     </div>
 

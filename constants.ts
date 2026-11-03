@@ -2,8 +2,8 @@
 import { UserRole } from './types';
 
 export const COLORS = {
-  NEON: '#00fe00',
-  DARK: '#131041',
+  NEON: '#c6ff00',
+  DARK: '#1c1236',
   GREY: '#b4b4b4',
 };
 

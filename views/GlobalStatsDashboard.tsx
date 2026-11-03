@@ -168,7 +168,7 @@ const GlobalStatsDashboard: React.FC<GlobalStatsDashboardProps> = ({ matches }) 
                                 <button
                                     key={opt.id}
                                     onClick={() => setRange(opt.id as any)}
-                                    className={`px-4 md:px-6 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${range === opt.id ? 'bg-[#00fe00] text-black shadow-[0_0_15px_rgba(0,254,0,0.2)]' : 'text-white/70 hover:bg-white/10'}`}
+                                    className={`px-4 md:px-6 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${range === opt.id ? 'bg-[#c6ff00] text-black shadow-[0_0_15px_rgba(198,255,0,0.2)]' : 'text-white/70 hover:bg-white/10'}`}
                                 >
                                     {opt.label}
                                 </button>
@@ -265,13 +265,13 @@ const GlobalStatsDashboard: React.FC<GlobalStatsDashboardProps> = ({ matches }) 
                                 <button
                                     key={m.id}
                                     onClick={() => handleSelectForComparison(m.id)}
-                                    className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${comparisonSelection.includes(m.id) ? 'border-[#00fe00] bg-[#00fe00]/10' : 'border-white/10 hover:border-white/30'}`}
+                                    className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${comparisonSelection.includes(m.id) ? 'border-[#c6ff00] bg-[#c6ff00]/10' : 'border-white/10 hover:border-white/30'}`}
                                 >
                                     <div className="text-left">
                                         <p className="text-xs font-black text-white uppercase">vs {m.teamAway.name}</p>
                                         <p className="text-[9px] font-bold text-white/50 uppercase">{new Date(m.createdAt).toLocaleDateString()} • {m.scoreHome}-{m.scoreAway}</p>
                                     </div>
-                                    {comparisonSelection.includes(m.id) && <span className="text-[#00fe00] text-xl">✅</span>}
+                                    {comparisonSelection.includes(m.id) && <span className="text-[#c6ff00] text-xl">✅</span>}
                                 </button>
                             ))}
                         </div>
@@ -284,11 +284,11 @@ const GlobalStatsDashboard: React.FC<GlobalStatsDashboardProps> = ({ matches }) 
                                 <div className="grid grid-cols-3 gap-4 items-center mb-6">
                                     <div className="text-center">
                                         <p className="text-xs font-black text-white truncate mb-1">{comparisonData[0]?.teamAway.name}</p>
-                                        <p className="text-3xl font-black text-[#00fe00]">{comparisonData[0]?.scoreHome}-{comparisonData[0]?.scoreAway}</p>
+                                        <p className="text-3xl font-black text-[#c6ff00]">{comparisonData[0]?.scoreHome}-{comparisonData[0]?.scoreAway}</p>
                                     </div>
                                     <div className="flex flex-col gap-2">
                                         <div className="h-2 bg-white/10 rounded-full overflow-hidden flex">
-                                            <div className="h-full bg-[#00fe00] transition-all duration-1000" style={{ width: `${(comparisonData[0]!.scoreHome / (comparisonData[0]!.scoreHome + comparisonData[1]!.scoreHome + 0.1)) * 100}%` }}></div>
+                                            <div className="h-full bg-[#c6ff00] transition-all duration-1000" style={{ width: `${(comparisonData[0]!.scoreHome / (comparisonData[0]!.scoreHome + comparisonData[1]!.scoreHome + 0.1)) * 100}%` }}></div>
                                             <div className="h-full bg-white/20 transition-all duration-1000" style={{ width: '1px' }}></div>
                                             <div className="h-full bg-blue-500 transition-all duration-1000" style={{ width: `${(comparisonData[1]!.scoreHome / (comparisonData[0]!.scoreHome + comparisonData[1]!.scoreHome + 0.1)) * 100}%` }}></div>
                                         </div>
@@ -309,12 +309,12 @@ const GlobalStatsDashboard: React.FC<GlobalStatsDashboardProps> = ({ matches }) 
                                     ].map(stat => (
                                         <div key={stat.label} className="flex flex-col gap-1">
                                             <div className="flex justify-between text-[8px] font-black uppercase">
-                                                <span className={stat.val1 > stat.val2 ? 'text-[#00fe00]' : 'text-white/50'}>{stat.val1}</span>
+                                                <span className={stat.val1 > stat.val2 ? 'text-[#c6ff00]' : 'text-white/50'}>{stat.val1}</span>
                                                 <span className="text-white/50 italic">{stat.label}</span>
-                                                <span className={stat.val2 > stat.val1 ? 'text-[#00fe00]' : 'text-white/50'}>{stat.val2}</span>
+                                                <span className={stat.val2 > stat.val1 ? 'text-[#c6ff00]' : 'text-white/50'}>{stat.val2}</span>
                                             </div>
                                             <div className="h-1 bg-white/10 rounded-full flex gap-1 overflow-hidden">
-                                                <div className={`h-full transition-all duration-700 ${stat.val1 > stat.val2 ? 'bg-[#00fe00]' : 'bg-white/20'}`} style={{ width: `${(stat.val1 / (stat.val1 + stat.val2 + 0.1)) * 100}%` }}></div>
+                                                <div className={`h-full transition-all duration-700 ${stat.val1 > stat.val2 ? 'bg-[#c6ff00]' : 'bg-white/20'}`} style={{ width: `${(stat.val1 / (stat.val1 + stat.val2 + 0.1)) * 100}%` }}></div>
                                                 <div className={`h-full transition-all duration-700 ${stat.val2 > stat.val1 ? 'bg-blue-500' : 'bg-white/20'}`} style={{ width: `${(stat.val2 / (stat.val1 + stat.val2 + 0.1)) * 100}%` }}></div>
                                             </div>
                                         </div>

@@ -207,9 +207,9 @@ const SectorRectangle: React.FC<{
             return (
               <div
                 key={sect}
-                className={`flex-1 border-r last:border-r-0 border-white/10 flex flex-col items-center justify-center transition-all ${cellRoundedClass} ${active ? 'bg-[#00fe00]/20' : ''}`}
+                className={`flex-1 border-r last:border-r-0 border-white/10 flex flex-col items-center justify-center transition-all ${cellRoundedClass} ${active ? 'bg-[#c6ff00]/20' : ''}`}
               >
-                <span className={`text-[16px] font-black ${active ? 'text-[#00fe00]' : 'text-white/40'}`}>
+                <span className={`text-[16px] font-black ${active ? 'text-[#c6ff00]' : 'text-white/40'}`}>
                   {val}
                 </span>
               </div>
@@ -570,11 +570,11 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
             <div className="flex justify-between items-start gap-6 relative z-10">
               <div className="flex-1 text-center md:text-left">
                 <div className="text-[10px] text-white/50 uppercase font-black mb-1 truncate">{game.teamHome.name}</div>
-                <div className="text-6xl contrail-font text-[#00fe00] drop-shadow-sm mb-4">{game.scoreHome}</div>
+                <div className="text-6xl contrail-font text-[#c6ff00] drop-shadow-sm mb-4">{game.scoreHome}</div>
                 <div className="space-y-1.5 border-t border-white/10 pt-3">
                   {getGoals(game.teamHome.id).map(g => (
                     <div key={g.id} className="text-[9px] font-bold text-white/70 flex items-center gap-2 justify-center md:justify-start">
-                      <span className="text-[#00fe00]"><i className="fa-solid fa-futbol"></i></span>
+                      <span className="text-[#c6ff00]"><i className="fa-solid fa-futbol"></i></span>
                       <span>{g.gameTime} • {getGoalMode(g)}</span>
                     </div>
                   ))}
@@ -921,7 +921,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
                   <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={10} fill="#ffffff" />
                   <YAxis axisLine={false} tickLine={false} fontSize={10} fill="#ffffff" />
                   <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '10px' }} />
-                  <Line type="monotone" dataKey="pases" stroke="#00fe00" strokeWidth={4} dot={{ r: 6, fill: '#00fe00', strokeWidth: 2, stroke: '#1a1a1a' }} />
+                  <Line type="monotone" dataKey="pases" stroke="#c6ff00" strokeWidth={4} dot={{ r: 6, fill: '#c6ff00', strokeWidth: 2, stroke: '#1a1a1a' }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -931,10 +931,10 @@ const SummaryView: React.FC<SummaryViewProps> = ({ allTactics = [] }) => {
         <div className="flex flex-col gap-4">
           <div className="flex gap-3">
             <Button variant="outline" className="flex-1 bg-white/5 border-white/10 text-white hover:bg-white/10 h-14" onClick={handleDownloadPDF} disabled={isGeneratingPDF}>{isGeneratingPDF ? '⏳ GENERANDO...' : '💾 PDF REPORT'}</Button>
-            <Button variant="outline" className="flex-1 bg-[#00fe00]/10 border-[#00fe00]/30 text-[#00fe00] hover:bg-[#00fe00]/20 h-14" onClick={handleCopySummary}>📋 COPIAR RESUMEN</Button>
+            <Button variant="outline" className="flex-1 bg-[#c6ff00]/10 border-[#c6ff00]/30 text-[#c6ff00] hover:bg-[#c6ff00]/20 h-14" onClick={handleCopySummary}>📋 COPIAR RESUMEN</Button>
             <Button variant="outline" className="flex-1 bg-white/5 border-white/10 text-white hover:bg-white/10 h-14" onClick={downloadCSV}>📊 DATA CSV</Button>
           </div>
-          <Button className="w-full h-14 bg-[#00fe00] text-black hover:bg-[#00fe00]/80 rounded-[24px] shadow-[0_0_20px_rgba(0,254,0,0.3)] font-black uppercase tracking-widest" onClick={() => navigate('/dashboard')}>🏠 REGRESAR AL DASHBOARD</Button>
+          <Button className="w-full h-14 bg-[#c6ff00] text-black hover:bg-[#c6ff00]/80 rounded-[24px] shadow-[0_0_20px_rgba(198,255,0,0.3)] font-black uppercase tracking-widest" onClick={() => navigate('/dashboard')}>🏠 REGRESAR AL DASHBOARD</Button>
         </div>
       </main>
     </div>

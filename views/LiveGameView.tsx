@@ -37,7 +37,7 @@ const TacticIcon = ({ active, animated = false }: { active: boolean, animated?: 
       <circle cx="6" cy="19" r="2" fill="white" stroke="#94a3b8" strokeWidth="2" />
     </svg>
     {animated && (
-      <span className="absolute -bottom-1 left-1.2 w-4 h-1 bg-[#00fe00] rounded-full blur-[2px] animate-pulse shadow-[0_0_8px_#00fe00]"></span>
+      <span className="absolute -bottom-1 left-1.2 w-4 h-1 bg-[#c6ff00] rounded-full blur-[2px] animate-pulse shadow-[0_0_8px_#c6ff00]"></span>
     )}
   </div>
 );
@@ -2362,7 +2362,7 @@ const LiveGameView: React.FC<{
             starterPlayers.map(p => {
               // Highlight player if awaiting assignment
               const highlightBg = isAwaitingAssignment 
-                ? 'bg-[#00fe00]/10 border-[#00fe00]/40 hover:bg-[#00fe00]/25 hover:border-[#00fe00]/80 shadow-[0_0_8px_rgba(0,254,0,0.1)] animate-pulse' 
+                ? 'bg-[#c6ff00]/10 border-[#c6ff00]/40 hover:bg-[#c6ff00]/25 hover:border-[#c6ff00]/80 shadow-[0_0_8px_rgba(198,255,0,0.1)] animate-pulse' 
                 : 'bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10';
 
               const displayName = getPlayerDisplayName(p);
@@ -2398,7 +2398,7 @@ const LiveGameView: React.FC<{
                       <span className="truncate">{displayName}</span>
                       <span className="flex gap-0.5 shrink-0">
                         {cards.map((c, idx) => {
-                          const bgCol = c === 'verde' ? 'bg-[#00fe00]' : c === 'amarilla' ? 'bg-amber-400' : 'bg-red-500';
+                          const bgCol = c === 'verde' ? 'bg-[#c6ff00]' : c === 'amarilla' ? 'bg-amber-400' : 'bg-red-500';
                           return (
                             <span
                               key={idx}
@@ -2411,7 +2411,7 @@ const LiveGameView: React.FC<{
                     </span>
                   </div>
                   {isAwaitingAssignment && (
-                    <span className="text-[8px] font-black text-[#00fe00] uppercase tracking-wider shrink-0">
+                    <span className="text-[8px] font-black text-[#c6ff00] uppercase tracking-wider shrink-0">
                       Asignar
                     </span>
                   )}
@@ -2528,7 +2528,7 @@ const LiveGameView: React.FC<{
     return (
       <Portal>
         <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-[9999] overflow-y-auto">
-          <div className="w-full max-w-lg bg-[#131041]/90 border border-white/10 rounded-[32px] p-6 shadow-2xl flex flex-col max-h-[85vh]">
+          <div className="w-full max-w-lg bg-[#1c1236]/90 border border-white/10 rounded-[32px] p-6 shadow-2xl flex flex-col max-h-[85vh]">
             <div className="flex justify-between items-center mb-4 shrink-0">
               <div>
                 <h3 className="contrail-font text-lg font-black text-white uppercase tracking-widest">Titulares: {teamName}</h3>
@@ -2550,18 +2550,18 @@ const LiveGameView: React.FC<{
                     key={p.id}
                     onClick={() => toggleStarter(p.id)}
                     className={`p-3 rounded-xl border flex items-center justify-between transition-all text-left ${isSelected
-                      ? 'bg-[#00fe00]/10 border-[#00fe00]/40 text-[#00fe00] shadow-[0_0_10px_rgba(0,254,0,0.1)]'
+                      ? 'bg-[#c6ff00]/10 border-[#c6ff00]/40 text-[#c6ff00] shadow-[0_0_10px_rgba(198,255,0,0.1)]'
                       : 'bg-white/5 border-white/5 text-white hover:border-white/20'
                       }`}
                   >
                     <div className="flex items-center gap-2.5 truncate">
-                      <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 ${isSelected ? 'bg-[#00fe00] text-black' : 'bg-white/10 text-white/60'}`}>
+                      <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 ${isSelected ? 'bg-[#c6ff00] text-black' : 'bg-white/10 text-white/60'}`}>
                         {p.number}
                       </span>
                       <span className="font-bold text-xs truncate uppercase font-lato">{p.name}</span>
                     </div>
-                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${isSelected ? 'border-[#00fe00] bg-[#00fe00]/20' : 'border-white/30'}`}>
-                      {isSelected && <div className="w-2 h-2 rounded-full bg-[#00fe00]" />}
+                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${isSelected ? 'border-[#c6ff00] bg-[#c6ff00]/20' : 'border-white/30'}`}>
+                      {isSelected && <div className="w-2 h-2 rounded-full bg-[#c6ff00]" />}
                     </div>
                   </button>
                 );
@@ -2572,7 +2572,7 @@ const LiveGameView: React.FC<{
               <span className="text-xs font-bold text-white/60 uppercase">Seleccionados: {currentStarters.length} / 11</span>
               <button
                 onClick={() => setShowStartersModal(null)}
-                className="bg-[#00fe00] text-black px-6 py-2.5 font-bold text-[10px] uppercase tracking-wider rounded-xl hover:bg-[#02e002] transition-colors"
+                className="bg-[#c6ff00] text-black px-6 py-2.5 font-bold text-[10px] uppercase tracking-wider rounded-xl hover:bg-[#b5eb00] transition-colors"
               >
                 Listo
               </button>
@@ -2644,7 +2644,7 @@ const LiveGameView: React.FC<{
     return (
       <Portal>
         <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-[9999] overflow-y-auto">
-          <div className="w-full max-w-xl bg-[#131041]/90 border border-white/10 rounded-[32px] p-6 shadow-2xl flex flex-col max-h-[90vh]">
+          <div className="w-full max-w-xl bg-[#1c1236]/90 border border-white/10 rounded-[32px] p-6 shadow-2xl flex flex-col max-h-[90vh]">
 
             <div className="flex justify-between items-center mb-5 border-b border-white/10 pb-3 shrink-0">
               <div>
@@ -2760,7 +2760,7 @@ const LiveGameView: React.FC<{
               </button>
               <button
                 onClick={handleConfirmFoul}
-                className="flex-[1.5] bg-[#00fe00] hover:bg-[#02e002] text-black font-black py-3 rounded-xl text-xs uppercase tracking-widest transition-colors font-contrail shadow-[0_0_15px_rgba(0,254,0,0.2)]"
+                className="flex-[1.5] bg-[#c6ff00] hover:bg-[#b5eb00] text-black font-black py-3 rounded-xl text-xs uppercase tracking-widest transition-colors font-contrail shadow-[0_0_15px_rgba(198,255,0,0.2)]"
               >
                 {selectedFoulCard || selectedFoulFija || selectedFoulPlayer ? 'Confirmar Consecuencias' : 'Continuar sin consecuencias'}
               </button>
@@ -2784,7 +2784,7 @@ const LiveGameView: React.FC<{
       return (
         <Portal>
           <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[9999]">
-            <div className="w-full max-w-sm bg-[#131041]/95 border border-white/10 rounded-[32px] p-6 shadow-2xl flex flex-col">
+            <div className="w-full max-w-sm bg-[#1c1236]/95 border border-white/10 rounded-[32px] p-6 shadow-2xl flex flex-col">
               <div className="mb-4 text-center">
                 <h3 className="contrail-font text-lg font-black text-white uppercase tracking-wider">
                   Resultado de Rebote
@@ -2795,9 +2795,9 @@ const LiveGameView: React.FC<{
               <div className="flex flex-col gap-3 my-4">
                 <button
                   onClick={() => handleDynamicActionConfirmed(team, (activeActionForAssign as any).originalBoton || boton, selectedPlayer, true)}
-                  className="py-4 px-6 rounded-2xl border border-white/10 bg-white/5 text-white font-bold text-xs uppercase tracking-wider hover:border-[#00fe00] hover:bg-[#00fe00]/5 transition-all text-center flex flex-col items-center justify-center gap-1"
+                  className="py-4 px-6 rounded-2xl border border-white/10 bg-white/5 text-white font-bold text-xs uppercase tracking-wider hover:border-[#c6ff00] hover:bg-[#c6ff00]/5 transition-all text-center flex flex-col items-center justify-center gap-1"
                 >
-                  <span className="font-black text-[#00fe00]">Mantiene Posesión</span>
+                  <span className="font-black text-[#c6ff00]">Mantiene Posesión</span>
                   <span className="text-[9px] text-white/40 normal-case font-medium">El equipo atacante retiene la posesión</span>
                 </button>
                 <button
@@ -2824,7 +2824,7 @@ const LiveGameView: React.FC<{
     return (
       <Portal>
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[9999]">
-          <div className="w-full max-w-md bg-[#131041]/95 border border-white/10 rounded-[32px] p-6 shadow-2xl flex flex-col max-h-[85vh]">
+          <div className="w-full max-w-md bg-[#1c1236]/95 border border-white/10 rounded-[32px] p-6 shadow-2xl flex flex-col max-h-[85vh]">
             <div className="flex justify-between items-center mb-4 shrink-0">
               <div>
                 <h3 className="contrail-font text-lg font-black text-white uppercase tracking-wider">
@@ -2990,9 +2990,9 @@ const LiveGameView: React.FC<{
       return (
         <Portal>
           <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-[9999]">
-            <div className="w-full max-w-md bg-[#131041]/95 border border-white/10 rounded-[32px] p-6 shadow-2xl flex flex-col">
+            <div className="w-full max-w-md bg-[#1c1236]/95 border border-white/10 rounded-[32px] p-6 shadow-2xl flex flex-col">
               <div className="text-center mb-5 border-b border-white/10 pb-3">
-                <span className="text-[9px] font-black text-[#00fe00] bg-[#00fe00]/10 border border-[#00fe00]/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider mb-1 block w-max mx-auto animate-pulse">
+                <span className="text-[9px] font-black text-[#c6ff00] bg-[#c6ff00]/10 border border-[#c6ff00]/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider mb-1 block w-max mx-auto animate-pulse">
                   Tecnología de Soporte
                 </span>
                 <h3 className="contrail-font text-lg font-black text-white uppercase tracking-wider">
@@ -3019,9 +3019,9 @@ const LiveGameView: React.FC<{
                     );
                     setActiveGenericModal(null);
                   }}
-                  className="py-4 px-6 rounded-2xl border border-white/10 bg-[#00fe00]/5 text-white font-bold text-xs uppercase tracking-wider hover:border-[#00fe00] hover:bg-[#00fe00]/15 transition-all text-center flex flex-col items-center justify-center gap-1"
+                  className="py-4 px-6 rounded-2xl border border-white/10 bg-[#c6ff00]/5 text-white font-bold text-xs uppercase tracking-wider hover:border-[#c6ff00] hover:bg-[#c6ff00]/15 transition-all text-center flex flex-col items-center justify-center gap-1"
                 >
-                  <span className="font-black text-[#00fe00]">Confirmar Decisión</span>
+                  <span className="font-black text-[#c6ff00]">Confirmar Decisión</span>
                   <span className="text-[9px] text-white/40 normal-case font-medium">Se mantiene la sanción/jugada original</span>
                 </button>
                 <button
@@ -3070,9 +3070,9 @@ const LiveGameView: React.FC<{
       return (
         <Portal>
           <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-[9999]">
-            <div className="w-full max-w-lg bg-[#131041]/95 border border-white/10 rounded-[32px] p-6 shadow-2xl flex flex-col max-h-[85vh]">
+            <div className="w-full max-w-lg bg-[#1c1236]/95 border border-white/10 rounded-[32px] p-6 shadow-2xl flex flex-col max-h-[85vh]">
               <div className="text-center mb-4 border-b border-white/10 pb-3">
-                <span className="text-[9px] font-black text-[#00fe00] bg-[#00fe00]/10 border border-[#00fe00]/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider mb-1 block w-max mx-auto">
+                <span className="text-[9px] font-black text-[#c6ff00] bg-[#c6ff00]/10 border border-[#c6ff00]/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider mb-1 block w-max mx-auto">
                   Sustitución de Jugadores
                 </span>
                 <h3 className="contrail-font text-lg font-black text-white uppercase tracking-wider">
@@ -3119,11 +3119,11 @@ const LiveGameView: React.FC<{
                           key={p.id}
                           onClick={() => setSubPlayerIn(isSelected ? null : p.id)}
                           className={`p-2.5 rounded-xl border flex items-center gap-2 transition-all text-left truncate ${isSelected
-                            ? 'bg-[#00fe00]/20 border-[#00fe00]/50 text-white shadow-md'
+                            ? 'bg-[#c6ff00]/20 border-[#c6ff00]/50 text-white shadow-md'
                             : 'bg-white/5 border-white/5 text-white/70 hover:border-white/10 hover:text-white'
                             }`}
                         >
-                          <span className={`w-5 h-5 rounded-lg flex items-center justify-center text-[9px] font-black shrink-0 ${isSelected ? 'bg-[#00fe00] text-black' : 'bg-white/10 text-white/50'}`}>
+                          <span className={`w-5 h-5 rounded-lg flex items-center justify-center text-[9px] font-black shrink-0 ${isSelected ? 'bg-[#c6ff00] text-black' : 'bg-white/10 text-white/50'}`}>
                             {p.number}
                           </span>
                           <span className="font-bold text-[11px] truncate uppercase font-lato">{p.name}</span>
@@ -3188,7 +3188,7 @@ const LiveGameView: React.FC<{
                     setSubPlayerOut(null);
                     setSubPlayerIn(null);
                   }}
-                  className="flex-[1.5] bg-[#00fe00] hover:bg-[#02e002] text-black font-black py-3 rounded-xl text-xs uppercase tracking-widest transition-colors font-contrail shadow-[0_0_15px_rgba(0,254,0,0.2)] disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex-[1.5] bg-[#c6ff00] hover:bg-[#b5eb00] text-black font-black py-3 rounded-xl text-xs uppercase tracking-widest transition-colors font-contrail shadow-[0_0_15px_rgba(198,255,0,0.2)] disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Confirmar Cambio
                 </button>
@@ -3236,9 +3236,9 @@ const LiveGameView: React.FC<{
                   setPassCount(0);
                   if (navigator.vibrate) navigator.vibrate(50);
                 }}
-                className="py-2 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#00fe00] text-white font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-2"
+                className="py-2 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#c6ff00] text-white font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-2"
               >
-                <i className="fa-solid fa-shield-halved text-[#00fe00] text-[10px] animate-pulse"></i>
+                <i className="fa-solid fa-shield-halved text-[#c6ff00] text-[10px] animate-pulse"></i>
                 <span>Recuperar Posesión</span>
               </button>
             </div>
@@ -3262,7 +3262,7 @@ const LiveGameView: React.FC<{
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowStartersModal(team)}
-                  className="text-[9px] font-black text-[#00fe00] bg-[#00fe00]/10 border border-[#00fe00]/20 px-3 py-1 rounded-full uppercase tracking-wider hover:bg-[#00fe00]/20 transition-all flex items-center gap-1"
+                  className="text-[9px] font-black text-[#c6ff00] bg-[#c6ff00]/10 border border-[#c6ff00]/20 px-3 py-1 rounded-full uppercase tracking-wider hover:bg-[#c6ff00]/20 transition-all flex items-center gap-1"
                 >
                   <i className="fa-solid fa-users text-[8px]"></i> Titulares
                 </button>
@@ -3299,7 +3299,7 @@ const LiveGameView: React.FC<{
                           <span className="font-bold text-[9px] uppercase tracking-widest text-white/55 shrink-0 flex justify-between">
                             <span>{card.titulo}</span>
                             {card.subtitulo && (
-                              <span className={`text-[7px] font-black uppercase ${isFaltaCometida ? 'text-[#ef4444]' : 'text-[#00fe00]'}`}>
+                              <span className={`text-[7px] font-black uppercase ${isFaltaCometida ? 'text-[#ef4444]' : 'text-[#c6ff00]'}`}>
                                 {card.subtitulo}
                               </span>
                             )}
@@ -3354,11 +3354,11 @@ const LiveGameView: React.FC<{
           <div className="flex gap-2">
             <button
               onClick={() => setShowStartersModal(team)}
-              className="text-[9px] font-black text-[#00fe00] bg-[#00fe00]/10 border border-[#00fe00]/20 px-3 py-1 rounded-full uppercase tracking-wider hover:bg-[#00fe00]/20 transition-all flex items-center gap-1"
+              className="text-[9px] font-black text-[#c6ff00] bg-[#c6ff00]/10 border border-[#c6ff00]/20 px-3 py-1 rounded-full uppercase tracking-wider hover:bg-[#c6ff00]/20 transition-all flex items-center gap-1"
             >
               <i className="fa-solid fa-users text-[8px]"></i> Titulares
             </button>
-            <span className="text-[9px] font-black bg-[#00fe00]/10 text-[#00fe00] border border-[#00fe00]/20 px-3 py-1 rounded-full uppercase tracking-wider animate-pulse shadow-[0_0_8px_rgba(0,254,0,0.1)]">
+            <span className="text-[9px] font-black bg-[#c6ff00]/10 text-[#c6ff00] border border-[#c6ff00]/20 px-3 py-1 rounded-full uppercase tracking-wider animate-pulse shadow-[0_0_8px_rgba(198,255,0,0.1)]">
               ● En posesión
             </span>
           </div>
@@ -3384,7 +3384,7 @@ const LiveGameView: React.FC<{
                       <span className="font-bold text-[9px] uppercase tracking-widest text-white/55 shrink-0 flex justify-between">
                         <span>{card.titulo}</span>
                         {card.subtitulo && (
-                          <span className={`text-[7px] font-black uppercase ${isFaltaCometida ? 'text-[#ef4444]' : 'text-[#00fe00]'}`}>
+                          <span className={`text-[7px] font-black uppercase ${isFaltaCometida ? 'text-[#ef4444]' : 'text-[#c6ff00]'}`}>
                             {card.subtitulo}
                           </span>
                         )}
@@ -3400,7 +3400,7 @@ const LiveGameView: React.FC<{
                           } else if (isFaltaCometida || card.id.includes('cometidas')) {
                             btnStyleClass = "bg-[#ef4444]/5 hover:bg-[#ef4444]/15 border-[#ef4444]/10 text-white/90";
                           } else if (card.id.includes('recibidas')) {
-                            btnStyleClass = "bg-[#00fe00]/5 hover:bg-[#00fe00]/15 border-[#00fe00]/10 text-white/90";
+                            btnStyleClass = "bg-[#c6ff00]/5 hover:bg-[#c6ff00]/15 border-[#c6ff00]/10 text-white/90";
                           }
 
                           return (
@@ -3435,7 +3435,7 @@ const LiveGameView: React.FC<{
 
     return (
       <div className="w-full h-full p-2 sm:p-4 flex flex-col items-stretch min-h-0 min-w-0">
-        <div className="w-full h-full bg-[#131041]/40 backdrop-blur-[16px] border border-white/10 rounded-[32px] p-3 sm:p-4 flex flex-col gap-2 shadow-2xl relative min-h-0 min-w-0 overflow-hidden">
+        <div className="w-full h-full bg-[#1c1236]/40 backdrop-blur-[16px] border border-white/10 rounded-[32px] p-3 sm:p-4 flex flex-col gap-2 shadow-2xl relative min-h-0 min-w-0 overflow-hidden">
           
           {/* Botón de Cambio de Posesión Prominente */}
           {dbAcciones && (dbAcciones as any).reglamento?.trackea_posesion !== false && (
@@ -4110,7 +4110,7 @@ const LiveGameView: React.FC<{
                   {!navigator.onLine ? 'Off' : syncQueueLength > 0 ? 'Sync' : 'Cloud'}
                 </span>
               </div>
-              <p className="text-lg md:text-xl font-black text-primary tabular-nums leading-none">{formatTime(seconds)}</p>
+              <p className="text-lg md:text-xl font-black text-primary font-mono tabular-nums leading-none">{formatTime(seconds)}</p>
               <button
                 onClick={toggleTimer}
                 className={`w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center active:scale-90 transition-all text-xs md:text-sm font-black shadow-md ${isRunning ? 'bg-red-500 text-white' : 'bg-primary text-white animate-bounce-short'}`}
@@ -4668,7 +4668,7 @@ const LiveGameView: React.FC<{
                   ) : game?.registroMode === 'botones' ? (
                     <div className="w-full h-full p-2 sm:p-4 flex flex-col items-center justify-center min-h-0 min-w-0">
                       <div
-                        className="w-full h-full max-w-4xl bg-[#131041]/40 backdrop-blur-[16px] border border-white/10 rounded-[32px] p-3 sm:p-5 flex flex-col justify-between shadow-2xl relative min-h-0 min-w-0 overflow-hidden"
+                        className="w-full h-full max-w-4xl bg-[#1c1236]/40 backdrop-blur-[16px] border border-white/10 rounded-[32px] p-3 sm:p-5 flex flex-col justify-between shadow-2xl relative min-h-0 min-w-0 overflow-hidden"
                       >
                         {/* Header of buttons panel */}
                         <div className="flex justify-between items-center border-b border-white/10 pb-2 mb-2 sm:mb-3 shrink-0">
@@ -4765,7 +4765,7 @@ const LiveGameView: React.FC<{
                                   </div>
                                   <span
                                     className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border ${isLocalPossession
-                                      ? 'bg-[#00fe00]/10 text-[#00fe00] border-[#00fe00]/20 animate-pulse shadow-[0_0_8px_rgba(0,254,0,0.15)]'
+                                      ? 'bg-[#c6ff00]/10 text-[#c6ff00] border-[#c6ff00]/20 animate-pulse shadow-[0_0_8px_rgba(198,255,0,0.15)]'
                                       : 'bg-white/5 text-white/30 border-white/5'
                                       }`}
                                   >
@@ -4828,7 +4828,7 @@ const LiveGameView: React.FC<{
                                   </div>
                                   <span
                                     className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border ${isAwayPossession
-                                      ? 'bg-[#00fe00]/10 text-[#00fe00] border-[#00fe00]/20 animate-pulse shadow-[0_0_8px_rgba(0,254,0,0.15)]'
+                                      ? 'bg-[#c6ff00]/10 text-[#c6ff00] border-[#c6ff00]/20 animate-pulse shadow-[0_0_8px_rgba(198,255,0,0.15)]'
                                       : 'bg-white/5 text-white/30 border-white/5'
                                       }`}
                                   >

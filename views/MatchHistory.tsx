@@ -55,7 +55,7 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ matches, onCreateFromTempla
                         >
                             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 flex-1 min-w-0">
                                 {/* Bloque Izquierdo: Marcador y Equipos */}
-                                <div className="flex items-center gap-3 sm:gap-4 shrink-0 bg-[#131041]/60 border border-white/5 p-3 rounded-2xl w-full sm:w-auto justify-between sm:justify-start">
+                                <div className="flex items-center gap-3 sm:gap-4 shrink-0 bg-[#1c1236]/60 border border-white/5 p-3 rounded-2xl w-full sm:w-auto justify-between sm:justify-start">
                                     {/* Equipo Local */}
                                     <div className="flex flex-col items-center min-w-[70px]">
                                         <div
@@ -113,7 +113,7 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ matches, onCreateFromTempla
                                             </span>
                                         )}
                                         {game.metadata?.jornada && (
-                                            <span className="text-[10px] font-black text-[#00ff87] px-2.5 py-0.5 rounded-lg bg-[#00ff87]/10 border border-[#00ff87]/20 uppercase tracking-wider">
+                                            <span className="text-[10px] font-black text-[#c6ff00] px-2.5 py-0.5 rounded-lg bg-[#c6ff00]/10 border border-[#c6ff00]/20 uppercase tracking-wider">
                                                 {game.metadata.jornada}
                                             </span>
                                         )}
@@ -153,7 +153,7 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ matches, onCreateFromTempla
                             <p className="text-white/70 font-black uppercase tracking-widest text-xs opacity-40">No hay partidos registrados aún</p>
                             <button
                                 onClick={() => navigate('/new-game')}
-                                className="mt-6 text-[#00fe00] font-black uppercase text-[10px] tracking-widest hover:underline"
+                                className="mt-6 text-[#c6ff00] font-black uppercase text-[10px] tracking-widest hover:underline"
                             >
                                 + Registrar primer partido
                             </button>
@@ -166,7 +166,7 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ matches, onCreateFromTempla
             {showRecycleModal && (
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
                     <GlassCard className="w-full max-w-sm p-8 shadow-2xl flex flex-col items-center text-center animate-in zoom-in duration-300">
-                        <div className="w-16 h-16 bg-blue-500/10 rounded-3xl flex items-center justify-center text-blue-400 text-3xl mb-6">♻️</div>
+                        <div className="w-16 h-16 bg-purple-500/10 rounded-3xl flex items-center justify-center text-purple-400 text-3xl mb-6">♻️</div>
                         <h3 className="text-[10px] font-black text-white/70 uppercase tracking-[4px] mb-2">Reutilizar Partido</h3>
                         <p className="text-[11px] text-white/50 font-bold mb-8 leading-relaxed">
                             ¿Deseas generar un nuevo juego con los equipos <span className="text-white font-black">{showRecycleModal.teamHome.name}</span> y <span className="text-white font-black">{showRecycleModal.teamAway.name}</span>?
@@ -179,7 +179,7 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ matches, onCreateFromTempla
                                     navigate('/new-game', { state: { template: showRecycleModal } });
                                     setShowRecycleModal(null);
                                 }}
-                                className="w-full bg-[#00fe00] text-black font-black py-4 rounded-2xl active:scale-95 text-xs uppercase tracking-widest shadow-[0_0_20px_rgba(0,254,0,0.2)]"
+                                className="w-full bg-[#c6ff00] text-black font-black py-4 rounded-2xl active:scale-95 text-xs uppercase tracking-widest shadow-[0_0_20px_rgba(198,255,0,0.25)]"
                             >
                                 SÍ, GENERAR NUEVO
                             </button>

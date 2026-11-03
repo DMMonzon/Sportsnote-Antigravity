@@ -9,6 +9,7 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { StorageService } from './services/StorageService';
 
 import { ErrorBoundary } from './components/ErrorBoundary';
+import GlobalSportBackground from './components/common/GlobalSportBackground';
 
 // Views
 import LoginView from './views/LoginView';
@@ -247,15 +248,9 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col font-lato relative overflow-hidden bg-[#020617]">
-      {/* Global Cinematic Background */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <img src="./assets/dashboard-bg.jpg" className="w-full h-full object-cover" alt="Background" />
-        <div className="absolute inset-0" style={{
-          backgroundColor: 'rgba(0,0,0,0.6)',
-          backgroundImage: 'radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.4) 100%)'
-        }}></div>
-      </div>
+    <div className="min-h-screen flex flex-col font-lato relative overflow-hidden bg-transparent">
+      {/* Global Sport Dynamic Background */}
+      <GlobalSportBackground />
       
       {/* Main Content Layer */}
       <div className="relative z-10 flex flex-col flex-1 h-full w-full">

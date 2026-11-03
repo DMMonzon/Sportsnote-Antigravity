@@ -12,7 +12,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Contrail+One&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <script>
         tailwind.config = {
@@ -21,10 +21,10 @@
                     colors: {
                         primary: '#6d5dfc',
                         onPrimary: '#ffffff',
-                        secondary: '#00fe00',
-                        onSecondary: '#131041',
+                        secondary: '#c6ff00',
+                        onSecondary: '#1c1236',
                         surface: '#f4f4f7',
-                        brandDark: '#131041',
+                        brandDark: '#1c1236',
                         brandGlass: 'rgba(255, 255, 255, 0.12)',
                         textLow: 'rgba(255, 255, 255, 0.7)',
                         textMuted: '#6b7280',
@@ -33,8 +33,11 @@
                         xs: '480px',
                     },
                     fontFamily: {
-                        contrail: ['Contrail One', 'cursive'],
-                        lato: ['Lato', 'sans-serif'],
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'], // Para textos generales y subtítulos
+                        display: ['"Montserrat"', '"Plus Jakarta Sans"', 'sans-serif'], // Para títulos pesados como EQUIPOS
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                        contrail: ['"Montserrat"', '"Plus Jakarta Sans"', 'sans-serif'],
+                        lato: ['"Plus Jakarta Sans"', 'sans-serif'],
                     },
                     borderRadius: {
                         'md3': '28px',
@@ -45,21 +48,21 @@
     </script>
     <style>
         body {
-            background-color: #1a1a1a;
+            background-color: #0c0f17;
             color: #1c1b1f;
-            font-family: 'Lato', sans-serif;
+            font-family: 'Plus Jakarta Sans', sans-serif;
             margin: 0;
             padding: 0;
         }
 
         h1, h2, h3, h4 {
-            font-family: 'Contrail One', cursive;
+            font-family: 'Montserrat', 'Plus Jakarta Sans', sans-serif;
         }
 
         #root {
             width: 100%;
             min-height: 100vh;
-            background-color: #f4f4f7;
+            background-color: transparent;
             position: relative;
         }
 
@@ -70,8 +73,16 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
-        .contrail-font {
-            font-family: 'Contrail One', cursive;
+        .contrail-font, .font-contrail, .font-display {
+            font-family: 'Montserrat', 'Plus Jakarta Sans', sans-serif;
+        }
+
+        .font-lato, .font-sans {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        .font-mono, .timer-font, .dorsal-font, .metric-font, .font-jetbrains {
+            font-family: 'JetBrains Mono', monospace;
         }
 
         ::-webkit-scrollbar {
